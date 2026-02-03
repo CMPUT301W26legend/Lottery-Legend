@@ -1,0 +1,101 @@
+# =========================
+# macOS
+# =========================
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+
+# =========================
+# Android Studio / IntelliJ
+# =========================
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Keep local machine settings out of git
+local.properties
+
+# =========================
+# Gradle
+# =========================
+.gradle/
+build/
+**/build/
+!**/src/**/build/
+
+# Gradle wrapper (keep wrapper jar/scripts)
+!gradle/wrapper/gradle-wrapper.jar
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# APK / AAB outputs
+# =========================
+*.apk
+*.ap_
+*.aab
+
+# =========================
+# Keystore / signing (DO NOT COMMIT)
+# =========================
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+signing.properties
+
+# =========================
+# Kotlin / Java compiled files
+# =========================
+*.class
+
+# =========================
+# Lint / analysis outputs
+# =========================
+lint-results*.html
+lint-results*.xml
+lint-reports/
+*.hprof
+
+# =========================
+# Testing / coverage
+# =========================
+/coverage/
+*.ec
+*.exec
+
+# =========================
+# NDK / CMake
+# =========================
+obj/
+*.so
+
+# =========================
+# Firebase / Crashlytics (optional)
+# =========================
+google-services.json
+crashlytics.properties
+fabric.properties
+
+# =========================
+# Misc
+# =========================
+*.swp
+*.swo
+*~
+
