@@ -11,7 +11,7 @@
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
+        android:layout_height="wrap_content"
         android:background="#2563EB"
         app:title="Lottery Legend"
         app:titleTextColor="@color/white"
@@ -47,7 +47,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
-    <com.google.android.material.button.MaterialButton
+    <Button
         android:id="@+id/CreateProfileButton"
         android:layout_width="match_parent"
         android:layout_height="64dp"
@@ -61,5 +61,6 @@
         app:layout_constraintTop_toBottomOf="@id/WelcomeText"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>
