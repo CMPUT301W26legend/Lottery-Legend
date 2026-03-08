@@ -1,8 +1,12 @@
 package com.example.lottery_legend;
 
 import android.app.DatePickerDialog;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Base64;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -19,9 +23,11 @@ import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.card.MaterialCardView;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.util.Calendar;
 
-public class CreateEventActivity extends AppCompatActivity {
+public class CreateEventActivity extends AppCompatActivity implements PosterUploadDialogFragment.OnPosterEventListener {
 
     private FirebaseFirestore db;
     private String deviceId;
@@ -37,8 +43,10 @@ public class CreateEventActivity extends AppCompatActivity {
     private EditText editTextWaitingList;
     private SwitchCompat switchGeo;
     private MaterialCardView locationCard;
-    private Button createButton;
+    private Button createButton, uploadButton;
     private MaterialToolbar toolbar;
+
+    private Uri imageUri;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,12 +76,33 @@ public class CreateEventActivity extends AppCompatActivity {
         switchGeo = findViewById(R.id.switchGeo);
         locationCard = findViewById(R.id.locationCard);
         createButton = findViewById(R.id.createButton);
+        uploadButton = findViewById(R.id.uploadButton);
 
         setupDatePickers();
         setupGeoSwitch();
 
         toolbar.setNavigationOnClickListener(v -> finish());
+
+        uploadButton.setOnClickListener(v -> {
+            PosterUploadDialogFragment dialog = new PosterUploadDialogFragment();
+            dialog.setCurrentUri(imageUri);
+            dialog.setOnPosterEventListener(this);
+            dialog.show(getSupportFragmentManager(), "PosterUploadDialog");
+        });
+
         createButton.setOnClickListener(v -> createEvent());
+    }
+
+    @Override
+    public void onPosterSelected(Uri uri) {
+        this.imageUri = uri;
+        uploadButton.setText("Image Selected");
+    }
+
+    @Override
+    public void onPosterRemoved() {
+        this.imageUri = null;
+        uploadButton.setText("Upload Poster Image");
     }
 
     private void setupGeoSwitch() {
@@ -138,6 +167,13 @@ public class CreateEventActivity extends AppCompatActivity {
         Event newEvent = new Event(deviceId, title, description, switchGeo.isChecked(), location,
                 startDateStr, endDateStr, regStart, regEnd, drawD, capacity, maxWaitingList);
 
+        if (imageUri != null) {
+            String base64Image = uriToBase64(imageUri);
+            if (base64Image != null) {
+                newEvent.setPosterImage(base64Image);
+            }
+        }
+
         db.collection("events").document(newEvent.getEventId())
                 .set(newEvent)
                 .addOnSuccessListener(aVoid -> {
@@ -147,5 +183,33 @@ public class CreateEventActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> {
                     Toast.makeText(CreateEventActivity.this, "Failed to create event: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
+    }
+
+    private String uriToBase64(Uri uri) {
+        try {
+            InputStream inputStream = getContentResolver().openInputStream(uri);
+            Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+            if (inputStream != null) inputStream.close();
+
+            // Resize image to ensure it stays well under Firestore's 1MB limit
+            // Target max dimension of 800px is usually enough for posters and much safer for size
+            int maxWidth = 800;
+            int maxHeight = 800;
+            if (bitmap.getWidth() > maxWidth || bitmap.getHeight() > maxHeight) {
+                float ratio = Math.min((float) maxWidth / bitmap.getWidth(), (float) maxHeight / bitmap.getHeight());
+                int width = Math.round(ratio * bitmap.getWidth());
+                int height = Math.round(ratio * bitmap.getHeight());
+                bitmap = Bitmap.createScaledBitmap(bitmap, width, height, true);
+            }
+
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            // Use 50% quality to further reduce size if necessary, while still looking decent
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 50, outputStream);
+            byte[] byteArray = outputStream.toByteArray();
+            return Base64.encodeToString(byteArray, Base64.DEFAULT);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }
