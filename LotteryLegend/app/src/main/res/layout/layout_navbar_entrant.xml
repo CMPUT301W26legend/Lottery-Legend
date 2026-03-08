@@ -22,12 +22,14 @@
         android:orientation="vertical">
 
         <ImageView
+            android:id="@+id/imageNavHome"
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@drawable/ic_home"
             app:tint="#A7AAB3" />
 
         <TextView
+            android:id="@+id/textNavHome"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
@@ -47,12 +49,14 @@
         android:orientation="vertical">
 
         <ImageView
+            android:id="@+id/imageNavScan"
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@android:drawable/ic_menu_camera"
             app:tint="#A7AAB3" />
 
         <TextView
+            android:id="@+id/textNavScan"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
@@ -72,12 +76,14 @@
         android:orientation="vertical">
 
         <ImageView
+            android:id="@+id/imageNavHistory"
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@drawable/ic_history"
             app:tint="#A7AAB3" />
 
         <TextView
+            android:id="@+id/textNavHistory"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
@@ -97,12 +103,14 @@
         android:orientation="vertical">
 
         <ImageView
+            android:id="@+id/imageNavProfile"
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@drawable/ic_profile"
             app:tint="#A7AAB3" />
 
         <TextView
+            android:id="@+id/textNavProfile"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
