@@ -93,11 +93,6 @@ public class PosterUploadDialogFragment extends DialogFragment {
         btnDelete.setVisibility(View.VISIBLE);
     }
 
-    private int dpToPx(int dp) {
-        float density = getResources().getDisplayMetrics().density;
-        return Math.round((float) dp * density);
-    }
-
     @Override
     public void onStart() {
         super.onStart();
