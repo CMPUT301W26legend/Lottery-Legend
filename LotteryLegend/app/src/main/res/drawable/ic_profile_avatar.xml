@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--Get helped by ChatGPT-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+
+    <!-- Grey circular background -->
+    <path
+        android:fillColor="#E6E8EC"
+        android:pathData="M48,0A48,48 0 1,1 48,96A48,48 0 1,1 48,0"/>
+
+    <!-- Camera body -->
+    <path
+        android:fillColor="#9AA0A6"
+        android:pathData="M30,36h8l3,-4h14l3,4h8c2,0 4,2 4,4v16c0,2 -2,4 -4,4H30c-2,0 -4,-2 -4,-4V40c0,-2 2,-4 4,-4z"/>
+
+    <!-- Camera lens -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,54a6,6 0 1,1 0,-12a6,6 0 1,1 0,12z"/>
+
+</vector>
