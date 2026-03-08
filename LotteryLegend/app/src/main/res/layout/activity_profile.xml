@@ -43,6 +43,7 @@
         </RelativeLayout>
     </com.google.android.material.appbar.MaterialToolbar>
 
+    <!-- 使用基础 ScrollView 包裹中间内容 -->
     <ScrollView
         android:id="@+id/profileScrollView"
         android:layout_width="0dp"
