@@ -31,6 +31,7 @@ public class ProfileActivity extends AppCompatActivity {
     private SwitchMaterial switchNotifications;
     private LinearLayout layoutSwitchOrganizer;
     private Button buttonEditProfile;
+    private Button btnContinueAsAdmin;
 
     private Entrant currentEntrant;
 
@@ -55,10 +56,16 @@ public class ProfileActivity extends AppCompatActivity {
         switchNotifications = findViewById(R.id.switchNotifications);
         layoutSwitchOrganizer = findViewById(R.id.layoutSwitchOrganizer);
         buttonEditProfile = findViewById(R.id.buttonEditProfile);
+        btnContinueAsAdmin = findViewById(R.id.btnContinueAsAdmin);
 
         buttonEditProfile.setOnClickListener(v -> {
             Intent intent = new Intent(ProfileActivity.this, EditProfileActivity.class);
             intent.putExtra("deviceId", deviceId);
+            startActivity(intent);
+        });
+
+        btnContinueAsAdmin.setOnClickListener(v -> {
+            Intent intent = new Intent(ProfileActivity.this, AdminActivity.class);
             startActivity(intent);
         });
 
@@ -105,7 +112,7 @@ public class ProfileActivity extends AppCompatActivity {
                     navigateToOrganizerMain();
                 } else {
                     if (currentEntrant != null) {
-                        Organizer newOrganizer = new Organizer(currentEntrant.name, currentEntrant.email, currentEntrant.phone);
+                        Organizer newOrganizer = new Organizer(currentEntrant.name, currentEntrant.email, currentEntrant.phone, deviceId, currentEntrant.joinDate);
                         db.collection("organizers").document(deviceId).set(newOrganizer)
                                 .addOnSuccessListener(aVoid -> {
                                     Toast.makeText(ProfileActivity.this, "Organizer account created", Toast.LENGTH_SHORT).show();

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -15,6 +16,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import java.util.Date;
 
 /**
  * Unit test for Firestore interactions using Mockito.
@@ -45,7 +47,7 @@ public class FirestoreUnitTest {
 
     @Test
     public void testFirestoreSetDataCalled() {
-        Entrant entrant = new Entrant("Test User", "test@example.com", "12345", true);
+        Entrant entrant = new Entrant("Test User", "test@example.com", "12345", true, "test_user_id", new Timestamp(new Date()));
         String deviceId = "test_device_id";
 
         mockDb.collection("entrants").document(deviceId).set(entrant);
