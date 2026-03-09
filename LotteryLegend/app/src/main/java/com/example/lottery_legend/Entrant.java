@@ -11,8 +11,5 @@ public class Entrant {
 
     public Entrant(String name, String email, String phone, boolean notification) {
         this.name = name;
-        this.email = email;
-        this.phone = phone;
-        this.notification = notification;
     }
 }
