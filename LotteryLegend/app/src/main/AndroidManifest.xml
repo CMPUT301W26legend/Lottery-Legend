@@ -15,6 +15,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.LotteryLegend">
         <activity
+            android:name=".ScanActivity"
+            android:exported="false" />
+        <activity
             android:name=".OrganizerHistoryActivity"
             android:exported="false" />
         <activity
