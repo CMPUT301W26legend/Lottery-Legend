@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -26,6 +27,7 @@ public class ProfileActivity extends AppCompatActivity {
     private TextView viewEmail;
     private TextView viewPhone;
     private SwitchMaterial switchNotifications;
+    private Button buttonEditProfile;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,6 +48,13 @@ public class ProfileActivity extends AppCompatActivity {
         viewEmail = findViewById(R.id.viewEmail);
         viewPhone = findViewById(R.id.viewPhone);
         switchNotifications = findViewById(R.id.switchNotifications);
+        buttonEditProfile = findViewById(R.id.buttonEditProfile);
+
+        buttonEditProfile.setOnClickListener(v -> {
+            Intent intent = new Intent(ProfileActivity.this, EditProfileActivity.class);
+            intent.putExtra("deviceId", deviceId);
+            startActivity(intent);
+        });
 
         fetchProfileData();
         setupNavbar();
