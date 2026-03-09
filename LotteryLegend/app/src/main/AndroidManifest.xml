@@ -15,6 +15,21 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.LotteryLegend">
         <activity
+            android:name=".OrganizerHistoryActivity"
+            android:exported="false" />
+        <activity
+            android:name=".OrganizerEventDetailsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".OrganizerQRCodeActivity"
+            android:exported="false" />
+        <activity
+            android:name=".CreateEventActivity"
+            android:exported="false" />
+        <activity
+            android:name=".OrganizerMainActivity"
+            android:exported="false" />
+        <activity
             android:name=".EditProfileActivity"
             android:exported="false" />
         <activity
