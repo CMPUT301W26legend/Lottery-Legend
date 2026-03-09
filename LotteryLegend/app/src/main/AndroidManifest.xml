@@ -18,6 +18,9 @@
             android:name=".OrganizerHistoryActivity"
             android:exported="false" />
         <activity
+            android:name=".OrganizerEventDetailsActivity"
+            android:exported="false" />
+        <activity
             android:name=".OrganizerQRCodeActivity"
             android:exported="false" />
         <activity
