@@ -10,4 +10,5 @@
     <color name="background_blue">#2563EB</color>
     <color name="grey">#808080</color>
     <color name="red">#FF0000</color>
+    <color name="dialog_grey">#F1F5F9</color>
 </resources>

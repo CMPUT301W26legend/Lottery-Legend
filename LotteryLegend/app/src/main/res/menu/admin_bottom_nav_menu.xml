@@ -6,7 +6,7 @@
         android:title="Events" />
     <item
         android:id="@+id/nav_admin_users"
-        android:icon="@drawable/ic_users"
+        android:icon="@drawable/ic_people"
         android:title="Users" />
     <item
         android:id="@+id/nav_admin_media"

@@ -1,5 +1,7 @@
 package com.example.lottery_legend;
 
+import com.google.firebase.Timestamp;
+
 /**
  * Model class for an Organizer.
  */
@@ -7,13 +9,17 @@ public class Organizer {
     private String name;
     private String email;
     private String phone;
+    private String userId;
+    private Timestamp joinDate;
 
     public Organizer() {}
 
-    public Organizer(String name, String email, String phone) {
+    public Organizer(String name, String email, String phone, String userId, Timestamp joinDate) {
         this.name = name;
         this.email = email;
         this.phone = phone;
+        this.userId = userId;
+        this.joinDate = joinDate;
     }
 
     public String getName() {
@@ -38,5 +44,21 @@ public class Organizer {
 
     public void setPhone(String phone) {
         this.phone = phone;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public Timestamp getJoinDate() {
+        return joinDate;
+    }
+
+    public void setJoinDate(Timestamp joinDate) {
+        this.joinDate = joinDate;
     }
 }
