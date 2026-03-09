@@ -39,33 +39,6 @@
     </LinearLayout>
 
     <LinearLayout
-        android:id="@+id/navScan"
-        android:layout_width="0dp"
-        android:layout_height="match_parent"
-        android:layout_weight="1"
-        android:clickable="true"
-        android:focusable="true"
-        android:gravity="center"
-        android:orientation="vertical">
-
-        <ImageView
-            android:id="@+id/imageNavScan"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@android:drawable/ic_menu_camera"
-            app:tint="#A7AAB3" />
-
-        <TextView
-            android:id="@+id/textNavScan"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Scan"
-            android:textColor="#A7AAB3"
-            android:textSize="12sp" />
-    </LinearLayout>
-
-    <LinearLayout
         android:id="@+id/navHistory"
         android:layout_width="0dp"
         android:layout_height="match_parent"
