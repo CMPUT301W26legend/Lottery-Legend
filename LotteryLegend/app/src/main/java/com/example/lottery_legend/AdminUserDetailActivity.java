@@ -26,14 +26,12 @@ public class AdminUserDetailActivity extends AppCompatActivity {
 
         db = FirebaseFirestore.getInstance();
 
-        // Retrieve data from Intent
         userId = getIntent().getStringExtra("userId");
         name = getIntent().getStringExtra("name");
         email = getIntent().getStringExtra("email");
         phone = getIntent().getStringExtra("phone");
         collectionName = getIntent().getStringExtra("collectionName");
 
-        // Initialize Views
         TextView topTitle = findViewById(R.id.admin_top_title);
         TextView topSubtitle = findViewById(R.id.admin_top_subtitle);
         ImageButton btnBack = findViewById(R.id.btn_back_detail);
@@ -42,7 +40,6 @@ public class AdminUserDetailActivity extends AppCompatActivity {
         TextView tvPhone = findViewById(R.id.user_phone_detail);
         Button btnDelete = findViewById(R.id.btn_delete_user);
 
-        // Set Data to Views
         if (topTitle != null) topTitle.setText("Lottery Legend");
         if (topSubtitle != null) topSubtitle.setText("Administrator");
         
@@ -53,11 +50,7 @@ public class AdminUserDetailActivity extends AppCompatActivity {
         if ("organizers".equals(collectionName)) {
             btnDelete.setText("Delete Organizer");
         }
-
-        // Back Logic
         btnBack.setOnClickListener(v -> finish());
-
-        // Delete Logic
         btnDelete.setOnClickListener(v -> showDeleteDialog());
     }
 
