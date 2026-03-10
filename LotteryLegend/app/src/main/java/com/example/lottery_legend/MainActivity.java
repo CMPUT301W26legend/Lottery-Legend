@@ -84,6 +84,15 @@ public class MainActivity extends AppCompatActivity {
                 intent.putExtra("deviceId", deviceId);
                 startActivity(intent);
             });
+
+            View scanNav = navbar.findViewById(R.id.navScan);
+            if (scanNav != null) {
+                scanNav.setOnClickListener(v -> {
+                    Intent intent = new Intent(MainActivity.this, ScanActivity.class);
+                    intent.putExtra("deviceId", deviceId);
+                    startActivity(intent);
+                });
+            }
         }
     }
 }
