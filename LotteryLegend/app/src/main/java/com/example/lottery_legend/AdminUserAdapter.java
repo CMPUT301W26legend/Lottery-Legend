@@ -1,6 +1,7 @@
 package com.example.lottery_legend;
 
 import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -48,17 +49,23 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
     public void onBindViewHolder(@NonNull UserViewHolder holder, int position) {
         Object userObj = userList.get(position);
         String name = "";
+        String email = "";
+        String phone = "";
         Timestamp joinDate = null;
         String userId = "";
 
         if (userObj instanceof Entrant) {
             Entrant user = (Entrant) userObj;
             name = user.name;
+            email = user.email;
+            phone = user.phone;
             joinDate = user.joinDate;
             userId = user.userId;
         } else if (userObj instanceof Organizer) {
             Organizer user = (Organizer) userObj;
             name = user.getName();
+            email = user.getEmail();
+            phone = user.getPhone();
             joinDate = user.getJoinDate();
             userId = user.getUserId();
         }
@@ -74,6 +81,22 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
         }
 
         final String finalUserId = userId;
+        final String finalName = name;
+        final String finalEmail = email;
+        final String finalPhone = phone;
+
+        // Transition to Full View
+        holder.itemView.setOnClickListener(v -> {
+            Intent intent = new Intent(context, AdminUserDetailActivity.class);
+            intent.putExtra("userId", finalUserId);
+            intent.putExtra("name", finalName);
+            intent.putExtra("email", finalEmail);
+            intent.putExtra("phone", finalPhone);
+            intent.putExtra("collectionName", currentCollection);
+            context.startActivity(intent);
+        });
+
+        // Quick remove button logic
         holder.removeButton.setOnClickListener(v -> showDeleteDialog(finalUserId));
     }
 
