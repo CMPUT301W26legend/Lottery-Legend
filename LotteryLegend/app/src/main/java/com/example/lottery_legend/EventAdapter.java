@@ -14,6 +14,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.List;
@@ -26,10 +27,15 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
 
     // https://developer.android.com/develop/ui/views/layout/recyclerview#java
     static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView title, status, locationText, deadline, waitingCount;
+        TextView title;
+        TextView status;
+        TextView locationText;
+        TextView deadline;
+        TextView waitingCount;
         LinearLayout locationRow;
         Button joinButton;
         ImageView posterImage;
+        LinearLayout cardContent;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -41,6 +47,7 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
             waitingCount = itemView.findViewById(R.id.waitingCount);
             joinButton = itemView.findViewById(R.id.joinButton);
             posterImage = itemView.findViewById(R.id.posterImage);
+            cardContent = itemView.findViewById(R.id.cardContent);
         }
     }
 
@@ -86,6 +93,8 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
 
         boolean isJoined = event.getWaitingList().contains(currentDeviceId);
 
+        setAlpha(holder, 1.0f);
+
         if (!Objects.equals(event.getStatus(), "open")) {
             holder.status.setText("Closed");
             holder.status.setTextColor(Color.parseColor("#64748B"));
@@ -94,27 +103,37 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
         } else if (isJoined) {
             holder.status.setText("Joined");
             holder.status.setTextColor(Color.parseColor("#F59E0B"));
-            holder.joinButton.setVisibility(View.GONE);
-        } else {
-            holder.status.setText("Open");
-            holder.status.setTextColor(Color.parseColor("#10B981"));
             holder.joinButton.setVisibility(View.VISIBLE);
+            holder.joinButton.setText("Leave Waiting List");
+
+            holder.joinButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#EF4444")));
 
             holder.joinButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    Toast.makeText(v.getContext(), "Join clicked", Toast.LENGTH_SHORT).show();
+                    WaitingListDialogFragment.newInstance(event, currentDeviceId)
+                            .show(((AppCompatActivity) v.getContext()).getSupportFragmentManager(), "Leave Waiting List");
+                }
+            });
+        } else {
+            holder.status.setText("Open");
+            holder.status.setTextColor(Color.parseColor("#10B981"));
+            holder.joinButton.setVisibility(View.VISIBLE);
+            holder.joinButton.setText("Join WaitingList");
+            holder.joinButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#2563EB")));
+
+            holder.joinButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    WaitingListDialogFragment.newInstance(event, currentDeviceId)
+                            .show(((AppCompatActivity) v.getContext()).getSupportFragmentManager(), "Join Waiting List");
                 }
             });
         }
     }
 
     private void setAlpha(ViewHolder holder, float alpha) {
-        holder.title.setAlpha(alpha);
-        holder.locationRow.setAlpha(alpha);
-        holder.deadline.setAlpha(alpha);
-        holder.waitingCount.setAlpha(alpha);
-        holder.itemView.findViewById(R.id.deadline).setAlpha(alpha);
+        holder.cardContent.getChildAt(1).setAlpha(alpha);
     }
 
     @Override
