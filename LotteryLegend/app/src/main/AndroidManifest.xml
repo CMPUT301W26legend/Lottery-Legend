@@ -15,6 +15,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.LotteryLegend">
         <activity
+            android:name=".AdminUserDetailActivity"
+            android:exported="false" />
+        <activity
+            android:name=".AdminActivity"
+            android:exported="false" />
+        <activity
             android:name=".OrganizerHistoryActivity"
             android:exported="false" />
         <activity
