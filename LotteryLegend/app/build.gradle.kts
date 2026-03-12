@@ -40,6 +40,9 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:34.9.0"))
     implementation("com.google.firebase:firebase-firestore")
     implementation(libs.espresso.intents)
+
+    implementation("com.google.zxing:core:3.5.3")
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
     
     testImplementation(libs.junit)
     testImplementation("org.mockito:mockito-core:5.11.0")
