@@ -13,17 +13,23 @@ public class Entrant {
     public boolean notification;
     public String userId;
     public Timestamp joinDate;
+    public boolean isAdmin;
 
     // Required for Firestore
     public Entrant() {}
 
     public Entrant(String name, String email, String phone, boolean notification, String userId, Timestamp joinDate) {
+        this(name, email, phone, notification, userId, joinDate, false);
+    }
+
+    public Entrant(String name, String email, String phone, boolean notification, String userId, Timestamp joinDate, boolean isAdmin) {
         this.name = name;
         this.email = email;
         this.phone = phone;
         this.notification = notification;
         this.userId = userId;
         this.joinDate = joinDate;
+        this.isAdmin = isAdmin;
     }
 
     public String getName() {
@@ -72,5 +78,13 @@ public class Entrant {
 
     public void setJoinDate(Timestamp joinDate) {
         this.joinDate = joinDate;
+    }
+
+    public boolean getIsAdmin() {
+        return isAdmin;
+    }
+
+    public void setIsAdmin(boolean isAdmin) {
+        this.isAdmin = isAdmin;
     }
 }

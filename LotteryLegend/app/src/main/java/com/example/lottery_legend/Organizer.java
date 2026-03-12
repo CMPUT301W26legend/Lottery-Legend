@@ -11,15 +11,21 @@ public class Organizer {
     private String phone;
     private String userId;
     private Timestamp joinDate;
+    public boolean isAdmin;
 
     public Organizer() {}
 
     public Organizer(String name, String email, String phone, String userId, Timestamp joinDate) {
+        this(name, email, phone, userId, joinDate, false);
+    }
+
+    public Organizer(String name, String email, String phone, String userId, Timestamp joinDate, boolean isAdmin) {
         this.name = name;
         this.email = email;
         this.phone = phone;
         this.userId = userId;
         this.joinDate = joinDate;
+        this.isAdmin = isAdmin;
     }
 
     public String getName() {
@@ -60,5 +66,13 @@ public class Organizer {
 
     public void setJoinDate(Timestamp joinDate) {
         this.joinDate = joinDate;
+    }
+
+    public boolean getIsAdmin() {
+        return isAdmin;
+    }
+
+    public void setIsAdmin(boolean isAdmin) {
+        this.isAdmin = isAdmin;
     }
 }

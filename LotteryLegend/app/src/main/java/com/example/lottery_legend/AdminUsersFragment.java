@@ -18,6 +18,11 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
 
+/**
+ * AdminUsersFragment manages the user administration interface. It provides a tabbed
+ * view to switch between browsing Entrants and Organizers from Firestore.
+ *
+ */
 public class AdminUsersFragment extends Fragment {
 
     private FirebaseFirestore db;
@@ -42,6 +47,10 @@ public class AdminUsersFragment extends Fragment {
 
         TabLayout tabLayout = view.findViewById(R.id.admin_users_tabs);
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            /**
+             * Called when a tab is selected. Updates the current collection and fetches users.
+             * @param tab The selected tab.
+             */
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
                 if (tab.getPosition() == 0) {
@@ -64,6 +73,10 @@ public class AdminUsersFragment extends Fragment {
         return view;
     }
 
+    /**
+     * Fetches users from Firestore based on the current collection.
+     * @param collectionName Name of the collection to fetch from.
+     */
     private void fetchUsers(String collectionName) {
         // Remove previous listener if exists
         if (listenerRegistration != null) {
@@ -101,6 +114,9 @@ public class AdminUsersFragment extends Fragment {
         });
     }
 
+    /**
+     * Called when the fragment is destroyed. Removes the listener if it exists.
+     */
     @Override
     public void onDestroyView() {
         super.onDestroyView();

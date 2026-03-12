@@ -63,8 +63,7 @@ public class CreateProfileActivity extends AppCompatActivity {
                 Toast.makeText(this, "Please fill in all required fields", Toast.LENGTH_SHORT).show();
                 return;
             }
-            // Create a new user with userId and joinDate
-            Entrant user = new Entrant(name, email, phone, notification, deviceId, Timestamp.now());
+            Entrant user = new Entrant(name, email, phone, notification, deviceId, Timestamp.now(), false);
 
             // Add a new document with a generated ID
             db.collection("entrants").document(deviceId).set(user)
