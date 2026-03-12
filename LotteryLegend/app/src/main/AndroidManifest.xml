@@ -26,6 +26,12 @@
             android:name=".ScanActivity"
             android:exported="false" />
         <activity
+            android:name=".AdminUserDetailActivity"
+            android:exported="false" />
+        <activity
+            android:name=".AdminActivity"
+            android:exported="false" />
+        <activity
             android:name=".OrganizerHistoryActivity"
             android:exported="false" />
         <activity

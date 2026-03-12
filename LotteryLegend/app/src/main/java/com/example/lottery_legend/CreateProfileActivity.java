@@ -12,6 +12,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 /**
@@ -62,8 +63,8 @@ public class CreateProfileActivity extends AppCompatActivity {
                 Toast.makeText(this, "Please fill in all required fields", Toast.LENGTH_SHORT).show();
                 return;
             }
-            // Create a new user
-            Entrant user = new Entrant(name, email, phone, notification);
+            // Create a new user with userId and joinDate
+            Entrant user = new Entrant(name, email, phone, notification, deviceId, Timestamp.now());
 
             // Add a new document with a generated ID
             db.collection("entrants").document(deviceId).set(user)
