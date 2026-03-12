@@ -72,4 +72,16 @@ public class AdminActivity extends AppCompatActivity {
             }
         }
     }
+
+    /**
+     * Navigates to the event detail view by replacing the current fragment.
+     * @param eventId The ID of the event to display.
+     */
+    public void showEventDetail(String eventId) {
+        Fragment detailFragment = AdminEventDetailFragment.newInstance(eventId);
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.admin_container, detailFragment)
+                .addToBackStack(null)
+                .commit();
+    }
 }

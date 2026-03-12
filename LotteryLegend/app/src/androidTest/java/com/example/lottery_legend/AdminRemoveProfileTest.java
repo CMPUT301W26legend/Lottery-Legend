@@ -2,11 +2,14 @@ package com.example.lottery_legend;
 
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
+import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.ViewMatchers.hasDescendant;
+import static androidx.test.espresso.matcher.ViewMatchers.hasSibling;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
+import static org.hamcrest.Matchers.allOf;
 
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.Timestamp;
@@ -27,12 +30,12 @@ import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Test for US 03.05.01: Browsing user profiles as an administrator.
+ * Test for US 03.02.01: Removing user profiles as an administrator.
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
-public class AdminBrowseProfilesTest {
-    
+public class AdminRemoveProfileTest {
+
     private FirebaseFirestore db;
 
     @Rule
@@ -43,68 +46,63 @@ public class AdminBrowseProfilesTest {
     public void setUp() throws Exception {
         db = FirebaseFirestore.getInstance();
         Timestamp now = new Timestamp(new Date());
-
         Entrant testEntrant = new Entrant(
-                "testEntrant",
-                "entrant@test.com",
+                "entrantTest",
+                "remove@test.com",
                 "1234567890",
                 true,
-                "testEntrantID",
+                "entrantTest",
                 now
         );
-        Tasks.await(db.collection("entrants").document("testEntrantID").set(testEntrant), 5, TimeUnit.SECONDS);
+        Tasks.await(db.collection("entrants").document("entrantTest").set(testEntrant), 5, TimeUnit.SECONDS);
 
         Organizer testOrganizer = new Organizer(
-                "testOrganizer",
-                "organizer@test.com",
+                "organizerTest",
+                "remove_org@test.com",
                 "0987654321",
-                "testOrganizerID",
+                "organizerTest",
                 now
         );
-        Tasks.await(db.collection("organizers").document("testOrganizerID").set(testOrganizer), 5, TimeUnit.SECONDS);
+        Tasks.await(db.collection("organizers").document("organizerTest").set(testOrganizer), 5, TimeUnit.SECONDS);
     }
 
     @After
     public void tearDown() throws Exception {
         if (db != null) {
-            Tasks.await(db.collection("entrants").document("testEntrantID").delete(), 5, TimeUnit.SECONDS);
-            Tasks.await(db.collection("organizers").document("testOrganizerID").delete(), 5, TimeUnit.SECONDS);
+            db.collection("entrants").document("entrantTest").delete();
+            db.collection("organizers").document("organizerTest").delete();
         }
     }
 
     @Test
-    public void testNavigateToUsersAndCheckTabs() {
+    public void testRemoveEntrantProfile() throws InterruptedException {
         onView(withId(R.id.nav_admin_users)).perform(click());
+        
+        onView(withText("Entrants")).perform(click());
+        onView(withId(R.id.admin_users_recycler))
+                .perform(RecyclerViewActions.scrollTo(hasDescendant(withText("entrantTest"))));
 
-        onView(withId(R.id.admin_users_tabs)).check(matches(isDisplayed()));
-        onView(withText("Entrants")).check(matches(isDisplayed()));
-        onView(withText("Organizers")).check(matches(isDisplayed()));
-        onView(withId(R.id.admin_users_recycler)).check(matches(isDisplayed()));
+        onView(withText("entrantTest")).check(matches(isDisplayed()));
+
+        onView(allOf(withId(R.id.remove_user_button), hasSibling(withText("entrantTest"))))
+                .perform(click());
+
+        onView(withId(R.id.btn_delete)).perform(click());
+        onView(withText("entrantTest")).check(doesNotExist());
     }
 
     @Test
-    public void testTestUsersAreDisplayed() throws InterruptedException {
+    public void testRemoveOrganizerProfile() throws InterruptedException {
         onView(withId(R.id.nav_admin_users)).perform(click());
-
-        onView(withText("Entrants")).perform(click());
-        onView(withId(R.id.admin_users_recycler))
-                .perform(RecyclerViewActions.scrollTo(hasDescendant(withText("testEntrant"))));
-        onView(withText("testEntrant")).check(matches(isDisplayed()));
-
         onView(withText("Organizers")).perform(click());
         onView(withId(R.id.admin_users_recycler))
-                .perform(RecyclerViewActions.scrollTo(hasDescendant(withText("testOrganizer"))));
-        onView(withText("testOrganizer")).check(matches(isDisplayed()));
-    }
+                .perform(RecyclerViewActions.scrollTo(hasDescendant(withText("organizerTest"))));
 
-    @Test
-    public void testSwitchBetweenUserTabs() {
-        onView(withId(R.id.nav_admin_users)).perform(click());
+        onView(withText("organizerTest")).check(matches(isDisplayed()));
+        onView(allOf(withId(R.id.remove_user_button), hasSibling(withText("organizerTest"))))
+                .perform(click());
 
-        onView(withText("Organizers")).perform(click());
-        onView(withId(R.id.admin_users_recycler)).check(matches(isDisplayed()));
-
-        onView(withText("Entrants")).perform(click());
-        onView(withId(R.id.admin_users_recycler)).check(matches(isDisplayed()));
+        onView(withId(R.id.btn_delete)).perform(click());
+        onView(withText("organizerTest")).check(doesNotExist());
     }
 }
