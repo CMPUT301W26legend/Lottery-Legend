@@ -25,7 +25,8 @@ import org.junit.runner.RunWith;
 import java.util.concurrent.TimeUnit;
 
 /**
- * UI Test for US 03.04.01: Browsing events as an administrator.
+ * Test for US 03.04.01: Browsing events as an administrator.
+ * Generated with the help of Gemini LLM
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
