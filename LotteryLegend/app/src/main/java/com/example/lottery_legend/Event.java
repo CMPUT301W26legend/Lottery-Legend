@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Model class for an Event.
+ * Event class
  */
 public class Event {
     private String eventId;
@@ -22,6 +22,7 @@ public class Event {
     private int capacity;
     private Integer maxWaitingList;
     private String posterImage;
+    private String qrCodeImage;
     private String status;
     private List<String> waitingList;
 
@@ -91,6 +92,9 @@ public class Event {
 
     public String getPosterImage() { return posterImage; }
     public void setPosterImage(String posterImage) { this.posterImage = posterImage; }
+
+    public String getQrCodeImage() { return qrCodeImage; }
+    public void setQrCodeImage(String qrCodeImage) { this.qrCodeImage = qrCodeImage; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }

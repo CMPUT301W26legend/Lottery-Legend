@@ -3,6 +3,7 @@ package com.example.lottery_legend;
 import android.app.DatePickerDialog;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -22,6 +23,10 @@ import androidx.core.view.WindowInsetsCompat;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.card.MaterialCardView;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.MultiFormatWriter;
+import com.google.zxing.WriterException;
+import com.google.zxing.common.BitMatrix;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -173,6 +178,9 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
                 newEvent.setPosterImage(base64Image);
             }
         }
+        //
+        String qrCodeBase64 = generateQRCodeBase64(newEvent.getEventId());
+        newEvent.setQrCodeImage(qrCodeBase64);
 
         db.collection("events").document(newEvent.getEventId())
                 .set(newEvent)
@@ -185,14 +193,36 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
                 });
     }
 
+    /**
+     * Generates a QR Code for the eventId and returns it as a Base64 string.
+     */
+    private String generateQRCodeBase64(String text) {
+        MultiFormatWriter writer = new MultiFormatWriter();
+        try {
+            BitMatrix bitMatrix = writer.encode(text, BarcodeFormat.QR_CODE, 500, 500);
+            int width = bitMatrix.getWidth();
+            int height = bitMatrix.getHeight();
+            Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    bmp.setPixel(x, y, bitMatrix.get(x, y) ? Color.BLACK : Color.WHITE);
+                }
+            }
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            bmp.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
+            return Base64.encodeToString(outputStream.toByteArray(), Base64.DEFAULT);
+        } catch (WriterException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     private String uriToBase64(Uri uri) {
         try {
             InputStream inputStream = getContentResolver().openInputStream(uri);
             Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
             if (inputStream != null) inputStream.close();
 
-            // Resize image to ensure it stays well under Firestore's 1MB limit
-            // Target max dimension of 800px is usually enough for posters and much safer for size
             int maxWidth = 800;
             int maxHeight = 800;
             if (bitmap.getWidth() > maxWidth || bitmap.getHeight() > maxHeight) {
@@ -203,7 +233,6 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
             }
 
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            // Use 50% quality to further reduce size if necessary, while still looking decent
             bitmap.compress(Bitmap.CompressFormat.JPEG, 50, outputStream);
             byte[] byteArray = outputStream.toByteArray();
             return Base64.encodeToString(byteArray, Base64.DEFAULT);
