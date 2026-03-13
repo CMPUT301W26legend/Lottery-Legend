@@ -6,10 +6,10 @@ import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.intent.Intents.intended;
 import static androidx.test.espresso.intent.matcher.IntentMatchers.hasComponent;
 import static androidx.test.espresso.intent.matcher.IntentMatchers.hasExtra;
+import static androidx.test.espresso.matcher.RootMatchers.isDialog;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
-
 import static org.hamcrest.Matchers.allOf;
 
 import android.content.Context;
@@ -30,6 +30,9 @@ import org.junit.runner.RunWith;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * UI tests for MainActivity, including dialog interactions and navigation.
+ */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
 public class MainActivityTest {
@@ -74,16 +77,26 @@ public class MainActivityTest {
             dialog.show(activity.getSupportFragmentManager(), "join_test");
         });
 
-        onView(withText("Open Event")).check(matches(isDisplayed()));
-        onView(withId(R.id.btnConfirm)).check(matches(withText("Confirm"))); // 假设默认是 Confirm
-        onView(withId(R.id.btnCancel)).perform(click());
+        // Use inRoot(isDialog()) to explicitly target the dialog window, 
+        // which helps avoid RootViewWithoutFocusException on the activity window.
+        onView(withText("Open Event"))
+                .inRoot(isDialog())
+                .check(matches(isDisplayed()));
+        
+        onView(withId(R.id.btnConfirm))
+                .inRoot(isDialog())
+                .check(matches(isDisplayed()));
+        
+        onView(withId(R.id.btnCancel))
+                .inRoot(isDialog())
+                .perform(click());
     }
 
     @Test
     public void testLeaveWaitingListDialogUI() {
         Event joinedEvent = createMockEvent("Joined Event", "open");
         List<String> waitingList = new ArrayList<>();
-        waitingList.add(TEST_DEVICE_ID); // 模拟用户已加入
+        waitingList.add(TEST_DEVICE_ID); 
         joinedEvent.setWaitingList(waitingList);
 
         activityRule.getScenario().onActivity(activity -> {
@@ -91,11 +104,21 @@ public class MainActivityTest {
             dialog.show(activity.getSupportFragmentManager(), "leave_test");
         });
 
-        onView(withText("Leave Waiting List")).check(matches(isDisplayed()));
-        onView(withText("Do you want to leave this waiting list?")).check(matches(isDisplayed()));
-        onView(withId(R.id.btnConfirm)).check(matches(withText("Leave")));
+        onView(withText("Leave Waiting List"))
+                .inRoot(isDialog())
+                .check(matches(isDisplayed()));
         
-        onView(withId(R.id.btnCancel)).perform(click());
+        onView(withText("Do you want to leave this waiting list?"))
+                .inRoot(isDialog())
+                .check(matches(isDisplayed()));
+        
+        onView(withId(R.id.btnConfirm))
+                .inRoot(isDialog())
+                .check(matches(withText("Leave")));
+        
+        onView(withId(R.id.btnCancel))
+                .inRoot(isDialog())
+                .perform(click());
     }
 
     @Test
