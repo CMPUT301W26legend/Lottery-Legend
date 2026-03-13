@@ -4,6 +4,7 @@ import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.scrollTo;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
+import static androidx.test.espresso.matcher.RootMatchers.isDialog;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
@@ -63,9 +64,9 @@ public class ProfileActivityTest {
                 "1234567890",
                 true,
                 TEST_DEVICE_ID,
-                new Timestamp(new Date()),
-                true
+                new Timestamp(new Date())
         );
+        testEntrant.isAdmin = true;
 
         Tasks.await(db.collection("entrants").document(TEST_DEVICE_ID).set(testEntrant), 10, TimeUnit.SECONDS);
     }
@@ -135,5 +136,22 @@ public class ProfileActivityTest {
         
         // Verify navigation happened (checking for common UI element in target activity)
         onView(withId(R.id.navbar)).check(matches(isDisplayed()));
+    }
+
+    @Test
+    public void testDeleteAccountConfirmationDialog() throws InterruptedException {
+        Thread.sleep(1000);
+        onView(withId(R.id.btnDeleteAccount)).perform(scrollTo(), click());
+
+        // Verify dialog shows up
+        onView(withText("Delete Account")).inRoot(isDialog()).check(matches(isDisplayed()));
+        onView(withText("Are you sure you want to delete your profile? This action cannot be undone and the app will close."))
+                .inRoot(isDialog()).check(matches(isDisplayed()));
+        
+        // Cancel the deletion
+        onView(withText("Cancel")).perform(click());
+        
+        // Verify we are still on ProfileActivity
+        onView(withId(R.id.viewName)).check(matches(isDisplayed()));
     }
 }
