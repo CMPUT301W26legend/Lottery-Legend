@@ -17,6 +17,10 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.google.firebase.firestore.FirebaseFirestore;
 
+/**
+ * Activity for entrants to edit their profile information.
+ * This activity allows users to update their name, email, and phone number
+ */
 public class EditProfileActivity extends AppCompatActivity {
 
     private FirebaseFirestore db;
@@ -42,6 +46,7 @@ public class EditProfileActivity extends AppCompatActivity {
             });
         }
 
+        // Initialize Firestore and retrieve deviceId from the starting intent
         db = FirebaseFirestore.getInstance();
 
         deviceId = getIntent().getStringExtra("deviceId");
@@ -51,6 +56,7 @@ public class EditProfileActivity extends AppCompatActivity {
         editTextPhone = findViewById(R.id.etPhone);
         saveButton = findViewById(R.id.btnSave);
 
+        // Fetch current profile data from Firestore to pre-populate the input fields
         db.collection("entrants").document(deviceId)
                 .get()
                 .addOnSuccessListener(documentSnapshot -> {
@@ -67,22 +73,26 @@ public class EditProfileActivity extends AppCompatActivity {
 
         saveButton.setOnClickListener(v -> saveProfileData());
 
+        // Initialize the bottom navigation bar
         setupNavbar();
     }
 
     /**
-     * Update the profile information in Firestore.
+     * Validates user input and updates the profile information in Firebase Firestore.
+     * Upon successful update, returns the user to the ProfileActivity.
      */
     private void saveProfileData() {
         String name = editTextName.getText().toString().trim();
         String email = editTextEmail.getText().toString().trim();
         String phone = editTextPhone.getText().toString().trim();
 
+        // Mandatory field validation
         if (name.isEmpty() || email.isEmpty()) {
             Toast.makeText(this, "Please fill in Name and Email", Toast.LENGTH_SHORT).show();
             return;
         }
 
+        // Update the entrant's document in the "entrants" collection
         db.collection("entrants").document(deviceId)
                 .update("name", name,
                         "email", email,
@@ -90,6 +100,7 @@ public class EditProfileActivity extends AppCompatActivity {
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(this, "Profile updated successfully!", Toast.LENGTH_SHORT).show();
 
+                    // Navigate back to ProfileActivity and clear the activity stack
                     Intent intent = new Intent(this, ProfileActivity.class);
                     intent.putExtra("deviceId", deviceId);
                     intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -101,14 +112,19 @@ public class EditProfileActivity extends AppCompatActivity {
                 });
     }
 
+    /**
+     * Configures the navigation bar, highlighting the profile section and setting up click listeners.
+     */
     private void setupNavbar() {
         View navbar = findViewById(R.id.navbar);
         if (navbar != null) {
+            // Highlight the profile icon to indicate the current section
             ImageView imageProfile = navbar.findViewById(R.id.imageNavProfile);
             TextView textProfile = navbar.findViewById(R.id.textNavProfile);
             imageProfile.setImageTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#2563EB")));
             textProfile.setTextColor(android.graphics.Color.parseColor("#2563EB"));
 
+            // Set listener for the home item to navigate back to ProfileActivity
             View homeItem = navbar.findViewById(R.id.navHome);
             homeItem.setOnClickListener(v -> {
                 Intent intent = new Intent(this, ProfileActivity.class);

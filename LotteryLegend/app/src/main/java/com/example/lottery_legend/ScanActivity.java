@@ -23,8 +23,9 @@ import com.journeyapps.barcodescanner.CompoundBarcodeView;
 import java.util.List;
 
 /**
- * ScanActivity handles QR code scanning
- * Reference: https://github.com/journeyapps/zxing-android-embedded
+ * Activity that handles QR code scanning using the ZXing library.
+ *
+ * <p>Reference: https://github.com/journeyapps/zxing-android-embedded</p>
  */
 public class ScanActivity extends AppCompatActivity implements BarcodeCallback {
 
@@ -48,16 +49,21 @@ public class ScanActivity extends AppCompatActivity implements BarcodeCallback {
         barcodeView = findViewById(R.id.barcodeScannerView);
         ImageButton closeButton = findViewById(R.id.closeButton);
 
-        // Start scanning
+        // Configure the scanner to start scanning immediately without status text
         barcodeView.setStatusText("");
         barcodeView.decodeContinuous(this);
 
-        // Set up the close button to return to the previous screen
+        // Set up the close button to finish the activity and return to the previous screen
         closeButton.setOnClickListener(v -> finish());
 
+        // Initialize the navigation bar highlighting
         setupNavbar();
     }
 
+    /**
+     * Callback method from ZXing when a barcode is successfully scanned.
+     * @param result The result object containing the raw text of the scanned barcode.
+     */
     @Override
     public void barcodeResult(BarcodeResult result) {
         if (result.getText() != null) {
@@ -70,54 +76,78 @@ public class ScanActivity extends AppCompatActivity implements BarcodeCallback {
         }
     }
 
-    // Check if the scanned ID to get the event details exists in the database
+    /**
+     * Verifies if the scanned event ID exists in the Firestore database.
+     * If valid, navigates to the EventDetailsActivity; otherwise, resumes scanning.
+     *
+     * @param eventId The event ID retrieved from the scanned QR code.
+     */
     private void checkDatabase(String eventId) {
         db.collection("events").document(eventId).get()
                 .addOnSuccessListener(doc -> {
                     if (doc.exists()) {
+                        // Valid event found, navigate to details and pass relevant IDs
                         Intent intent = new Intent(this, EventDetailsActivity.class);
                         intent.putExtra("eventId", eventId);
                         intent.putExtra("deviceId", deviceId);
                         startActivity(intent);
                         finish();
                     } else {
+                        // Invalid QR code (not matching any event in DB)
                         Toast.makeText(this, "Invalid QR Code", Toast.LENGTH_SHORT).show();
                         barcodeView.resume();
                     }
                 })
                 .addOnFailureListener(e -> {
+                    // Handle potential network or permission errors
                     Toast.makeText(this, "Network error", Toast.LENGTH_SHORT).show();
                     barcodeView.resume();
                 });
     }
 
+    /**
+     * Configures the navigation bar by highlighting the Scan section.
+     * In this activity, the home tab acts as a "back" button.
+     */
     private void setupNavbar() {
         View navbar = findViewById(R.id.navbar);
         if (navbar == null) return;
 
+        // Highlight the Scan icon and text to show it as the current active mode
         ImageView imgScan = navbar.findViewById(R.id.imageNavScan);
         TextView txtScan = navbar.findViewById(R.id.textNavScan);
         imgScan.setImageTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#2563EB")));
         txtScan.setTextColor(Color.parseColor("#2563EB"));
 
+        // Use the home icon as a quick exit back to the main screen
         navbar.findViewById(R.id.navHome).setOnClickListener(v -> finish());
     }
 
-    // Manage camera resources
+    /**
+     * Manages camera resources when the activity is resumed.
+     */
     @Override
     protected void onResume() {
         super.onResume();
         barcodeView.resume();
     }
 
+    /**
+     * Manages camera resources and stops scanning when the activity is paused.
+     */
     @Override
     protected void onPause() {
         super.onPause();
         barcodeView.pause();
     }
 
+    /**
+     * Callback for potential points detected during the scanning process.
+     * Used for providing visual feedback (e.g., dots over detected patterns).
+     * @param resultPoints List of points detected by the scanner.
+     */
     @Override
     public void possibleResultPoints(List<com.google.zxing.ResultPoint> resultPoints) {
-        // handle UI feedback for detected points
+        // handle UI feedback for detected points if needed
     }
 }
