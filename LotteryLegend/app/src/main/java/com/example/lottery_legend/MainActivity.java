@@ -22,6 +22,9 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * The main activity of the application for entrants.
+ */
 public class MainActivity extends AppCompatActivity {
     private FirebaseFirestore db;
     private String deviceId;
@@ -49,6 +52,7 @@ public class MainActivity extends AppCompatActivity {
         adapter = new EventAdapter(allEvents, deviceId);
         eventView.setAdapter(adapter);
 
+        // Set up a real-time listener on the "events" collection in Firestore
         db.collection("events").addSnapshotListener((value, error) -> {
             if (error != null) {
                 Log.e("MainActivity", "Listen failed.", error);
@@ -60,19 +64,27 @@ public class MainActivity extends AppCompatActivity {
             if (value != null) {
                 for (QueryDocumentSnapshot doc : value) {
                     Event event = doc.toObject(Event.class);
-                    if (!event.getOrganizerId().equals(deviceId)) {
+                    // Only show events created by other users
+                    if (event.getOrganizerId() != null && !event.getOrganizerId().equals(deviceId)) {
                         allEvents.add(event);
                     }
                 }
             }
             adapter.notifyDataSetChanged();
         });
+
+        // Configure the bottom navigation bar
         setupNavbar();
     }
 
+    /**
+     * Configures the navigation bar by highlighting the Home section and
+     * setting up click listeners for the Profile and Scan sections.
+     */
     private void setupNavbar() {
         View navbar = findViewById(R.id.navbar);
         if (navbar != null) {
+            // Highlight the Home icon and text to indicate the current section
             ImageView imageHome = navbar.findViewById(R.id.imageNavHome);
             TextView textHome = navbar.findViewById(R.id.textNavHome);
             imageHome.setImageTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#2563EB")));
@@ -85,6 +97,7 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(intent);
             });
 
+            // Set up navigation to ScanActivity
             View scanNav = navbar.findViewById(R.id.navScan);
             if (scanNav != null) {
                 scanNav.setOnClickListener(v -> {

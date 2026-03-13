@@ -20,6 +20,9 @@ import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+/**
+ * Activity that displays and manages the user's profile information.
+ */
 public class ProfileActivity extends AppCompatActivity {
 
     private FirebaseFirestore db;
@@ -47,7 +50,6 @@ public class ProfileActivity extends AppCompatActivity {
         });
 
         db = FirebaseFirestore.getInstance();
-
         deviceId = getIntent().getStringExtra("deviceId");
 
         viewName = findViewById(R.id.viewName);
@@ -58,28 +60,36 @@ public class ProfileActivity extends AppCompatActivity {
         buttonEditProfile = findViewById(R.id.buttonEditProfile);
         btnContinueAsAdmin = findViewById(R.id.btnContinueAsAdmin);
 
-        // Initially hide the admin button
+        // Initially hide the admin button until permissions are verified
         btnContinueAsAdmin.setVisibility(View.GONE);
 
+        // Setup click listener for editing the profile
         buttonEditProfile.setOnClickListener(v -> {
             Intent intent = new Intent(ProfileActivity.this, EditProfileActivity.class);
             intent.putExtra("deviceId", deviceId);
             startActivity(intent);
         });
 
+        // Setup click listener for the admin panel
         btnContinueAsAdmin.setOnClickListener(v -> {
             Intent intent = new Intent(ProfileActivity.this, AdminActivity.class);
             startActivity(intent);
         });
 
+        // Fetch user data and initialize the navigation bar
         fetchProfileData();
         setupNavbar();
 
+        // Setup click listener for switching to organizer mode
         layoutSwitchOrganizer.setOnClickListener(v -> {
             checkAndCreateOrganizerAccount();
         });
     }
 
+    /**
+     * Fetches the user's profile data from Firestore using the device ID.
+     * Updates the UI with the retrieved information and checks for admin status.
+     */
     private void fetchProfileData() {
         db.collection("entrants").document(deviceId)
                 .get()
@@ -97,6 +107,7 @@ public class ProfileActivity extends AppCompatActivity {
 
                         switchNotifications.setChecked(currentEntrant.notification);
 
+                        // Show admin button if the user has admin privileges
                         if (documentSnapshot.getBoolean("isAdmin") != null && documentSnapshot.getBoolean("isAdmin")) {
                             btnContinueAsAdmin.setVisibility(View.VISIBLE);
                         } else {
@@ -113,13 +124,20 @@ public class ProfileActivity extends AppCompatActivity {
                 });
     }
 
+    /**
+     * Checks if the current user already has an organizer account.
+     * If they do, it navigates to the Organizer main screen.
+     * If not, it creates a new organizer account using the entrant profile data.
+     */
     private void checkAndCreateOrganizerAccount() {
         db.collection("organizers").document(deviceId).get().addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
                 DocumentSnapshot document = task.getResult();
                 if (document.exists()) {
+                    // Organizer account exists, just navigate
                     navigateToOrganizerMain();
                 } else {
+                    // Organizer account doesn't exist, create it from profile data
                     if (currentEntrant != null) {
                         Organizer newOrganizer = new Organizer(
                                 currentEntrant.name, 
@@ -146,6 +164,9 @@ public class ProfileActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Navigates to the OrganizerMainActivity and finishes the current activity.
+     */
     private void navigateToOrganizerMain() {
         Intent intent = new Intent(ProfileActivity.this, OrganizerMainActivity.class);
         intent.putExtra("deviceId", deviceId);
@@ -153,6 +174,10 @@ public class ProfileActivity extends AppCompatActivity {
         finish();
     }
 
+    /**
+     * Configures the bottom navigation bar.
+     * Highlights the profile tab and sets up the click listener for the home tab.
+     */
     private void setupNavbar() {
         View navbar = findViewById(R.id.navbar);
         if (navbar != null) {
