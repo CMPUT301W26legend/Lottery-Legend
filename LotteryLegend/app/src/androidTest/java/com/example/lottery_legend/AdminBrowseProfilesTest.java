@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Test for US 03.05.01: Browsing user profiles as an administrator.
+ * Generated with the help of Gemini LLM
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest

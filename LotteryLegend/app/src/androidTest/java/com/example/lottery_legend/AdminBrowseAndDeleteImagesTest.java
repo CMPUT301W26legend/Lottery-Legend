@@ -2,6 +2,7 @@ package com.example.lottery_legend;
 
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
+import static androidx.test.espresso.action.ViewActions.closeSoftKeyboard;
 import static androidx.test.espresso.action.ViewActions.typeText;
 import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
@@ -33,8 +34,9 @@ import org.junit.runner.RunWith;
 import java.util.concurrent.TimeUnit;
 
 /**
- * UI Test for US 03.06.01: Browsing and removing images as an administrator.
+ * Test for US 03.06.01: Browsing and removing images as an administrator.
  * Uses specific matchers to avoid AmbiguousViewMatcherException with the search bar.
+ * Generated with the help of Gemini LLM
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
@@ -81,12 +83,14 @@ public class AdminBrowseAndDeleteImagesTest {
     @Test
     public void testBrowseAndRemoveVisibleImage() throws InterruptedException {
         onView(withId(R.id.nav_admin_media)).perform(click());
+        Thread.sleep(500);
         onView(withId(R.id.admin_media_recycler))
                 .perform(RecyclerViewActions.scrollTo(hasDescendant(allOf(withId(R.id.media_event_title), withText("eventTestNameMedia")))));
 
         onView(allOf(withId(R.id.media_event_title), withText("eventTestNameMedia"))).check(matches(isDisplayed()));
 
-        onView(withId(R.id.search_bar_media)).perform(typeText("eventTestNameMedia"));
+        onView(withId(R.id.search_bar_media)).perform(typeText("eventTestNameMedia"), closeSoftKeyboard());
+        Thread.sleep(500);
         onView(allOf(withId(R.id.media_event_title), withText("eventTestNameMedia"))).check(matches(isDisplayed()));
 
         onView(withId(R.id.admin_media_recycler))
@@ -94,8 +98,10 @@ public class AdminBrowseAndDeleteImagesTest {
                         hasDescendant(allOf(withId(R.id.media_event_title), withText("eventTestNameMedia"))),
                         clickOnViewChild(R.id.btn_remove_media)));
 
+        Thread.sleep(500);
         onView(withText("Delete Image")).check(matches(isDisplayed()));
         onView(withId(R.id.btn_delete)).perform(click());
+        Thread.sleep(500);
         onView(allOf(withId(R.id.media_event_title), withText("eventTestNameMedia"))).check(doesNotExist());
     }
 
@@ -106,7 +112,7 @@ public class AdminBrowseAndDeleteImagesTest {
         return new ViewAction() {
             @Override
             public Matcher<View> getConstraints() {
-                return null;
+                return isDisplayed();
             }
 
             @Override
