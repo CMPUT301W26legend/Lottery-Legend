@@ -181,10 +181,8 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private void closeApp() {
-        // 使用 finishAffinity() 彻底清理 Activity 栈
         finishAffinity();
 
-        // 在 Android 5.0+ 上，同时从最近任务列表中移除
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             finishAndRemoveTask();
         }
