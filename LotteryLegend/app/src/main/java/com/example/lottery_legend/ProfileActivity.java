@@ -1,6 +1,7 @@
 package com.example.lottery_legend;
 
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -11,6 +12,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -18,7 +20,10 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.WriteBatch;
 
 public class ProfileActivity extends AppCompatActivity {
 
@@ -32,6 +37,7 @@ public class ProfileActivity extends AppCompatActivity {
     private LinearLayout layoutSwitchOrganizer;
     private Button buttonEditProfile;
     private Button btnContinueAsAdmin;
+    private Button btnDeleteAccount;
 
     private Entrant currentEntrant;
 
@@ -57,6 +63,7 @@ public class ProfileActivity extends AppCompatActivity {
         layoutSwitchOrganizer = findViewById(R.id.layoutSwitchOrganizer);
         buttonEditProfile = findViewById(R.id.buttonEditProfile);
         btnContinueAsAdmin = findViewById(R.id.btnContinueAsAdmin);
+        btnDeleteAccount = findViewById(R.id.btnDeleteAccount);
 
         buttonEditProfile.setOnClickListener(v -> {
             Intent intent = new Intent(ProfileActivity.this, EditProfileActivity.class);
@@ -67,6 +74,10 @@ public class ProfileActivity extends AppCompatActivity {
         btnContinueAsAdmin.setOnClickListener(v -> {
             Intent intent = new Intent(ProfileActivity.this, AdminActivity.class);
             startActivity(intent);
+        });
+
+        btnDeleteAccount.setOnClickListener(v -> {
+            showDeleteConfirmationDialog();
         });
 
         fetchProfileData();
@@ -102,6 +113,61 @@ public class ProfileActivity extends AppCompatActivity {
                     Log.e("ProfileActivity", "Error fetching document", e);
                     Toast.makeText(ProfileActivity.this, "Error loading profile", Toast.LENGTH_SHORT).show();
                 });
+    }
+
+    private void showDeleteConfirmationDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("Delete Account")
+                .setMessage("Are you sure you want to delete your profile? This action cannot be undone and the app will close.")
+                .setPositiveButton("Delete", (dialog, which) -> deleteAccount())
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void deleteAccount() {
+        WriteBatch batch = db.batch();
+
+        // 1. Delete from entrants collection
+        batch.delete(db.collection("entrants").document(deviceId));
+
+        // 2. Delete from organizers collection
+        batch.delete(db.collection("organizers").document(deviceId));
+
+        // 3. Remove from all waiting lists
+        db.collection("events")
+                .whereArrayContains("waitingList", deviceId)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
+                        batch.update(document.getReference(), "waitingList", FieldValue.arrayRemove(deviceId));
+                    }
+                    
+                    // Commit the batch after finding all events the user is in
+                    batch.commit().addOnSuccessListener(aVoid -> {
+                        Toast.makeText(getApplicationContext(), "Account deleted successfully", Toast.LENGTH_SHORT).show();
+                        closeApp();
+                    }).addOnFailureListener(e -> {
+                        Log.e("ProfileActivity", "Error deleting account", e);
+                        Toast.makeText(getApplicationContext(), "Error deleting account", Toast.LENGTH_SHORT).show();
+                    });
+                })
+                .addOnFailureListener(e -> {
+                    // Even if we fail to remove from waiting lists, we should still try to delete the profile
+                    batch.commit().addOnSuccessListener(aVoid -> {
+                        Toast.makeText(getApplicationContext(), "Account partially deleted", Toast.LENGTH_SHORT).show();
+                        closeApp();
+                    });
+                });
+    }
+
+    private void closeApp() {
+        // 使用 finishAffinity() 彻底清理 Activity 栈
+        finishAffinity();
+        
+        // 在 Android 5.0+ 上，同时从最近任务列表中移除
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            finishAndRemoveTask();
+        }
     }
 
     private void checkAndCreateOrganizerAccount() {
