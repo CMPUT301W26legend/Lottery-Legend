@@ -21,7 +21,6 @@ import java.util.List;
 
 /**
  * OrganizerHistoryActivity displays a list of all events created by the current organizer.
- * Clicking an event navigates to the OrganizerEventDetailsActivity.
  */
 public class OrganizerHistoryActivity extends AppCompatActivity {
 
@@ -31,6 +30,15 @@ public class OrganizerHistoryActivity extends AppCompatActivity {
     private OrganizerEventAdapter adapter;
     private List<Event> organizerEvents = new ArrayList<>();
 
+    /**
+     * Called when the activity is first created.
+     * Initializes the UI, configures Firestore integration, sets up the navigation bar,
+     * and prepares the RecyclerView for event display.
+     *
+     * @param savedInstanceState If the activity is being re-initialized after
+     *                           previously being shut down then this Bundle contains the data it most
+     *                           recently supplied in {@link #onSaveInstanceState}. Otherwise it is null.
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -44,27 +52,22 @@ public class OrganizerHistoryActivity extends AppCompatActivity {
             return insets;
         });
 
-        // Initialize Firestore and Device ID
+        // Initialize Firestore instance and retrieve the device ID from the starting intent
         db = FirebaseFirestore.getInstance();
         deviceId = getIntent().getStringExtra("deviceId");
 
-        // Set up the Organizer Navigation Bar using the common utility class
         NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.HISTORY);
 
-        // Initialize RecyclerView and its layout manager
         recyclerView = findViewById(R.id.recyclerOrganizerEvents);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        
-        // Initialize the specialized OrganizerEventAdapter
-        // Navigation is handled directly inside the adapter
+
         adapter = new OrganizerEventAdapter(organizerEvents, deviceId);
-        
         recyclerView.setAdapter(adapter);
 
-        // Fetch events from Firestore
+        // Begin fetching events from the "events" collection
         loadOrganizerEvents();
 
-        // Configure "Create Event" button navigation
+        // Configure the "Create Event" button to navigate to the event creation screen
         Button btnCreateEvent = findViewById(R.id.createEventButton);
         btnCreateEvent.setOnClickListener(v -> {
             Intent intent = new Intent(OrganizerHistoryActivity.this, CreateEventActivity.class);
@@ -74,8 +77,9 @@ public class OrganizerHistoryActivity extends AppCompatActivity {
     }
 
     /**
-     * Queries Firestore for all events associated with the current organizer's device ID.
-     * Uses a snapshot listener for real-time updates.
+     * Queries the Firestore "events" collection for documents where "organizerId" matches the current device ID.
+     * Implements a real-time snapshot listener to ensure the UI updates immediately when event data
+     * is modified in the cloud.
      */
     private void loadOrganizerEvents() {
         if (deviceId == null) return;
@@ -84,17 +88,20 @@ public class OrganizerHistoryActivity extends AppCompatActivity {
                 .whereEqualTo("organizerId", deviceId)
                 .addSnapshotListener((value, error) -> {
                     if (error != null) {
-                        Log.e("OrganizerHistory", "Error fetching events", error);
+                        Log.e("OrganizerHistory", "Error fetching events from Firestore", error);
                         return;
                     }
 
+                    // Clear the local cache to avoid duplicates before repopulating
                     organizerEvents.clear();
                     if (value != null) {
                         for (QueryDocumentSnapshot doc : value) {
+                            // Deserialize the Firestore document into an Event object
                             Event event = doc.toObject(Event.class);
                             organizerEvents.add(event);
                         }
                     }
+                    // Notify the adapter that the data set has changed to trigger a UI refresh
                     adapter.notifyDataSetChanged();
                 });
     }
