@@ -39,7 +39,6 @@ dependencies {
     implementation(libs.constraintlayout)
     implementation(platform("com.google.firebase:firebase-bom:34.9.0"))
     implementation("com.google.firebase:firebase-firestore")
-    implementation(libs.espresso.intents)
 
     implementation("com.google.zxing:core:3.5.3")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
@@ -50,5 +49,9 @@ dependencies {
 
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
-    androidTestImplementation("androidx.test.espresso:espresso-intents:3.5.1")
+    // Exclude protobuf-lite to avoid conflict with Firestore
+    androidTestImplementation(libs.espresso.contrib) {
+        exclude(group = "com.google.protobuf", module = "protobuf-lite")
+    }
+    androidTestImplementation(libs.espresso.intents)
 }
