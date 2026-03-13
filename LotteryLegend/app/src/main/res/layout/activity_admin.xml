@@ -23,6 +23,7 @@
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/admin_bottom_nav"
+        app:labelVisibilityMode="labeled"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:background="?android:attr/windowBackground"
