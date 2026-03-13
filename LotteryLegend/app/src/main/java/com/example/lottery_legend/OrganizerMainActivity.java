@@ -12,6 +12,9 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.google.firebase.firestore.FirebaseFirestore;
 
+/**
+ * The main dashboard for users in the Organizer role.
+ */
 public class OrganizerMainActivity extends AppCompatActivity {
 
     Button ButtonCreateEvent;
@@ -19,6 +22,15 @@ public class OrganizerMainActivity extends AppCompatActivity {
     private String deviceId;
 
 
+    /**
+     * Called when the activity is first created.
+     * Initializes the UI, configures the organizer navigation bar, and sets up
+     * the event creation navigation.
+     *
+     * @param savedInstanceState If the activity is being re-initialized after
+     *                           previously being shut down then this Bundle contains the data it most
+     *                           recently supplied in {@link #onSaveInstanceState}. Otherwise it is null.
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

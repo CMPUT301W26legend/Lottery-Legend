@@ -13,11 +13,22 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.appbar.MaterialToolbar;
 
+/**
+ * Activity for organizers to view the details of a specific event they have created.
+ */
 public class OrganizerEventDetailsActivity extends AppCompatActivity {
 
     private String eventId;
     private String eventTitle;
 
+    /**
+     * Called when the activity is starting.
+     * Initializes the UI, retrieves event data from the intent, and sets up navigation and interaction logic.
+     *
+     * @param savedInstanceState If the activity is being re-initialized after
+     *                           previously being shut down then this Bundle contains the data it most
+     *                           recently supplied in {@link #onSaveInstanceState}. Otherwise it is null.
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -29,7 +40,6 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity {
             return insets;
         });
 
-        // Initialize UI components from the layout
         MaterialToolbar toolbar = findViewById(R.id.toolbarOrganizerDetails);
         ImageButton shareIcon = findViewById(R.id.shareIcon);
         TextView toolbarTitle = findViewById(R.id.toolbarTitle);
@@ -42,7 +52,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity {
             toolbarTitle.setText("Details: " + eventTitle);
         }
 
-        // Back navigation
+        // Handle back navigation button click
         toolbar.setNavigationOnClickListener(v -> finish());
 
         /**

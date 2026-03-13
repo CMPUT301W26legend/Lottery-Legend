@@ -21,6 +21,9 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
     private final List<Event> eventList;
     private final String deviceId;
 
+    /**
+     * ViewHolder class that holds references to the UI components for an individual event item.
+     */
     public static class ViewHolder extends RecyclerView.ViewHolder {
         TextView eventName;
         TextView status;
@@ -28,6 +31,10 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
         TextView waiting;
         TextView selected;
 
+        /**
+         * Initializes the UI components from the inflated layout.
+         * @param itemView The root view of the item layout.
+         */
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             eventName = itemView.findViewById(R.id.eventName);
@@ -38,11 +45,22 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
         }
     }
 
+    /**
+     * Constructs an OrganizerEventAdapter.
+     * @param eventList List of events to display.
+     * @param deviceId  The organizer's device ID.
+     */
     public OrganizerEventAdapter(List<Event> eventList, String deviceId) {
         this.eventList = eventList;
         this.deviceId = deviceId;
     }
 
+    /**
+     * Inflates the layout for a single event card in the organizer's history.
+     * @param parent   The parent view group.
+     * @param viewType The type of view (unused).
+     * @return A new ViewHolder instance.
+     */
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -50,6 +68,12 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
         return new ViewHolder(view);
     }
 
+    /**
+     * Binds the event data to the views in the ViewHolder.
+     * Configures status formatting, summary strings, and click listeners for navigation.
+     * @param holder   The ViewHolder to update.
+     * @param position The index of the item in the list.
+     */
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         final Event event = eventList.get(position);
@@ -78,6 +102,10 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
         });
     }
 
+    /**
+     * Returns the total number of events in the list.
+     * @return The size of the event list.
+     */
     @Override
     public int getItemCount() {
         return eventList.size();
