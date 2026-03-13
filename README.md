@@ -10,3 +10,4 @@ Full project documentation is in the GitHub Wiki:
 - [Product Backlog](https://github.com/CMPUT301W26legend/Lottery-Legend/wiki/Product-Backlog)
 - [Storyboard Sequence](https://github.com/CMPUT301W26legend/Lottery-Legend/wiki/Storyboard-Sequence)
 - [User Interface Mockup](https://github.com/CMPUT301W26legend/Lottery-Legend/wiki/User-Interface-Mockup)
+- [UML Diagrams](https://github.com/CMPUT301W26legend/Lottery-Legend/wiki/UML-Diagrams)
