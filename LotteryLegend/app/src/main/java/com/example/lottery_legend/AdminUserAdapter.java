@@ -21,6 +21,11 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Locale;
 
+/**
+ * This class is the adapter for the recycler view in the AdminUsersFragment.
+ * It handles displaying the list of users and their details. It also handles
+ * the deletion of users.
+ */
 public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.UserViewHolder> {
 
     private Context context;
@@ -28,16 +33,35 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
     private FirebaseFirestore db;
     private String currentCollection = "entrants";
 
+    /**
+     * Constructor for AdminUserAdapter.
+     *
+     * @param context Context of the activity.
+     * @param userList List of users to display.
+     */
+
     public AdminUserAdapter(Context context, ArrayList<Object> userList) {
         this.context = context;
         this.userList = userList;
         this.db = FirebaseFirestore.getInstance();
     }
 
+    /**
+     * Sets the current collection being displayed.
+     *
+     * @param collectionName Name of the collection.
+     */
     public void setCurrentCollection(String collectionName) {
         this.currentCollection = collectionName;
     }
 
+    /**
+     * Inflates the item_user_layour to create a new ViewHolder
+     * @param parent   The ViewGroup into which the new View will be added after it is bound to
+     *                 an adapter position.
+     * @param viewType The view type of the new View.
+     * @return A new UserViewHolder that holds the inflated view.
+     */
     @NonNull
     @Override
     public UserViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -45,6 +69,13 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
         return new UserViewHolder(view);
     }
 
+    /**
+     * Binds the data to the ViewHolder. Also handles the distinction between
+     * Entrant and Organizer models.
+     *
+     * @param holder   The ViewHolder to update
+     * @param position The position of the item within the adapter's data set.
+     */
     @Override
     public void onBindViewHolder(@NonNull UserViewHolder holder, int position) {
         Object userObj = userList.get(position);
@@ -96,10 +127,13 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
             context.startActivity(intent);
         });
 
-        // Quick remove button logic
         holder.removeButton.setOnClickListener(v -> showDeleteDialog(finalUserId));
     }
 
+    /**
+     * Shows a confirmation dialog before deleting a user.
+     * @param userId The ID of the user to delete.
+     */
     private void showDeleteDialog(String userId) {
         View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_admin_delete, null);
         AlertDialog dialog = new MaterialAlertDialogBuilder(context)
@@ -141,14 +175,24 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
         dialog.show();
     }
 
+    /**
+     * Returns the number of items in the list.
+     */
     @Override
     public int getItemCount() {
         return userList.size();
     }
 
+    /**
+     * ViewHolder class for the user list.
+     */
     public static class UserViewHolder extends RecyclerView.ViewHolder {
         TextView userName, joinDate, removeButton;
 
+        /**
+         * Constructor for UserViewHolder.
+         * @param itemView The view for the ViewHolder.
+         */
         public UserViewHolder(@NonNull View itemView) {
             super(itemView);
             userName = itemView.findViewById(R.id.user_name_text);

@@ -34,6 +34,7 @@ public class OrganizerMainActivity extends AppCompatActivity {
         db = FirebaseFirestore.getInstance();
         deviceId = getIntent().getStringExtra("deviceId");
 
+        NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.HOME);
 
         ButtonCreateEvent.setOnClickListener(v -> {
             Intent intent = new Intent(OrganizerMainActivity.this, CreateEventActivity.class);

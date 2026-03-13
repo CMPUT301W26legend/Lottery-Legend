@@ -23,11 +23,21 @@ import androidx.fragment.app.DialogFragment;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+/**
+ * A DialogFragment that allows users to join or leave the waiting list for a specific event.
+ */
 public class WaitingListDialogFragment extends DialogFragment {
 
     private Event event;
     private String deviceId;
 
+    /**
+     * Creates a new instance of WaitingListDialogFragment with the provided event and device ID.
+     *
+     * @param event    The Event object to be displayed and managed.
+     * @param deviceId The device ID of the current user.
+     * @return A new instance of WaitingListDialogFragment.
+     */
     public static WaitingListDialogFragment newInstance(Event event, String deviceId) {
         WaitingListDialogFragment fragment = new WaitingListDialogFragment();
         fragment.event = event;
@@ -35,6 +45,10 @@ public class WaitingListDialogFragment extends DialogFragment {
         return fragment;
     }
 
+    /**
+     * Inflates the dialog layout, initializes UI components with event data,
+     * and sets up confirm/cancel button listeners.
+     */
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -56,6 +70,7 @@ public class WaitingListDialogFragment extends DialogFragment {
         deadlineText.setText(event.getRegistrationEndDate());
         waitingCountText.setText(String.valueOf(event.getWaitingList().size()));
 
+        // Decode and set the poster image if it exists
         if (event.getPosterImage() != null && !event.getPosterImage().isEmpty()) {
             try {
                 byte[] decodedString = Base64.decode(event.getPosterImage(), Base64.DEFAULT);
@@ -69,6 +84,7 @@ public class WaitingListDialogFragment extends DialogFragment {
             }
         }
 
+        // Hide location row if geolocation is not enabled for the event
         if (!event.isGeoEnabled()) {
             View locationRow = view.findViewById(R.id.locationRow);
             if (locationRow != null) {
@@ -76,6 +92,7 @@ public class WaitingListDialogFragment extends DialogFragment {
             }
         }
 
+        // Check if the user is already on the waiting list to customize dialog text
         boolean isJoined = event.getWaitingList().contains(deviceId);
         if (isJoined) {
             if (dialogHeader != null) dialogHeader.setText("Leave Waiting List");
@@ -84,7 +101,10 @@ public class WaitingListDialogFragment extends DialogFragment {
             btnConfirm.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#EF4444")));
         }
 
+        // Cancel button dismisses the dialog
         btnCancel.setOnClickListener(v -> dismiss());
+
+        // Confirm button handles joining or leaving based on current state
         btnConfirm.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -92,6 +112,7 @@ public class WaitingListDialogFragment extends DialogFragment {
 
                 boolean isJoined = event.getWaitingList().contains(deviceId);
                 if (isJoined) {
+                    // Remove user from waitingList in Firestore
                     FirebaseFirestore.getInstance().collection("events").document(event.getEventId())
                             .update("waitingList", FieldValue.arrayRemove(deviceId))
                             .addOnSuccessListener(aVoid -> {
@@ -101,6 +122,7 @@ public class WaitingListDialogFragment extends DialogFragment {
                                 }
                             });
                 } else {
+                    // Add user to waitingList in Firestore
                     FirebaseFirestore.getInstance().collection("events").document(event.getEventId())
                             .update("waitingList", FieldValue.arrayUnion(deviceId))
                             .addOnSuccessListener(aVoid -> {
@@ -116,6 +138,9 @@ public class WaitingListDialogFragment extends DialogFragment {
         return view;
     }
 
+    /**
+     * Configures the dialog's window properties, such as a transparent background and custom width.
+     */
     @Override
     public void onStart() {
         super.onStart();

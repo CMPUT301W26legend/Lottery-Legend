@@ -8,6 +8,10 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+/**
+ * Fragment for the Admin Logs section. Displays a list of notification logs.
+ * Still a work in progress, saved for Part 4
+ */
 public class AdminLogsFragment extends Fragment {
     @Nullable
     @Override

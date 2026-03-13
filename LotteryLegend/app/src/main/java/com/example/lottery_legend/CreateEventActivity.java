@@ -3,6 +3,7 @@ package com.example.lottery_legend;
 import android.app.DatePickerDialog;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -22,11 +23,20 @@ import androidx.core.view.WindowInsetsCompat;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.card.MaterialCardView;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.MultiFormatWriter;
+import com.google.zxing.WriterException;
+import com.google.zxing.common.BitMatrix;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.Calendar;
 
+/**
+ * Activity for organizers to create a new event.
+ * This activity handles input validation, poster image selection,
+ * QR code generation, and saving event data to Firebase Firestore.
+ */
 public class CreateEventActivity extends AppCompatActivity implements PosterUploadDialogFragment.OnPosterEventListener {
 
     private FirebaseFirestore db;
@@ -62,6 +72,7 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         db = FirebaseFirestore.getInstance();
         deviceId = getIntent().getStringExtra("deviceId");
 
+        // Initialize UI components
         toolbar = findViewById(R.id.toolbarCreateEvent);
         editTextEventTitle = findViewById(R.id.editTextEventTitle);
         editTextDescription = findViewById(R.id.editTextDescription);
@@ -78,11 +89,14 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         createButton = findViewById(R.id.createButton);
         uploadButton = findViewById(R.id.uploadButton);
 
+        // Setup UI logic
         setupDatePickers();
         setupGeoSwitch();
 
+        // Toolbar back navigation
         toolbar.setNavigationOnClickListener(v -> finish());
 
+        // Handle poster image upload button
         uploadButton.setOnClickListener(v -> {
             PosterUploadDialogFragment dialog = new PosterUploadDialogFragment();
             dialog.setCurrentUri(imageUri);
@@ -90,24 +104,37 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
             dialog.show(getSupportFragmentManager(), "PosterUploadDialog");
         });
 
+        // Handle event creation button
         createButton.setOnClickListener(v -> createEvent());
     }
 
+    /**
+     * Callback from PosterUploadDialogFragment when a poster is selected.
+     * @param uri The Uri of the selected image.
+     */
     @Override
     public void onPosterSelected(Uri uri) {
         this.imageUri = uri;
         uploadButton.setText("Image Selected");
     }
 
+    /**
+     * Callback from PosterUploadDialogFragment when the poster is removed.
+     */
     @Override
     public void onPosterRemoved() {
         this.imageUri = null;
         uploadButton.setText("Upload Poster Image");
     }
 
+    /**
+     * Sets up the geolocation switch to show/hide the location input card.
+     */
     private void setupGeoSwitch() {
+        // Initial visibility
         locationCard.setVisibility(switchGeo.isChecked() ? View.VISIBLE : View.GONE);
 
+        // Change visibility on toggle
         switchGeo.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
                 locationCard.setVisibility(View.VISIBLE);
@@ -118,6 +145,9 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         });
     }
 
+    /**
+     * Configures DatePickerDialogs for all date input fields.
+     */
     private void setupDatePickers() {
         View.OnClickListener dateListener = v -> {
             EditText et = (EditText) v;
@@ -131,6 +161,7 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
             datePickerDialog.show();
         };
 
+        // Attach listener to all date fields
         eventStartDate.setOnClickListener(dateListener);
         eventEndDate.setOnClickListener(dateListener);
         registrationStartDate.setOnClickListener(dateListener);
@@ -138,6 +169,9 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         drawDate.setOnClickListener(dateListener);
     }
 
+    /**
+     * Validates input fields, generates a QR code, and saves the new event to Firestore.
+     */
     private void createEvent() {
         String title = editTextEventTitle.getText().toString().trim();
         String description = editTextDescription.getText().toString().trim();
@@ -158,22 +192,30 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
             return;
         }
 
+        // Parse numerical fields
         int capacity = Integer.parseInt(capacityStr);
         Integer maxWaitingList = null;
         if (!TextUtils.isEmpty(waitingListStr)) {
             maxWaitingList = Integer.parseInt(waitingListStr);
         }
 
+        // Create the event object
         Event newEvent = new Event(deviceId, title, description, switchGeo.isChecked(), location,
                 startDateStr, endDateStr, regStart, regEnd, drawD, capacity, maxWaitingList);
 
+        // Process poster image if available
         if (imageUri != null) {
             String base64Image = uriToBase64(imageUri);
             if (base64Image != null) {
                 newEvent.setPosterImage(base64Image);
             }
         }
+        
+        // Generate and set QR code for the event
+        String qrCodeBase64 = generateQRCodeBase64(newEvent.getEventId());
+        newEvent.setQrCodeImage(qrCodeBase64);
 
+        // Save to Firestore
         db.collection("events").document(newEvent.getEventId())
                 .set(newEvent)
                 .addOnSuccessListener(aVoid -> {
@@ -185,14 +227,45 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
                 });
     }
 
+    /**
+     * Generates a QR Code for the given text and returns it as a Base64 string.
+     * @param text The text to encode in the QR code (usually eventId).
+     * @return Base64 encoded PNG string of the QR code, or null if generation fails.
+     */
+    private String generateQRCodeBase64(String text) {
+        MultiFormatWriter writer = new MultiFormatWriter();
+        try {
+            BitMatrix bitMatrix = writer.encode(text, BarcodeFormat.QR_CODE, 500, 500);
+            int width = bitMatrix.getWidth();
+            int height = bitMatrix.getHeight();
+            Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    bmp.setPixel(x, y, bitMatrix.get(x, y) ? Color.BLACK : Color.WHITE);
+                }
+            }
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            bmp.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
+            return Base64.encodeToString(outputStream.toByteArray(), Base64.DEFAULT);
+        } catch (WriterException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * Converts an image Uri to a Base64 encoded JPEG string.
+     * Resizes the image to fit within 800x800 for efficient storage.
+     * @param uri The Uri of the image to convert.
+     * @return Base64 encoded string of the image, or null on error.
+     */
     private String uriToBase64(Uri uri) {
         try {
             InputStream inputStream = getContentResolver().openInputStream(uri);
             Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
             if (inputStream != null) inputStream.close();
 
-            // Resize image to ensure it stays well under Firestore's 1MB limit
-            // Target max dimension of 800px is usually enough for posters and much safer for size
+            // Downscale image if it's too large for Firestore
             int maxWidth = 800;
             int maxHeight = 800;
             if (bitmap.getWidth() > maxWidth || bitmap.getHeight() > maxHeight) {
@@ -202,8 +275,8 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
                 bitmap = Bitmap.createScaledBitmap(bitmap, width, height, true);
             }
 
+            // Compress to JPEG with 50% quality to further reduce size
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            // Use 50% quality to further reduce size if necessary, while still looking decent
             bitmap.compress(Bitmap.CompressFormat.JPEG, 50, outputStream);
             byte[] byteArray = outputStream.toByteArray();
             return Base64.encodeToString(byteArray, Base64.DEFAULT);

@@ -10,8 +10,20 @@ import androidx.fragment.app.Fragment;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
+/**
+ * This class is the main navigation hub for the Administrator panel. It handles the switching
+ * between different fragments (Events, Users, Media, Logs). Also updates the top bar to
+ * match currently selected fragments.
+ *
+ */
 public class AdminActivity extends AppCompatActivity {
 
+    /**
+     * Called when the activity is first created.
+     * Sets the content view and finds the top bar layout and the TextViews. Sets the default
+     * fragment to Events. Sets up a listener for BottomNavigation items.
+     *
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,5 +71,17 @@ public class AdminActivity extends AppCompatActivity {
                 bottomNav.setSelectedItemId(R.id.nav_admin_events);
             }
         }
+    }
+
+    /**
+     * Navigates to the event detail view by replacing the current fragment.
+     * @param eventId The ID of the event to display.
+     */
+    public void showEventDetail(String eventId) {
+        Fragment detailFragment = AdminEventDetailFragment.newInstance(eventId);
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.admin_container, detailFragment)
+                .addToBackStack(null)
+                .commit();
     }
 }

@@ -14,11 +14,20 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+/**
+ * This class is the activity for the user detail view in the AdminUsersFragment.
+ * It handles displaying the details of a user and the ability to delete them.
+ */
 public class AdminUserDetailActivity extends AppCompatActivity {
 
     private FirebaseFirestore db;
     private String userId, name, email, phone, collectionName;
 
+    /**
+     * This runs when the Activity is created. It pulls the user's info from the Intent
+     * and displays it on the screen. Also sets up the back button and the delete button.
+     * @param savedInstanceState Data from the previous state of this screen.
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -54,6 +63,12 @@ public class AdminUserDetailActivity extends AppCompatActivity {
         btnDelete.setOnClickListener(v -> showDeleteDialog());
     }
 
+    /**
+     * This shows a custom popup window to confirm if the Admin really
+     * wants to delete the user. It changes the message based on whether
+     * the user is an Entrant or an Organizer. If confirmed it deletes
+     * the user from Firestore.
+     */
     private void showDeleteDialog() {
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_admin_delete, null);
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
