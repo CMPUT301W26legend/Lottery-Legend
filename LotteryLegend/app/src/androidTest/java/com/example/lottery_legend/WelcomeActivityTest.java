@@ -53,16 +53,16 @@ public class WelcomeActivityTest {
     @Test
     public void testNavigation() {
         try {
-            // 1. 尝试查找欢迎页特有的按钮
+            // 1. Try to find the welcome-specific button
             onView(withId(R.id.CreateProfileButton)).check(matches(isDisplayed()));
 
-            // 2. 如果找到了（新用户），执行点击并验证跳转到 CreateProfileActivity
+            // 2. If found (new user), click it and verify navigation to CreateProfileActivity
             onView(withId(R.id.CreateProfileButton)).perform(click());
             intended(hasComponent(CreateProfileActivity.class.getName()));
 
         } catch (AssertionError | Exception e) {
-            // 3. 如果没找到按钮（老用户，已自动跳转），验证是否发出了前往 MainActivity 的 Intent
-            // 有了 IntentsRule(order=0)，即使跳转发生在 Activity 启动瞬间也能被记录到
+            // 3. If button not found (returning user, auto-redirected), verify intent to MainActivity
+            // With IntentsRule(order=0), the intent can be captured even if it happened during onCreate
             intended(hasComponent(MainActivity.class.getName()));
         }
     }

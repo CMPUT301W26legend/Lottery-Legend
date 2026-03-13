@@ -75,6 +75,6 @@ public class CreateEventActivityTest {
         onView(withId(viewId)).perform(scrollTo(), click());
         onView(withClassName(equalTo(DatePicker.class.getName())))
                 .perform(PickerActions.setDate(year, month, day));
-        onView(withId(android.R.id.button1)).perform(click()); // 点击对话框的 OK 按钮
+        onView(withId(android.R.id.button1)).perform(click());
     }
 }
