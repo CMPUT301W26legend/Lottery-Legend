@@ -8,6 +8,9 @@ import static androidx.test.espresso.intent.matcher.IntentMatchers.hasComponent;
 import static androidx.test.espresso.intent.matcher.IntentMatchers.hasExtra;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
+import static androidx.test.espresso.matcher.ViewMatchers.withText;
+
+import static org.hamcrest.Matchers.allOf;
 
 import android.content.Context;
 import android.content.Intent;
@@ -59,6 +62,16 @@ public class OrganizerMainActivityTest {
         // Verify main UI components
         onView(withId(R.id.ButtonCreateEvent)).check(matches(isDisplayed()));
         onView(withId(R.id.navbar)).check(matches(isDisplayed()));
+        
+        // Verify navbar components
+        onView(withId(R.id.navHome)).check(matches(isDisplayed()));
+        onView(withId(R.id.navHistory)).check(matches(isDisplayed()));
+        onView(withId(R.id.navProfile)).check(matches(isDisplayed()));
+        
+        // Verify text in navbar
+        onView(withText("Home")).check(matches(isDisplayed()));
+        onView(withText("History")).check(matches(isDisplayed()));
+        onView(withText("Profile")).check(matches(isDisplayed()));
     }
 
     @Test
@@ -67,7 +80,33 @@ public class OrganizerMainActivityTest {
         onView(withId(R.id.ButtonCreateEvent)).perform(click());
 
         // Verify that the correct Intent was sent to start CreateEventActivity
-        intended(hasComponent(CreateEventActivity.class.getName()));
-        intended(hasExtra("deviceId", TEST_DEVICE_ID));
+        intended(allOf(
+                hasComponent(CreateEventActivity.class.getName()),
+                hasExtra("deviceId", TEST_DEVICE_ID)
+        ));
+    }
+
+    @Test
+    public void testNavigationToHistory() {
+        // Click on History tab in navbar
+        onView(withId(R.id.navHistory)).perform(click());
+        
+        // Verify navigation to OrganizerHistoryActivity
+        intended(allOf(
+                hasComponent(OrganizerHistoryActivity.class.getName()),
+                hasExtra("deviceId", TEST_DEVICE_ID)
+        ));
+    }
+
+    @Test
+    public void testNavigationToProfile() {
+        // Click on Profile tab in navbar
+        onView(withId(R.id.navProfile)).perform(click());
+        
+        // Verify navigation to ProfileActivity
+        intended(allOf(
+                hasComponent(ProfileActivity.class.getName()),
+                hasExtra("deviceId", TEST_DEVICE_ID)
+        ));
     }
 }
