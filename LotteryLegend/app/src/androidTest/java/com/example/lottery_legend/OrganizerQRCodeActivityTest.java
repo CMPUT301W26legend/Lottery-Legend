@@ -1,6 +1,7 @@
 package com.example.lottery_legend;
 
 import static androidx.test.espresso.Espresso.onView;
+import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
@@ -9,9 +10,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.Color;
-import android.widget.ImageView;
-import android.widget.TextView;
+import android.util.Base64;
 
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.rules.ActivityScenarioRule;
@@ -20,9 +19,6 @@ import androidx.test.filters.LargeTest;
 
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.zxing.BarcodeFormat;
-import com.google.zxing.MultiFormatWriter;
-import com.google.zxing.common.BitMatrix;
 
 import org.junit.After;
 import org.junit.Before;
@@ -30,6 +26,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.ByteArrayOutputStream;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -40,7 +37,9 @@ import java.util.concurrent.TimeUnit;
 public class OrganizerQRCodeActivityTest {
 
     private static final String TEST_EVENT_ID = "test-qr-event-id";
+    private static final String TEST_EVENT_TITLE = "QR Test Event";
     private FirebaseFirestore db;
+    private String dummyQrBase64;
 
     @Rule
     public ActivityScenarioRule<OrganizerQRCodeActivity> activityRule =
@@ -50,6 +49,7 @@ public class OrganizerQRCodeActivityTest {
         Context context = ApplicationProvider.getApplicationContext();
         Intent intent = new Intent(context, OrganizerQRCodeActivity.class);
         intent.putExtra("eventId", TEST_EVENT_ID);
+        intent.putExtra("eventTitle", TEST_EVENT_TITLE);
         return intent;
     }
 
@@ -57,10 +57,16 @@ public class OrganizerQRCodeActivityTest {
     public void setUp() throws Exception {
         db = FirebaseFirestore.getInstance();
 
+        // Create a dummy QR code string (Base64)
+        Bitmap bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.RGB_565);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
+        dummyQrBase64 = Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT);
+
         // Setup initial test data in Firestore
         Event testEvent = new Event(
                 "testOrganizerId",
-                "QR Test Event",
+                TEST_EVENT_TITLE,
                 "Description for QR Test",
                 false,
                 "Test Location",
@@ -73,8 +79,13 @@ public class OrganizerQRCodeActivityTest {
                 200
         );
         testEvent.setEventId(TEST_EVENT_ID);
-
+        
+        // Wait for Firestore operations to complete
         Tasks.await(db.collection("events").document(TEST_EVENT_ID).set(testEvent), 10, TimeUnit.SECONDS);
+        Tasks.await(db.collection("events").document(TEST_EVENT_ID).update("qrCodeImage", dummyQrBase64), 10, TimeUnit.SECONDS);
+        
+        // Brief sleep to allow Firestore to propagate
+        Thread.sleep(1000);
     }
 
     @After
@@ -85,40 +96,48 @@ public class OrganizerQRCodeActivityTest {
     }
 
     @Test
-    public void testOrganizerQRCodeDisplay() throws InterruptedException {
-        // Manually set the title and QR code since the activity logic is currently not implemented in the production code
-        activityRule.getScenario().onActivity(activity -> {
-            TextView titleView = activity.findViewById(R.id.textEventTitle);
-            ImageView qrView = activity.findViewById(R.id.imageQrCode);
-            
-            if (titleView != null) {
-                titleView.setText("QR Test Event");
-            }
-            
-            if (qrView != null) {
-                try {
-                    MultiFormatWriter writer = new MultiFormatWriter();
-                    BitMatrix bitMatrix = writer.encode(TEST_EVENT_ID, BarcodeFormat.QR_CODE, 500, 500);
-                    Bitmap bitmap = Bitmap.createBitmap(500, 500, Bitmap.Config.RGB_565);
-                    for (int x = 0; x < 500; x++) {
-                        for (int y = 0; y < 500; y++) {
-                            bitmap.setPixel(x, y, bitMatrix.get(x, y) ? Color.BLACK : Color.WHITE);
-                        }
-                    }
-                    qrView.setImageBitmap(bitmap);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-
-        // Wait a bit for the UI to reflect changes
-        Thread.sleep(1000);
-
-        // Verify that the title matches our test event title
-        onView(withId(R.id.textEventTitle)).check(matches(withText("QR Test Event")));
-
-        // Verify QR code image view is displayed
+    public void testUIComponentsVisible() {
+        // Verify all key UI components are present
+        onView(withId(R.id.toolbarOrganizerQr)).check(matches(isDisplayed()));
+        onView(withId(R.id.cardQrCode)).check(matches(isDisplayed()));
         onView(withId(R.id.imageQrCode)).check(matches(isDisplayed()));
+        onView(withId(R.id.textEventTitle)).check(matches(isDisplayed()));
+        onView(withId(R.id.navbar)).check(matches(isDisplayed()));
+    }
+
+    @Test
+    public void testEventTitleDisplay() {
+        // Verify that the title passed in the intent is displayed correctly
+        onView(withId(R.id.textEventTitle)).check(matches(withText(TEST_EVENT_TITLE)));
+    }
+
+    @Test
+    public void testQRCodeImageLoads() throws InterruptedException {
+        // Since we set up dummyQrBase64 in Before, the activity should load it.
+        // We wait a moment for the Firestore callback and image decoding.
+        Thread.sleep(2000);
+        onView(withId(R.id.imageQrCode)).check(matches(isDisplayed()));
+    }
+
+    @Test
+    public void testToolbarContent() {
+        // Verify toolbar title and subtitle if applicable
+        onView(withText("QR Code")).check(matches(isDisplayed()));
+        onView(withText("Share your event")).check(matches(isDisplayed()));
+    }
+
+    @Test
+    public void testToolbarNavigationClick() {
+        // Verify navigation icon is clickable (simulating back press)
+        onView(withId(R.id.toolbarOrganizerQr)).perform(click());
+        // Since it calls finish(), the activity will be destroyed.
+    }
+
+    @Test
+    public void testNavbarIsDisplayed() {
+        // Verify the organizer navbar is visible at the bottom
+        onView(withId(R.id.navHome)).check(matches(isDisplayed()));
+        onView(withId(R.id.navHistory)).check(matches(isDisplayed()));
+        onView(withId(R.id.navProfile)).check(matches(isDisplayed()));
     }
 }
