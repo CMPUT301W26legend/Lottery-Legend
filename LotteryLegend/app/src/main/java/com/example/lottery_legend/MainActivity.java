@@ -1,12 +1,7 @@
 package com.example.lottery_legend;
 
-import android.content.Intent;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
-import android.widget.ImageView;
-import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -73,39 +68,7 @@ public class MainActivity extends AppCompatActivity {
             adapter.notifyDataSetChanged();
         });
 
-        // Configure the bottom navigation bar
-        setupNavbar();
-    }
-
-    /**
-     * Configures the navigation bar by highlighting the Home section and
-     * setting up click listeners for the Profile and Scan sections.
-     */
-    private void setupNavbar() {
-        View navbar = findViewById(R.id.navbar);
-        if (navbar != null) {
-            // Highlight the Home icon and text to indicate the current section
-            ImageView imageHome = navbar.findViewById(R.id.imageNavHome);
-            TextView textHome = navbar.findViewById(R.id.textNavHome);
-            imageHome.setImageTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#2563EB")));
-            textHome.setTextColor(Color.parseColor("#2563EB"));
-
-            View profileNav = navbar.findViewById(R.id.navProfile);
-            profileNav.setOnClickListener(v -> {
-                Intent intent = new Intent(MainActivity.this, ProfileActivity.class);
-                intent.putExtra("deviceId", deviceId);
-                startActivity(intent);
-            });
-
-            // Set up navigation to ScanActivity
-            View scanNav = navbar.findViewById(R.id.navScan);
-            if (scanNav != null) {
-                scanNav.setOnClickListener(v -> {
-                    Intent intent = new Intent(MainActivity.this, ScanActivity.class);
-                    intent.putExtra("deviceId", deviceId);
-                    startActivity(intent);
-                });
-            }
-        }
+        // Use the common Navbar class for Entrants
+        NavbarEntrant.setup(this, deviceId, NavbarEntrant.Tab.HOME);
     }
 }
