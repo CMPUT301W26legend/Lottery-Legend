@@ -26,6 +26,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
@@ -58,10 +59,13 @@ public class AdminRemoveProfileTest {
 
         Organizer testOrganizer = new Organizer(
                 "organizerTest",
+                "organizerTest",
                 "remove_org@test.com",
                 "0987654321",
-                "organizerTest",
-                now
+                now,
+                now,
+                false,
+                new ArrayList<>()
         );
         Tasks.await(db.collection("organizers").document("organizerTest").set(testOrganizer), 5, TimeUnit.SECONDS);
     }

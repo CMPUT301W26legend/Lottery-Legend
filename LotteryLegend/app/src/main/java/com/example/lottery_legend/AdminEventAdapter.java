@@ -15,7 +15,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Locale;
 
 /**
  * Adapter for the admin events recycler view.
@@ -56,11 +58,14 @@ public class AdminEventAdapter extends RecyclerView.Adapter<AdminEventAdapter.Ev
         Event event = eventList.get(position);
 
         holder.title.setText(event.getTitle());
-        String info = String.format("%s • %d capacity", event.getEventStartDate(), event.getCapacity());
+        
+        SimpleDateFormat sdf = new SimpleDateFormat("MMM d, yyyy", Locale.getDefault());
+        String dateStr = event.getEventStartAt() != null ? sdf.format(event.getEventStartAt().toDate()) : "N/A";
+        String info = String.format(Locale.getDefault(), "%s • %d capacity", dateStr, event.getCapacity());
         holder.info.setText(info);
         
-        int waiting = event.getWaitingList() != null ? event.getWaitingList().size() : 0;
-        holder.waitingCount.setText(waiting + " waiting");
+        int waiting = (event.getWaitingList() != null) ? event.getWaitingList().size() : 0;
+        holder.waitingCount.setText(String.format(Locale.getDefault(), "%d waiting", waiting));
 
         holder.removeButton.setOnClickListener(v -> showDeleteDialog(event));
         

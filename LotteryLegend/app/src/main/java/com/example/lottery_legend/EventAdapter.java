@@ -11,13 +11,15 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.firebase.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -95,9 +97,20 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
         final Event event = eventList.get(position);
 
         holder.title.setText(event.getTitle());
-        holder.locationText.setText(event.getLocation());
-        holder.deadline.setText(event.getRegistrationEndDate());
-        holder.waitingCount.setText(String.valueOf(event.getWaitingList().size()));
+        
+        Event.EventLocation loc = event.getEventLocation();
+        holder.locationText.setText(loc != null ? loc.getName() : "");
+        
+        Timestamp regEndAt = event.getRegistrationEndAt();
+        if (regEndAt != null) {
+            SimpleDateFormat sdf = new SimpleDateFormat("M/d/yyyy", Locale.getDefault());
+            holder.deadline.setText(sdf.format(regEndAt.toDate()));
+        } else {
+            holder.deadline.setText("");
+        }
+
+        int waitingListSize = (event.getWaitingList() != null) ? event.getWaitingList().size() : 0;
+        holder.waitingCount.setText(String.valueOf(waitingListSize));
 
         holder.locationRow.setVisibility(event.isGeoEnabled() ? View.VISIBLE : View.GONE);
 
@@ -120,7 +133,15 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
         }
 
         // Determine if the current user has already joined the waiting list
-        boolean isJoined = event.getWaitingList().contains(currentDeviceId);
+        boolean isJoined = false;
+        if (event.getWaitingList() != null) {
+            for (Event.WaitingListEntry entry : event.getWaitingList()) {
+                if (Objects.equals(entry.getDeviceId(), currentDeviceId)) {
+                    isJoined = true;
+                    break;
+                }
+            }
+        }
 
         // Reset alpha to full opacity by default
         setAlpha(holder, 1.0f);
@@ -172,7 +193,9 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
      * @param alpha  The alpha value to set (0.0 to 1.0).
      */
     private void setAlpha(ViewHolder holder, float alpha) {
-        holder.cardContent.getChildAt(1).setAlpha(alpha);
+        if (holder.cardContent.getChildCount() > 1) {
+            holder.cardContent.getChildAt(1).setAlpha(alpha);
+        }
     }
 
     /**

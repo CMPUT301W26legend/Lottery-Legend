@@ -20,8 +20,13 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 
+import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+
+import java.text.SimpleDateFormat;
+import java.util.Locale;
+import java.util.Objects;
 
 /**
  * A DialogFragment that allows users to join or leave the waiting list for a specific event.
@@ -64,11 +69,21 @@ public class WaitingListDialogFragment extends DialogFragment {
         Button btnCancel = view.findViewById(R.id.btnCancel);
         Button btnConfirm = view.findViewById(R.id.btnConfirm);
 
-
         titleText.setText(event.getTitle());
-        locationText.setText(event.getLocation());
-        deadlineText.setText(event.getRegistrationEndDate());
-        waitingCountText.setText(String.valueOf(event.getWaitingList().size()));
+        
+        Event.EventLocation loc = event.getEventLocation();
+        locationText.setText(loc != null ? loc.getName() : "");
+        
+        Timestamp regEndAt = event.getRegistrationEndAt();
+        if (regEndAt != null) {
+            SimpleDateFormat sdf = new SimpleDateFormat("M/d/yyyy", Locale.getDefault());
+            deadlineText.setText(sdf.format(regEndAt.toDate()));
+        } else {
+            deadlineText.setText("");
+        }
+
+        int waitingListSize = (event.getWaitingList() != null) ? event.getWaitingList().size() : 0;
+        waitingCountText.setText(String.valueOf(waitingListSize));
 
         // Decode and set the poster image if it exists
         if (event.getPosterImage() != null && !event.getPosterImage().isEmpty()) {
@@ -80,7 +95,7 @@ public class WaitingListDialogFragment extends DialogFragment {
                     posterImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
                 }
             } catch (Exception e) {
-
+                // Ignore decoding errors
             }
         }
 
@@ -93,7 +108,16 @@ public class WaitingListDialogFragment extends DialogFragment {
         }
 
         // Check if the user is already on the waiting list to customize dialog text
-        boolean isJoined = event.getWaitingList().contains(deviceId);
+        boolean isJoined = false;
+        if (event.getWaitingList() != null) {
+            for (Event.WaitingListEntry entry : event.getWaitingList()) {
+                if (Objects.equals(entry.getDeviceId(), deviceId)) {
+                    isJoined = true;
+                    break;
+                }
+            }
+        }
+
         if (isJoined) {
             if (dialogHeader != null) dialogHeader.setText("Leave Waiting List");
             if (dialogPrompt != null) dialogPrompt.setText("Do you want to leave this waiting list?");
@@ -110,11 +134,22 @@ public class WaitingListDialogFragment extends DialogFragment {
             public void onClick(View v) {
                 if (event == null || deviceId == null) return;
 
-                boolean isJoined = event.getWaitingList().contains(deviceId);
-                if (isJoined) {
+                boolean currentlyJoined = false;
+                Event.WaitingListEntry existingEntry = null;
+                if (event.getWaitingList() != null) {
+                    for (Event.WaitingListEntry entry : event.getWaitingList()) {
+                        if (Objects.equals(entry.getDeviceId(), deviceId)) {
+                            currentlyJoined = true;
+                            existingEntry = entry;
+                            break;
+                        }
+                    }
+                }
+
+                if (currentlyJoined) {
                     // Remove user from waitingList in Firestore
                     FirebaseFirestore.getInstance().collection("events").document(event.getEventId())
-                            .update("waitingList", FieldValue.arrayRemove(deviceId))
+                            .update("waitingList", FieldValue.arrayRemove(existingEntry))
                             .addOnSuccessListener(aVoid -> {
                                 if (isAdded()) {
                                     Toast.makeText(getContext(), "Left waiting list", Toast.LENGTH_SHORT).show();
@@ -123,8 +158,14 @@ public class WaitingListDialogFragment extends DialogFragment {
                             });
                 } else {
                     // Add user to waitingList in Firestore
+                    Event.WaitingListEntry newEntry = new Event.WaitingListEntry();
+                    newEntry.setDeviceId(deviceId);
+                    newEntry.setJoinedAt(Timestamp.now());
+                    newEntry.setUpdatedAt(Timestamp.now());
+                    newEntry.setParticipationStatus("waiting");
+                    
                     FirebaseFirestore.getInstance().collection("events").document(event.getEventId())
-                            .update("waitingList", FieldValue.arrayUnion(deviceId))
+                            .update("waitingList", FieldValue.arrayUnion(newEntry))
                             .addOnSuccessListener(aVoid -> {
                                 if (isAdded()) {
                                     Toast.makeText(getContext(), "Joined waiting list!", Toast.LENGTH_SHORT).show();

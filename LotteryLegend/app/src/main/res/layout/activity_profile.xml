@@ -33,6 +33,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/toolbarRoleText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignParentEnd="true"
@@ -141,7 +142,7 @@
             </LinearLayout>
 
             <LinearLayout
-                android:id="@+id/layoutSwitchOrganizer"
+                android:id="@+id/layoutSwitchRole"
                 android:layout_width="match_parent"
                 android:layout_height="72dp"
                 android:layout_marginTop="16dp"
@@ -158,6 +159,7 @@
                     app:tint="#2563EB" />
 
                 <TextView
+                    android:id="@+id/switchRoleLabel"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"

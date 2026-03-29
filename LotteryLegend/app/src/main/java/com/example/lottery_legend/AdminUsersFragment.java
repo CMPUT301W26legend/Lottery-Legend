@@ -96,8 +96,8 @@ public class AdminUsersFragment extends Fragment {
                     Object user;
                     if (collectionName.equals("entrants")) {
                         Entrant entrant = doc.toObject(Entrant.class);
-                        if (entrant.getUserId() == null) {
-                            entrant.setUserId(doc.getId());
+                        if (entrant.getDeviceId() == null) {
+                            entrant.setDeviceId(doc.getId());
                         }
                         user = entrant;
                     } else {

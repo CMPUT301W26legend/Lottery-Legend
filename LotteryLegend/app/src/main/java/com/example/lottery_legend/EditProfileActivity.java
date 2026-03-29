@@ -15,6 +15,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 /**
@@ -63,9 +64,9 @@ public class EditProfileActivity extends AppCompatActivity {
                     if (documentSnapshot.exists()) {
                         Entrant entrant = documentSnapshot.toObject(Entrant.class);
                         if (entrant != null) {
-                            editTextName.setText(entrant.name);
-                            editTextEmail.setText(entrant.email);
-                            editTextPhone.setText(entrant.phone);
+                            editTextName.setText(entrant.getName());
+                            editTextEmail.setText(entrant.getEmail());
+                            editTextPhone.setText(entrant.getPhone());
                         }
                     }
                 })
@@ -96,7 +97,8 @@ public class EditProfileActivity extends AppCompatActivity {
         db.collection("entrants").document(deviceId)
                 .update("name", name,
                         "email", email,
-                        "phone", phone)
+                        "phone", phone,
+                        "updatedAt", Timestamp.now())
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(this, "Profile updated successfully!", Toast.LENGTH_SHORT).show();
 

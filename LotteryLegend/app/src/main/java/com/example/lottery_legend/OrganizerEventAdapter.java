@@ -10,7 +10,10 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.firebase.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Adapter for displaying events in the Organizer History.
@@ -84,13 +87,20 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
         holder.status.setText(statusText);
         holder.status.setTextColor(Color.parseColor("#2563EB"));
         
-        String info = event.getRegistrationEndDate() + " · " + event.getCapacity() + " capacity";
+        String deadlineStr = "";
+        Timestamp registrationEndAt = event.getRegistrationEndAt();
+        if (registrationEndAt != null) {
+            SimpleDateFormat sdf = new SimpleDateFormat("M/d/yyyy", Locale.getDefault());
+            deadlineStr = sdf.format(registrationEndAt.toDate());
+        }
+        
+        String info = deadlineStr + " · " + event.getCapacity() + " capacity";
         holder.eventInfo.setText(info);
         
         int waitingCount = (event.getWaitingList() != null) ? event.getWaitingList().size() : 0;
         holder.waiting.setText(waitingCount + " waiting");
         
-        holder.selected.setText("0 selected");
+        holder.selected.setText(event.getSelectedCount() + " selected");
 
         // Handle item click directly by starting the details activity
         holder.itemView.setOnClickListener(v -> {

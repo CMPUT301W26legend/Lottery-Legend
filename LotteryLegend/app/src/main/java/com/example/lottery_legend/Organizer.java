@@ -1,148 +1,219 @@
 package com.example.lottery_legend;
 
 import com.google.firebase.Timestamp;
+import java.util.List;import java.util.Objects;
 
 /**
- * Model class for an Organizer in the Lottery Legend system.
+ * Model class representing an Organizer in the system.
+ * Maps to the "/organizers/{deviceId}" collection in Firestore.
  */
 public class Organizer {
+
+    private String deviceId;
     private String name;
     private String email;
     private String phone;
-    private String userId;
     private Timestamp joinDate;
-    public boolean isAdmin;
+    private Timestamp updatedAt;
+    private boolean isAdmin;
+    private List<CreatedEvent> createdEvents;
 
     /**
-     * Default constructor required for Firebase Firestore deserialization.
+     * Required no-argument constructor for Firestore serialization.
      */
-    public Organizer() {}
-
-    /**
-     * Constructs a new Organizer with the specified details, defaulting to non-admin status.
-     *
-     * @param name     The name of the organizer.
-     * @param email    The email of the organizer.
-     * @param phone    The phone number of the organizer.
-     * @param userId   The unique ID of the organizer.
-     * @param joinDate The timestamp when the organizer joined.
-     */
-    public Organizer(String name, String email, String phone, String userId, Timestamp joinDate) {
-        this(name, email, phone, userId, joinDate, false);
+    public Organizer() {
     }
 
     /**
-     * Constructs a new Organizer with all specified fields.
+     * Full constructor for Organizer.
      *
-     * @param name     The name of the organizer.
-     * @param email    The email of the organizer.
-     * @param phone    The phone number of the organizer.
-     * @param userId   The unique ID of the organizer.
-     * @param joinDate The timestamp when the organizer joined.
-     * @param isAdmin  True if the organizer is an admin, false otherwise.
+     * @param deviceId      The unique device identifier.
+     * @param name          The organizer's name.
+     * @param email         The organizer's email address.
+     * @param phone         The organizer's phone number.
+     * @param joinDate      The timestamp when the organizer joined.
+     * @param updatedAt     The timestamp of the last profile update.
+     * @param isAdmin       Whether the organizer has administrative privileges.
+     * @param createdEvents List of events created by this organizer (subcollection mapping).
      */
-    public Organizer(String name, String email, String phone, String userId, Timestamp joinDate, boolean isAdmin) {
+    public Organizer(String deviceId, String name, String email, String phone,
+                     Timestamp joinDate, Timestamp updatedAt, boolean isAdmin,
+                     List<CreatedEvent> createdEvents) {
+        this.deviceId = deviceId;
         this.name = name;
         this.email = email;
         this.phone = phone;
-        this.userId = userId;
         this.joinDate = joinDate;
+        this.updatedAt = updatedAt;
         this.isAdmin = isAdmin;
+        this.createdEvents = createdEvents;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
     }
 
     /**
-     * Gets the name of the organizer.
-     * @return The organizer's name.
+     * Alias for getDeviceId() to maintain compatibility with Admin views.
+     * @return The unique device/user identifier.
      */
+    public String getUserId() {
+        return deviceId;
+    }
+
+    /**
+     * Alias for setDeviceId() to maintain compatibility with Admin views.
+     * @param userId The unique identifier to set.
+     */
+    public void setUserId(String userId) {
+        this.deviceId = userId;
+    }
+
     public String getName() {
         return name;
     }
 
-    /**
-     * Sets the name of the organizer.
-     * @param name The name to set.
-     */
     public void setName(String name) {
         this.name = name;
     }
 
-    /**
-     * Gets the email of the organizer.
-     * @return The organizer's email.
-     */
     public String getEmail() {
         return email;
     }
 
-    /**
-     * Sets the email of the organizer.
-     * @param email The email to set.
-     */
     public void setEmail(String email) {
         this.email = email;
     }
 
-    /**
-     * Gets the phone number of the organizer.
-     * @return The organizer's phone number.
-     */
     public String getPhone() {
         return phone;
     }
 
-    /**
-     * Sets the phone number of the organizer.
-     * @param phone The phone number to set.
-     */
     public void setPhone(String phone) {
         this.phone = phone;
     }
 
-    /**
-     * Gets the unique user ID of the organizer.
-     * @return The organizer's user ID.
-     */
-    public String getUserId() {
-        return userId;
-    }
-
-    /**
-     * Sets the unique user ID of the organizer.
-     * @param userId The user ID to set.
-     */
-    public void setUserId(String userId) {
-        this.userId = userId;
-    }
-
-    /**
-     * Gets the join date of the organizer.
-     * @return The organizer's join date.
-     */
     public Timestamp getJoinDate() {
         return joinDate;
     }
 
-    /**
-     * Sets the join date of the organizer.
-     * @param joinDate The join date to set.
-     */
     public void setJoinDate(Timestamp joinDate) {
         this.joinDate = joinDate;
     }
 
-    /**
-     * Gets whether the organizer has admin privileges.
-     * @return True if the organizer is an admin, false otherwise.
-     */
+    public Timestamp getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Timestamp updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
     public boolean getIsAdmin() {
         return isAdmin;
     }
 
+    public void setIsAdmin(boolean admin) {
+        isAdmin = admin;
+    }
+
+    public List<CreatedEvent> getCreatedEvents() {
+        return createdEvents;
+    }
+
+    public void setCreatedEvents(List<CreatedEvent> createdEvents) {
+        this.createdEvents = createdEvents;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Organizer organizer = (Organizer) o;
+        return Objects.equals(deviceId, organizer.deviceId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(deviceId);
+    }
+
+    @Override
+    public String toString() {
+        return "Organizer{" +
+                "deviceId='" + deviceId + '\'' +
+                ", name='" + name + '\'' +
+                ", email='" + email + '\'' +
+                ", isAdmin=" + isAdmin +
+                '}';
+    }
+
     /**
-     * Sets whether the organizer has admin privileges.
-     * @param isAdmin True to set as admin, false otherwise.
+     * Inner class representing a summary of an event created by the organizer.
+     * Maps to the "/organizers/{deviceId}/createdEvents/{eventId}" subcollection.
      */
-    public void setIsAdmin(boolean isAdmin) {
-        this.isAdmin = isAdmin;
+    public static class CreatedEvent {
+        private String eventId;
+        private String title;
+        private String status;
+        private Timestamp createdAt;
+
+        /**
+         * Required no-argument constructor for Firestore serialization.
+         */
+        public CreatedEvent() {
+        }
+
+        public CreatedEvent(String eventId, String title, String status, Timestamp createdAt) {
+            this.eventId = eventId;
+            this.title = title;
+            this.status = status;
+            this.createdAt = createdAt;
+        }
+
+        public String getEventId() {
+            return eventId;
+        }
+
+        public void setEventId(String eventId) {
+            this.eventId = eventId;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public void setTitle(String title) {
+            this.title = title;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+
+        public Timestamp getCreatedAt() {
+            return createdAt;
+        }
+
+        public void setCreatedAt(Timestamp createdAt) {
+            this.createdAt = createdAt;
+        }
+
+        @Override
+        public String toString() {
+            return "CreatedEvent{" +
+                    "eventId='" + eventId + '\'' +
+                    ", title='" + title + '\'' +
+                    ", status='" + status + '\'' +
+                    '}';
+        }
     }
 }

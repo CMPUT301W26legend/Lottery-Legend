@@ -78,16 +78,19 @@ public class OrganizerQRCodeActivity extends AppCompatActivity {
         db.collection("events").document(eventId).get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
-                        // Retrieve the Base64 encoded image string from the document
-                        String qrBase64 = documentSnapshot.getString("qrCodeImage");
-                        if (qrBase64 != null && !qrBase64.isEmpty()) {
-                            // Decode the Base64 string into a byte array
-                            byte[] decodedString = Base64.decode(qrBase64, Base64.DEFAULT);
-                            // Convert the byte array into a Bitmap and display it
-                            Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-                            imageQrCode.setImageBitmap(decodedByte);
-                        } else {
-                            Toast.makeText(this, "No QR Code found for this event", Toast.LENGTH_SHORT).show();
+                        Event event = documentSnapshot.toObject(Event.class);
+                        if (event != null) {
+                            // Retrieve the Base64 encoded image string from the document
+                            String qrBase64 = event.getQrCodeImage();
+                            if (qrBase64 != null && !qrBase64.isEmpty()) {
+                                // Decode the Base64 string into a byte array
+                                byte[] decodedString = Base64.decode(qrBase64, Base64.DEFAULT);
+                                // Convert the byte array into a Bitmap and display it
+                                Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                                imageQrCode.setImageBitmap(decodedByte);
+                            } else {
+                                Toast.makeText(this, "No QR Code found for this event", Toast.LENGTH_SHORT).show();
+                            }
                         }
                     }
                 })

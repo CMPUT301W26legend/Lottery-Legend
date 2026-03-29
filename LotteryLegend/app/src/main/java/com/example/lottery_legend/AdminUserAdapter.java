@@ -87,11 +87,11 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
 
         if (userObj instanceof Entrant) {
             Entrant user = (Entrant) userObj;
-            name = user.name;
-            email = user.email;
-            phone = user.phone;
-            joinDate = user.joinDate;
-            userId = user.userId;
+            name = user.getName();
+            email = user.getEmail();
+            phone = user.getPhone();
+            joinDate = user.getJoinDate();
+            userId = user.getDeviceId();
         } else if (userObj instanceof Organizer) {
             Organizer user = (Organizer) userObj;
             name = user.getName();

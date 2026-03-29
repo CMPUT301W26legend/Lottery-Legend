@@ -22,6 +22,7 @@ import androidx.fragment.app.Fragment;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.text.SimpleDateFormat;
 import java.util.Locale;
 
 /**
@@ -104,14 +105,24 @@ public class AdminEventDetailFragment extends Fragment {
         TextView tvGuidelines = view.findViewById(R.id.detail_lottery_guidelines);
         ImageView ivPoster = view.findViewById(R.id.event_poster_detail);
 
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
+
         tvTitle.setText(currentEvent.getTitle());
-        String eventDateRange = currentEvent.getEventStartDate() + (currentEvent.getEventEndDate() != null ? " - " + currentEvent.getEventEndDate() : "");
+        
+        String startStr = currentEvent.getEventStartAt() != null ? sdf.format(currentEvent.getEventStartAt().toDate()) : "N/A";
+        String endStr = currentEvent.getEventEndAt() != null ? sdf.format(currentEvent.getEventEndAt().toDate()) : "";
+        String eventDateRange = startStr + (!endStr.isEmpty() ? " - " + endStr : "");
         tvDate.setText(eventDateRange);
-        tvDeadline.setText(currentEvent.getRegistrationEndDate());
-        tvLocation.setText(currentEvent.getLocation());
+
+        String deadlineStr = currentEvent.getRegistrationEndAt() != null ? sdf.format(currentEvent.getRegistrationEndAt().toDate()) : "N/A";
+        tvDeadline.setText(deadlineStr);
+
+        String locationName = currentEvent.getEventLocation() != null ? currentEvent.getEventLocation().getName() : "N/A";
+        tvLocation.setText(locationName);
+
         tvCapacity.setText(String.format(Locale.getDefault(), "%d Spots", currentEvent.getCapacity()));
         
-        int waiting = currentEvent.getWaitingList() != null ? currentEvent.getWaitingList().size() : 0;
+        int waiting = currentEvent.getWaitingListCount();
         if (waiting == 1) {
             tvWaitingList.setText("1 entrant registered");
         } else {
@@ -120,9 +131,10 @@ public class AdminEventDetailFragment extends Fragment {
         
         tvAbout.setText(currentEvent.getDescription());
 
+        String drawStr = currentEvent.getDrawAt() != null ? sdf.format(currentEvent.getDrawAt().toDate()) : "N/A";
         String guidelinesText = String.format(Locale.getDefault(),
                 "• Random selection on %s \n• Winners notified via app\n• 48 hours to accept invitation\n• Replacements drawn if declined",
-                currentEvent.getDrawDate());
+                drawStr);
         tvGuidelines.setText(guidelinesText);
 
         if (currentEvent.getPosterImage() != null && !currentEvent.getPosterImage().isEmpty()) {

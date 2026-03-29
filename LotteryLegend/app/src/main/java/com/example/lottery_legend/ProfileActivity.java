@@ -5,6 +5,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -19,11 +20,14 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.switchmaterial.SwitchMaterial;
+import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.WriteBatch;
+
+import java.util.ArrayList;
 
 /**
  * Activity that displays and manages the user's profile information.
@@ -36,13 +40,17 @@ public class ProfileActivity extends AppCompatActivity {
     private TextView viewName;
     private TextView viewEmail;
     private TextView viewPhone;
+    private TextView toolbarRoleText;
+    private TextView switchRoleLabel;
     private SwitchMaterial switchNotifications;
-    private LinearLayout layoutSwitchOrganizer;
+    private LinearLayout layoutSwitchRole;
+    private LinearLayout layoutNotifications;
     private Button buttonEditProfile;
     private Button btnContinueAsAdmin;
     private Button btnDeleteAccount;
 
     private Entrant currentEntrant;
+    private boolean isOrganizerMode = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,15 +65,21 @@ public class ProfileActivity extends AppCompatActivity {
 
         db = FirebaseFirestore.getInstance();
         deviceId = getIntent().getStringExtra("deviceId");
+        isOrganizerMode = getIntent().getBooleanExtra("isOrganizerMode", false);
 
         viewName = findViewById(R.id.viewName);
         viewEmail = findViewById(R.id.viewEmail);
         viewPhone = findViewById(R.id.viewPhone);
         switchNotifications = findViewById(R.id.switchNotifications);
-        layoutSwitchOrganizer = findViewById(R.id.layoutSwitchOrganizer);
+        layoutSwitchRole = findViewById(R.id.layoutSwitchRole);
+        layoutNotifications = findViewById(R.id.layoutNotifications);
         buttonEditProfile = findViewById(R.id.buttonEditProfile);
         btnContinueAsAdmin = findViewById(R.id.btnContinueAsAdmin);
         btnDeleteAccount = findViewById(R.id.btnDeleteAccount);
+        toolbarRoleText = findViewById(R.id.toolbarRoleText);
+        switchRoleLabel = findViewById(R.id.switchRoleLabel);
+
+        updateUIForMode();
 
         // Initially hide the admin button until permissions are verified
         btnContinueAsAdmin.setVisibility(View.GONE);
@@ -87,73 +101,137 @@ public class ProfileActivity extends AppCompatActivity {
             showDeleteConfirmationDialog();
         });
 
-        // Fetch user data and initialize the navigation bar
-        fetchProfileData();
-        setupNavbar();
-
-        // Setup click listener for switching to organizer mode
-        layoutSwitchOrganizer.setOnClickListener(v -> {
-            checkAndCreateOrganizerAccount();
+        // Setup click listener for switching mode
+        layoutSwitchRole.setOnClickListener(v -> {
+            if (isOrganizerMode) {
+                switchToEntrantMode();
+            } else {
+                checkAndCreateOrganizerAccount();
+            }
         });
+
+        refreshProfile();
+    }
+
+    private void refreshProfile() {
+        if (isOrganizerMode) {
+            fetchOrganizerData();
+        } else {
+            fetchEntrantData();
+        }
+        setupNavbar();
+    }
+
+    private void updateUIForMode() {
+        if (toolbarRoleText != null) {
+            toolbarRoleText.setText(isOrganizerMode ? "Organizer" : "Entrant");
+        }
+        if (switchRoleLabel != null) {
+            switchRoleLabel.setText(isOrganizerMode ? "Switch to Entrant Mode" : "Switch to Organizer Mode");
+        }
+        if (btnDeleteAccount != null) {
+            btnDeleteAccount.setText(isOrganizerMode ? "Delete Organizer Account" : "Delete Entrant Account");
+        }
+        if (layoutNotifications != null) {
+            layoutNotifications.setVisibility(isOrganizerMode ? View.GONE : View.VISIBLE);
+        }
+        
+        // Dynamic Navbar update
+        View navbarContainer = findViewById(R.id.navbar);
+        if (navbarContainer instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) navbarContainer;
+            group.removeAllViews();
+            int layoutId = isOrganizerMode ? R.layout.layout_navbar_organizer : R.layout.layout_navbar_entrant;
+            getLayoutInflater().inflate(layoutId, group, true);
+        }
     }
 
     /**
      * Fetches the user's profile data from Firestore using the device ID.
      * Updates the UI with the retrieved information and checks for admin status.
      */
-    private void fetchProfileData() {
+    private void fetchEntrantData() {
         db.collection("entrants").document(deviceId)
                 .get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
                         currentEntrant = documentSnapshot.toObject(Entrant.class);
-                        viewName.setText(currentEntrant.name);
-                        viewEmail.setText(currentEntrant.email);
+                        if (currentEntrant != null) {
+                            viewName.setText(currentEntrant.getName());
+                            viewEmail.setText(currentEntrant.getEmail());
 
-                        if (currentEntrant.phone != null && !currentEntrant.phone.isEmpty()) {
-                            viewPhone.setText(currentEntrant.phone);
-                        } else {
-                            viewPhone.setText("No phone number provided");
-                        }
+                            if (currentEntrant.getPhone() != null && !currentEntrant.getPhone().isEmpty()) {
+                                viewPhone.setText(currentEntrant.getPhone());
+                            } else {
+                                viewPhone.setText("No phone number provided");
+                            }
 
-                        switchNotifications.setChecked(currentEntrant.notification);
+                            switchNotifications.setChecked(currentEntrant.isNotificationsEnabled());
 
-                        // Show admin button if the user has admin privileges
-                        if (documentSnapshot.getBoolean("isAdmin") != null && documentSnapshot.getBoolean("isAdmin")) {
-                            btnContinueAsAdmin.setVisibility(View.VISIBLE);
-                        } else {
-                            btnContinueAsAdmin.setVisibility(View.GONE);
+                            // Show admin button if the user has admin privileges
+                            if (documentSnapshot.getBoolean("isAdmin") != null && documentSnapshot.getBoolean("isAdmin")) {
+                                btnContinueAsAdmin.setVisibility(View.VISIBLE);
+                            } else {
+                                btnContinueAsAdmin.setVisibility(View.GONE);
+                            }
                         }
                     } else {
-                        Log.d("ProfileActivity", "No such document");
-                        Toast.makeText(ProfileActivity.this, "Profile not found", Toast.LENGTH_SHORT).show();
+                        Log.d("ProfileActivity", "No entrant document");
                     }
                 })
                 .addOnFailureListener(e -> {
-                    Log.e("ProfileActivity", "Error fetching document", e);
+                    Log.e("ProfileActivity", "Error fetching entrant document", e);
                     Toast.makeText(ProfileActivity.this, "Error loading profile", Toast.LENGTH_SHORT).show();
                 });
     }
 
+    private void fetchOrganizerData() {
+        db.collection("organizers").document(deviceId).get().addOnSuccessListener(doc -> {
+            if (doc.exists()) {
+                viewName.setText(doc.getString("name"));
+                viewEmail.setText(doc.getString("email"));
+                String phone = doc.getString("phone");
+                viewPhone.setText((phone != null && !phone.isEmpty()) ? phone : "No phone number provided");
+                
+                // Still check admin from entrants collection
+                db.collection("entrants").document(deviceId).get().addOnSuccessListener(entrantDoc -> {
+                    if (entrantDoc.exists() && entrantDoc.getBoolean("isAdmin") != null && entrantDoc.getBoolean("isAdmin")) {
+                        btnContinueAsAdmin.setVisibility(View.VISIBLE);
+                    } else {
+                        btnContinueAsAdmin.setVisibility(View.GONE);
+                    }
+                });
+            }
+        });
+    }
+
     private void showDeleteConfirmationDialog() {
+        String title = isOrganizerMode ? "Delete Organizer Account" : "Delete Entrant Account";
+        String message = isOrganizerMode ? 
+                "Are you sure you want to delete your Organizer profile? Your Entrant profile (if any) will remain." :
+                "Are you sure you want to delete your Entrant profile? Your Organizer profile (if any) will remain.";
+        
         new AlertDialog.Builder(this)
-                .setTitle("Delete Account")
-                .setMessage("Are you sure you want to delete your profile? This action cannot be undone and the app will close.")
-                .setPositiveButton("Delete", (dialog, which) -> deleteAccount())
+                .setTitle(title)
+                .setMessage(message)
+                .setPositiveButton("Delete", (dialog, which) -> {
+                    if (isOrganizerMode) {
+                        deleteOrganizerAccount();
+                    } else {
+                        deleteEntrantAccount();
+                    }
+                })
                 .setNegativeButton("Cancel", null)
                 .show();
     }
 
-    private void deleteAccount() {
+    private void deleteEntrantAccount() {
         WriteBatch batch = db.batch();
 
-        // 1. Delete from entrants collection
+        // 1. Delete from entrants collection only
         batch.delete(db.collection("entrants").document(deviceId));
 
-        // 2. Delete from organizers collection
-        batch.delete(db.collection("organizers").document(deviceId));
-
-        // 3. Remove from all waiting lists
+        // 2. Remove from all waiting lists
         db.collection("events")
                 .whereArrayContains("waitingList", deviceId)
                 .get()
@@ -162,101 +240,116 @@ public class ProfileActivity extends AppCompatActivity {
                         batch.update(document.getReference(), "waitingList", FieldValue.arrayRemove(deviceId));
                     }
 
-                    // Commit the batch after finding all events the user is in
                     batch.commit().addOnSuccessListener(aVoid -> {
-                        Toast.makeText(getApplicationContext(), "Account deleted successfully", Toast.LENGTH_SHORT).show();
-                        closeApp();
+                        Toast.makeText(getApplicationContext(), "Entrant profile deleted", Toast.LENGTH_SHORT).show();
+                        checkRemainingAccountAfterEntrantDelete();
                     }).addOnFailureListener(e -> {
                         Log.e("ProfileActivity", "Error deleting account", e);
-                        Toast.makeText(getApplicationContext(), "Error deleting account", Toast.LENGTH_SHORT).show();
                     });
                 })
                 .addOnFailureListener(e -> {
-                    // Even if we fail to remove from waiting lists, we should still try to delete the profile
                     batch.commit().addOnSuccessListener(aVoid -> {
-                        Toast.makeText(getApplicationContext(), "Account partially deleted", Toast.LENGTH_SHORT).show();
-                        closeApp();
+                        checkRemainingAccountAfterEntrantDelete();
                     });
                 });
     }
 
+    private void deleteOrganizerAccount() {
+        db.collection("organizers").document(deviceId).delete()
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(getApplicationContext(), "Organizer profile deleted", Toast.LENGTH_SHORT).show();
+                    checkRemainingAccountAfterOrganizerDelete();
+                })
+                .addOnFailureListener(e -> {
+                    Log.e("ProfileActivity", "Error deleting organizer account", e);
+                    Toast.makeText(ProfileActivity.this, "Error deleting organizer account", Toast.LENGTH_SHORT).show();
+                });
+    }
+
+    private void checkRemainingAccountAfterEntrantDelete() {
+        db.collection("organizers").document(deviceId).get().addOnSuccessListener(doc -> {
+            if (doc.exists()) {
+                isOrganizerMode = true;
+                updateUIForMode();
+                refreshProfile();
+            } else {
+                closeApp();
+            }
+        });
+    }
+
+    private void checkRemainingAccountAfterOrganizerDelete() {
+        db.collection("entrants").document(deviceId).get().addOnSuccessListener(doc -> {
+            if (doc.exists()) {
+                isOrganizerMode = false;
+                updateUIForMode();
+                refreshProfile();
+            } else {
+                closeApp();
+            }
+        });
+    }
+
     private void closeApp() {
         finishAffinity();
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             finishAndRemoveTask();
         }
     }
 
-    /**
-     * Checks if the current user already has an organizer account.
-     * If they do, it navigates to the Organizer main screen.
-     * If not, it creates a new organizer account using the entrant profile data.
-     */
     private void checkAndCreateOrganizerAccount() {
         db.collection("organizers").document(deviceId).get().addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
                 DocumentSnapshot document = task.getResult();
                 if (document.exists()) {
-                    // Organizer account exists, just navigate
-                    navigateToOrganizerMain();
+                    isOrganizerMode = true;
+                    updateUIForMode();
+                    refreshProfile();
                 } else {
-                    // Organizer account doesn't exist, create it from profile data
                     if (currentEntrant != null) {
+                        Timestamp now = Timestamp.now();
                         Organizer newOrganizer = new Organizer(
-                                currentEntrant.name,
-                                currentEntrant.email,
-                                currentEntrant.phone,
                                 deviceId,
-                                currentEntrant.joinDate,
-                                currentEntrant.isAdmin);
+                                currentEntrant.getName(),
+                                currentEntrant.getEmail(),
+                                currentEntrant.getPhone(),
+                                currentEntrant.getJoinDate(),
+                                now,
+                                currentEntrant.getIsAdmin(),
+                                new ArrayList<>()
+                        );
                         db.collection("organizers").document(deviceId).set(newOrganizer)
                                 .addOnSuccessListener(aVoid -> {
-                                    Toast.makeText(ProfileActivity.this, "Organizer account created", Toast.LENGTH_SHORT).show();
-                                    navigateToOrganizerMain();
+                                    isOrganizerMode = true;
+                                    updateUIForMode();
+                                    refreshProfile();
                                 })
                                 .addOnFailureListener(e -> {
-                                    Toast.makeText(ProfileActivity.this, "Failed to create organizer account", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(ProfileActivity.this, "Failed to create organizer profile", Toast.LENGTH_SHORT).show();
                                 });
-                    } else {
-                        Toast.makeText(ProfileActivity.this, "Please wait for profile to load", Toast.LENGTH_SHORT).show();
                     }
                 }
-            } else {
-                Toast.makeText(ProfileActivity.this, "Error checking organizer status", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    /**
-     * Navigates to the OrganizerMainActivity and finishes the current activity.
-     */
     private void navigateToOrganizerMain() {
         Intent intent = new Intent(ProfileActivity.this, OrganizerMainActivity.class);
         intent.putExtra("deviceId", deviceId);
         startActivity(intent);
-        finish();
     }
 
-    /**
-     * Configures the bottom navigation bar.
-     * Highlights the profile tab and sets up the click listener for the home tab.
-     */
-    private void setupNavbar() {
-        View navbar = findViewById(R.id.navbar);
-        if (navbar != null) {
-            ImageView imageProfile = navbar.findViewById(R.id.imageNavProfile);
-            TextView textProfile = navbar.findViewById(R.id.textNavProfile);
-            imageProfile.setImageTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#2563EB")));
-            textProfile.setTextColor(android.graphics.Color.parseColor("#2563EB"));
+    private void switchToEntrantMode() {
+        isOrganizerMode = false;
+        updateUIForMode();
+        refreshProfile();
+    }
 
-            View homeItem = navbar.findViewById(R.id.navHome);
-            homeItem.setOnClickListener(v -> {
-                Intent intent = new Intent(ProfileActivity.this, MainActivity.class);
-                intent.putExtra("deviceId", deviceId);
-                startActivity(intent);
-                finish();
-            });
+    private void setupNavbar() {
+        if (isOrganizerMode) {
+            NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.PROFILE);
+        } else {
+            NavbarEntrant.setup(this, deviceId, NavbarEntrant.Tab.PROFILE);
         }
     }
 }

@@ -1,61 +1,80 @@
 package com.example.lottery_legend;
 
 import com.google.firebase.Timestamp;
+import java.util.Objects;
 
 /**
- * Entrant class representing a user profile in the system.
- * Fields are public for easy access.
+ * Model class representing an Entrant in the Lottery Legend system.
+ * Designed for seamless serialization and deserialization with Firebase Firestore.
  */
 public class Entrant {
-    public String name;
-    public String email;
-    public String phone;
-    public boolean notification;
-    public String userId;
-    public Timestamp joinDate;
-    public boolean isAdmin;
+
+    /** Unique identifier for the device/user. */
+    private String deviceId;
+
+    /** Full name of the entrant. */
+    private String name;
+
+    /** Email address for communication. */
+    private String email;
+
+    /** Phone number of the entrant. */
+    private String phone;
+
+    /** Flag indicating if push notifications are enabled. */
+    private boolean notificationsEnabled;
+
+    /** Timestamp indicating when the entrant first joined. */
+    private Timestamp joinDate;
+
+    /** Timestamp indicating the last time the profile was updated. */
+    private Timestamp updatedAt;
+
+    /** Flag indicating if the user has administrative privileges. */
+    private boolean isAdmin;
 
     /**
-     * Required no-argument constructor for Firebase Firestore deserialization.
+     * Default no-argument constructor required for Firebase Firestore.
      */
-    public Entrant() {}
-
-    /**
-     * Constructs a new Entrant with a default non-admin status.
-     *
-     * @param name         The name of the user.
-     * @param email        The email of the user.
-     * @param phone        The phone number of the user.
-     * @param notification Whether notifications are enabled.
-     * @param userId       Unique ID for the user.
-     * @param joinDate     Timestamp of when the profile was created.
-     */
-    public Entrant(String name, String email, String phone, boolean notification, String userId, Timestamp joinDate) {
-        this(name, email, phone, notification, userId, joinDate, false);
+    public Entrant() {
     }
 
     /**
-     * Constructs a new Entrant with all specified fields.
+     * Full constructor to initialize all fields of the Entrant.
      *
-     * @param name         The name of the user.
-     * @param email        The email of the user.
-     * @param phone        The phone number of the user.
-     * @param notification Whether notifications are enabled.
-     * @param userId       Unique ID for the user.
-     * @param joinDate     Timestamp of when the profile was created.
-     * @param isAdmin      True if the user is an administrator, false otherwise.
+     * @param deviceId             The unique device ID.
+     * @param name                 The name of the entrant.
+     * @param email                The email of the entrant.
+     * @param phone                The phone number of the entrant.
+     * @param notificationsEnabled Whether notifications are active.
+     * @param joinDate             The date the entrant joined.
+     * @param updatedAt           The date of the last update.
+     * @param isAdmin              Administrative status.
      */
-    public Entrant(String name, String email, String phone, boolean notification, String userId, Timestamp joinDate, boolean isAdmin) {
+    public Entrant(String deviceId, String name, String email, String phone,
+                   boolean notificationsEnabled, Timestamp joinDate,
+                   Timestamp updatedAt, boolean isAdmin) {
+        this.deviceId = deviceId;
         this.name = name;
         this.email = email;
         this.phone = phone;
-        this.notification = notification;
-        this.userId = userId;
+        this.notificationsEnabled = notificationsEnabled;
         this.joinDate = joinDate;
+        this.updatedAt = updatedAt;
         this.isAdmin = isAdmin;
     }
 
-    /** @return The name of the entrant. */
+    /** @return The unique device identifier. */
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    /** @param deviceId The unique device identifier to set. */
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
+    }
+
+    /** @return The entrant's name. */
     public String getName() {
         return name;
     }
@@ -65,7 +84,7 @@ public class Entrant {
         this.name = name;
     }
 
-    /** @return The email of the entrant. */
+    /** @return The entrant's email. */
     public String getEmail() {
         return email;
     }
@@ -75,7 +94,7 @@ public class Entrant {
         this.email = email;
     }
 
-    /** @return The phone number of the entrant. */
+    /** @return The entrant's phone number. */
     public String getPhone() {
         return phone;
     }
@@ -85,27 +104,17 @@ public class Entrant {
         this.phone = phone;
     }
 
-    /** @return True if notifications are enabled, false otherwise. */
-    public boolean isNotification() {
-        return notification;
+    /** @return True if notifications are enabled. */
+    public boolean isNotificationsEnabled() {
+        return notificationsEnabled;
     }
 
-    /** @param notification True to enable notifications, false to disable. */
-    public void setNotification(boolean notification) {
-        this.notification = notification;
+    /** @param notificationsEnabled True to enable notifications. */
+    public void setNotificationsEnabled(boolean notificationsEnabled) {
+        this.notificationsEnabled = notificationsEnabled;
     }
 
-    /** @return The unique user ID. */
-    public String getUserId() {
-        return userId;
-    }
-
-    /** @param userId The user ID to set. */
-    public void setUserId(String userId) {
-        this.userId = userId;
-    }
-
-    /** @return The profile creation timestamp. */
+    /** @return The date the entrant joined. */
     public Timestamp getJoinDate() {
         return joinDate;
     }
@@ -115,13 +124,63 @@ public class Entrant {
         this.joinDate = joinDate;
     }
 
-    /** @return True if the user is an admin, false otherwise. */
+    /** @return The last update timestamp. */
+    public Timestamp getUpdatedAt() {
+        return updatedAt;
+    }
+
+    /** @param updatedAt The update timestamp to set. */
+    public void setUpdatedAt(Timestamp updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    /** @return True if the user is an admin. */
     public boolean getIsAdmin() {
         return isAdmin;
     }
 
-    /** @param isAdmin True to grant admin status, false to revoke it. */
+    /** @param isAdmin True to set user as admin. */
     public void setIsAdmin(boolean isAdmin) {
         this.isAdmin = isAdmin;
+    }
+
+    /**
+     * Compares this Entrant to another object based on deviceId.
+     * @param o The object to compare.
+     * @return True if the deviceIds match.
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Entrant entrant = (Entrant) o;
+        return Objects.equals(deviceId, entrant.deviceId);
+    }
+
+    /**
+     * Generates a hash code based on deviceId.
+     * @return The hash code.
+     */
+    @Override
+    public int hashCode() {
+        return Objects.hash(deviceId);
+    }
+
+    /**
+     * Returns a string representation of the Entrant for debugging.
+     * @return Formatted string containing entrant details.
+     */
+    @Override
+    public String toString() {
+        return "Entrant{" +
+                "deviceId='" + deviceId + '\'' +
+                ", name='" + name + '\'' +
+                ", email='" + email + '\'' +
+                ", phone='" + phone + '\'' +
+                ", notificationsEnabled=" + notificationsEnabled +
+                ", joinDate=" + joinDate +
+                ", updatedAt=" + updatedAt +
+                ", isAdmin=" + isAdmin +
+                '}';
     }
 }

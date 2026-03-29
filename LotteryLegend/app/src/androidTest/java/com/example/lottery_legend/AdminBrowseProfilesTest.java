@@ -23,12 +23,12 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Test for US 03.05.01: Browsing user profiles as an administrator.
- * Generated with the help of Gemini LLM
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
@@ -56,11 +56,14 @@ public class AdminBrowseProfilesTest {
         Tasks.await(db.collection("entrants").document("testEntrantID").set(testEntrant), 5, TimeUnit.SECONDS);
 
         Organizer testOrganizer = new Organizer(
+                "testOrganizerID",
                 "testOrganizer",
                 "organizer@test.com",
                 "0987654321",
-                "testOrganizerID",
-                now
+                now,
+                now,
+                false,
+                new ArrayList<>()
         );
         Tasks.await(db.collection("organizers").document("testOrganizerID").set(testOrganizer), 5, TimeUnit.SECONDS);
     }

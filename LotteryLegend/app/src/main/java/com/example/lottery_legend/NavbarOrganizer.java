@@ -88,6 +88,7 @@ public class NavbarOrganizer {
             if (activeTab != Tab.PROFILE) {
                 Intent intent = new Intent(activity, ProfileActivity.class);
                 intent.putExtra("deviceId", deviceId);
+                intent.putExtra("isOrganizerMode", true);
                 activity.startActivity(intent);
                 activity.finish();
             }
