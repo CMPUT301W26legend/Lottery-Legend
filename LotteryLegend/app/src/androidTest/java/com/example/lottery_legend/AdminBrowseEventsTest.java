@@ -66,7 +66,7 @@ public class AdminBrowseEventsTest {
     @Test
     public void testBrowseEvents() throws InterruptedException {
         onView(withId(R.id.nav_admin_events)).perform(click());
-        Thread.sleep(500);
+        Thread.sleep(2000);
 
         onView(withId(R.id.admin_events_recycler)).check(matches(isDisplayed()));
         onView(withId(R.id.admin_events_recycler))
@@ -83,7 +83,7 @@ public class AdminBrowseEventsTest {
         onView(withId(R.id.admin_events_recycler))
                 .perform(RecyclerViewActions.actionOnItem(hasDescendant(withText("testEventBrowsing")), click()));
 
-        Thread.sleep(500);
+        Thread.sleep(2000);
 
         onView(withId(R.id.event_title_detail)).check(matches(withText("testEventBrowsing")));
         onView(withId(R.id.detail_about_event)).check(matches(isDisplayed()));
