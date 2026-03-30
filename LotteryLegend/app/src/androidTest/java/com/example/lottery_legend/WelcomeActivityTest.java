@@ -10,14 +10,15 @@ import static androidx.test.espresso.matcher.ViewMatchers.withId;
 
 import static org.hamcrest.Matchers.anyOf;
 
-import androidx.test.espresso.intent.Intents;
 import androidx.test.espresso.intent.rule.IntentsRule;
 import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
-import org.junit.After;
-import org.junit.Before;
+import com.example.lottery_legend.entrant.CreateProfileActivity;
+import com.example.lottery_legend.entrant.MainActivity;
+import com.example.lottery_legend.entrant.WelcomeActivity;
+
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;

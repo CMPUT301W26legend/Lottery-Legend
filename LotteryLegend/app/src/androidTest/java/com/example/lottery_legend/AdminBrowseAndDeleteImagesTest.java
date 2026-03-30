@@ -14,6 +14,8 @@ import static org.hamcrest.Matchers.allOf;
 
 import android.view.View;
 
+import com.example.lottery_legend.admin.AdminActivity;
+import com.example.lottery_legend.model.Event;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.FirebaseFirestore;
 

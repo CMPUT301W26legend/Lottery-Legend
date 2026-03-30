@@ -18,6 +18,9 @@ import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
+import com.example.lottery_legend.event.EventDetailsActivity;
+import com.example.lottery_legend.event.ScanActivity;
+import com.example.lottery_legend.model.Event;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.FirebaseFirestore;
 

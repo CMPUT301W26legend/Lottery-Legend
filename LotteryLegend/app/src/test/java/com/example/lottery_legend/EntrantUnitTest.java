@@ -1,5 +1,6 @@
 package com.example.lottery_legend;
 
+import com.example.lottery_legend.model.Entrant;
 import com.google.firebase.Timestamp;
 import org.junit.Test;
 import java.util.Date;

@@ -20,43 +20,43 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.LotteryLegend" >
         <activity
-            android:name=".EventDetailsActivity"
+            android:name=".event.EventDetailsActivity"
             android:exported="false" />
         <activity
-            android:name=".ScanActivity"
+            android:name=".event.ScanActivity"
             android:exported="false" />
         <activity
-            android:name=".AdminUserDetailActivity"
+            android:name=".admin.AdminUserDetailActivity"
             android:exported="false" />
         <activity
-            android:name=".AdminActivity"
+            android:name=".admin.AdminActivity"
             android:exported="false" />
         <activity
-            android:name=".OrganizerHistoryActivity"
+            android:name=".organizer.OrganizerHistoryActivity"
             android:exported="false" />
         <activity
-            android:name=".OrganizerEventDetailsActivity"
+            android:name=".organizer.OrganizerEventDetailsActivity"
             android:exported="false" />
         <activity
-            android:name=".OrganizerQRCodeActivity"
+            android:name=".organizer.OrganizerQRCodeActivity"
             android:exported="false" />
         <activity
-            android:name=".CreateEventActivity"
+            android:name=".organizer.CreateEventActivity"
             android:exported="false" />
         <activity
-            android:name=".OrganizerMainActivity"
+            android:name=".organizer.OrganizerMainActivity"
             android:exported="false" />
         <activity
-            android:name=".EditProfileActivity"
+            android:name=".entrant.EditProfileActivity"
             android:exported="false" />
         <activity
-            android:name=".ProfileActivity"
+            android:name=".entrant.ProfileActivity"
             android:exported="false" />
         <activity
-            android:name=".CreateProfileActivity"
+            android:name=".entrant.CreateProfileActivity"
             android:exported="false" />
         <activity
-            android:name=".WelcomeActivity"
+            android:name=".entrant.WelcomeActivity"
             android:exported="true" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -65,7 +65,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".MainActivity"
+            android:name=".entrant.MainActivity"
             android:exported="true" />
     </application>
 

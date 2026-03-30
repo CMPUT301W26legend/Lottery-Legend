@@ -23,6 +23,10 @@ import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
+import com.example.lottery_legend.model.Event;
+import com.example.lottery_legend.organizer.CreateEventActivity;
+import com.example.lottery_legend.organizer.OrganizerEventDetailsActivity;
+import com.example.lottery_legend.organizer.OrganizerHistoryActivity;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -65,7 +69,7 @@ public class OrganizerHistoryActivityTest {
         db = FirebaseFirestore.getInstance();
 
         // Create a test event in Firestore owned by the test organizer
-        Event testEvent = new Event(TEST_DEVICE_ID, TEST_EVENT_TITLE, "Integration Test Description", 
+        Event testEvent = new Event(TEST_DEVICE_ID, TEST_EVENT_TITLE, "Integration Test Description",
                 false, "Test Location", "2023-10-01", "2023-10-02", "2023-09-01", 
                 "2023-09-30", "2023-10-01", 10, 20);
         testEvent.setEventId(TEST_EVENT_ID);

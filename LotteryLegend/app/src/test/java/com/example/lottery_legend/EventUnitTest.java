@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import static org.junit.Assert.*;
 
+import com.example.lottery_legend.model.Event;
+
 /**
  * Unit test for the Event model class.
  */
