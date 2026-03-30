@@ -20,6 +20,9 @@ import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
+import com.example.lottery_legend.model.Event;
+import com.example.lottery_legend.organizer.OrganizerEventDetailsActivity;
+import com.example.lottery_legend.organizer.OrganizerQRCodeActivity;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -61,9 +64,16 @@ public class OrganizerEventDetailsActivityTest {
         db = FirebaseFirestore.getInstance();
         
         // Create a test event in Firestore to simulate real data environment
-        Event testEvent = new Event("org1", TEST_EVENT_TITLE, "Integration Description", true, "Test Location",
-                "2023-10-01", "2023-10-02", "2023-09-01", "2023-09-30", "2023-10-01", 10, 20);
+        Event testEvent = new Event();
+        testEvent.setOrganizerId("org1");
+        testEvent.setTitle(TEST_EVENT_TITLE);
+        testEvent.setDescription("Integration Description");
+        testEvent.setGeoEnabled(true);
+        testEvent.setEventLocation(new Event.EventLocation("Test Location", "Test Location", 0.0, 0.0));
+        testEvent.setCapacity(10);
+        testEvent.setMaxWaitingList(20);
         testEvent.setEventId(TEST_EVENT_ID);
+        testEvent.setStatus("open");
         
         Tasks.await(db.collection("events").document(TEST_EVENT_ID).set(testEvent), 5, TimeUnit.SECONDS);
     }

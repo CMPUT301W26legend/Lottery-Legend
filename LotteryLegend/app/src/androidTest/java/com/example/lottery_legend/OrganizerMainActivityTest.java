@@ -21,6 +21,11 @@ import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
+import com.example.lottery_legend.entrant.ProfileActivity;
+import com.example.lottery_legend.organizer.CreateEventActivity;
+import com.example.lottery_legend.organizer.OrganizerHistoryActivity;
+import com.example.lottery_legend.organizer.OrganizerMainActivity;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
