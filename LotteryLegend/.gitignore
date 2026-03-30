@@ -13,3 +13,21 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# AI Agent / Tooling junk
+.adal/
+.agents/
+.augment/
+.claude/
+.codebuddy/
+.continue/
+.factory/
+.goose/
+.roo/
+.windsurf/
+.vibe/
+.trae/
+skills/
+skills-lock.json
+.firebaserc-debug.log
+firestore-debug.log
