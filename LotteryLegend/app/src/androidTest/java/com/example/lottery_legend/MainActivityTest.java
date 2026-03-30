@@ -100,8 +100,10 @@ public class MainActivityTest {
     @Test
     public void testLeaveWaitingListDialogUI() {
         Event joinedEvent = createMockEvent("Joined Event", "open");
-        List<String> waitingList = new ArrayList<>();
-        waitingList.add(TEST_DEVICE_ID); 
+        List<Event.WaitingListEntry> waitingList = new ArrayList<>();
+        Event.WaitingListEntry entry = new Event.WaitingListEntry();
+        entry.setDeviceId(TEST_DEVICE_ID);
+        waitingList.add(entry); 
         joinedEvent.setWaitingList(waitingList);
 
         activityRule.getScenario().onActivity(activity -> {
@@ -136,8 +138,14 @@ public class MainActivityTest {
     }
 
     private Event createMockEvent(String title, String status) {
-        Event event = new Event("org1", title, "Desc", true, "Loc",
-                "2023-10-01", "2023-10-02", "2023-09-01", "2023-09-30", "2023-10-01", 10, 20);
+        Event event = new Event();
+        event.setOrganizerId("org1");
+        event.setTitle(title);
+        event.setDescription("Desc");
+        event.setGeoEnabled(true);
+        event.setEventLocation(new Event.EventLocation("Loc", "Loc", 0.0, 0.0));
+        event.setCapacity(10);
+        event.setMaxWaitingList(20);
         event.setEventId("test_id_" + title);
         event.setStatus(status);
         event.setWaitingList(new ArrayList<>());

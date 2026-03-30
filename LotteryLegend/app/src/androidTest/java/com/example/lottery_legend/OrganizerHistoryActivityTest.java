@@ -69,10 +69,16 @@ public class OrganizerHistoryActivityTest {
         db = FirebaseFirestore.getInstance();
 
         // Create a test event in Firestore owned by the test organizer
-        Event testEvent = new Event(TEST_DEVICE_ID, TEST_EVENT_TITLE, "Integration Test Description",
-                false, "Test Location", "2023-10-01", "2023-10-02", "2023-09-01", 
-                "2023-09-30", "2023-10-01", 10, 20);
+        Event testEvent = new Event();
+        testEvent.setOrganizerId(TEST_DEVICE_ID);
+        testEvent.setTitle(TEST_EVENT_TITLE);
+        testEvent.setDescription("Integration Test Description");
+        testEvent.setGeoEnabled(false);
+        testEvent.setEventLocation(new Event.EventLocation("Test Location", "Test Location", 0.0, 0.0));
+        testEvent.setCapacity(10);
+        testEvent.setMaxWaitingList(20);
         testEvent.setEventId(TEST_EVENT_ID);
+        testEvent.setStatus("open");
 
         // Await synchronization with Firestore to ensure data is present when activity loads
         // Use a generous timeout for network-dependent setup

@@ -50,14 +50,17 @@ public class AdminRemoveProfileTest {
     public void setUp() throws Exception {
         db = FirebaseFirestore.getInstance();
         Timestamp now = new Timestamp(new Date());
-        Entrant testEntrant = new Entrant(
-                "entrantTest",
-                "remove@test.com",
-                "1234567890",
-                true,
-                "entrantTest",
-                now
-        );
+        
+        Entrant testEntrant = new Entrant();
+        testEntrant.setDeviceId("entrantTest");
+        testEntrant.setName("entrantTest");
+        testEntrant.setEmail("remove@test.com");
+        testEntrant.setPhone("1234567890");
+        testEntrant.setNotificationsEnabled(true);
+        testEntrant.setJoinDate(now);
+        testEntrant.setUpdatedAt(now);
+        testEntrant.setIsAdmin(false);
+
         Tasks.await(db.collection("entrants").document("entrantTest").set(testEntrant), 5, TimeUnit.SECONDS);
 
         Organizer testOrganizer = new Organizer(

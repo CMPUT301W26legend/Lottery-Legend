@@ -48,7 +48,8 @@ public class FirestoreUnitTest {
 
     @Test
     public void testFirestoreSetDataCalled() {
-        Entrant entrant = new Entrant("Test User", "test@example.com", "12345", true, "test_user_id", new Timestamp(new Date()));
+        Timestamp now = new Timestamp(new Date());
+        Entrant entrant = new Entrant("test_user_id", "Test User", "test@example.com", "12345", true, now, now, false);
         String deviceId = "test_device_id";
 
         mockDb.collection("entrants").document(deviceId).set(entrant);

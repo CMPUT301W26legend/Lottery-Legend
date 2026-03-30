@@ -48,26 +48,25 @@ public class AdminBrowseProfilesTest {
         db = FirebaseFirestore.getInstance();
         Timestamp now = new Timestamp(new Date());
 
-        Entrant testEntrant = new Entrant(
-                "testEntrant",
-                "entrant@test.com",
-                "1234567890",
-                true,
-                "testEntrantID",
-                now
-        );
+        Entrant testEntrant = new Entrant();
+        testEntrant.setName("testEntrant");
+        testEntrant.setEmail("entrant@test.com");
+        testEntrant.setPhone("1234567890");
+        testEntrant.setNotificationsEnabled(true);
+        testEntrant.setDeviceId("testEntrantID");
+        testEntrant.setJoinDate(now);
+
         Tasks.await(db.collection("entrants").document("testEntrantID").set(testEntrant), 5, TimeUnit.SECONDS);
 
-        Organizer testOrganizer = new Organizer(
-                "testOrganizerID",
-                "testOrganizer",
-                "organizer@test.com",
-                "0987654321",
-                now,
-                now,
-                false,
-                new ArrayList<>()
-        );
+        Organizer testOrganizer = new Organizer();
+        testOrganizer.setDeviceId("testOrganizerID");
+        testOrganizer.setName("testOrganizer");
+        testOrganizer.setEmail("organizer@test.com");
+        testOrganizer.setPhone("0987654321");
+        testOrganizer.setJoinDate(now);
+        testOrganizer.setUpdatedAt(now);
+        testOrganizer.setCreatedEvents(new ArrayList<>());
+
         Tasks.await(db.collection("organizers").document("testOrganizerID").set(testOrganizer), 5, TimeUnit.SECONDS);
     }
 
@@ -90,7 +89,7 @@ public class AdminBrowseProfilesTest {
     }
 
     @Test
-    public void testTestUsersAreDisplayed() throws InterruptedException {
+    public void testTestUsersAreDisplayed() {
         onView(withId(R.id.nav_admin_users)).perform(click());
 
         onView(withText("Entrants")).perform(click());

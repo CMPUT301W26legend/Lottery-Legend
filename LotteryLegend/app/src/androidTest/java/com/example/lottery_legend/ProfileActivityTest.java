@@ -60,15 +60,14 @@ public class ProfileActivityTest {
         db = FirebaseFirestore.getInstance();
 
         // Setup initial test data in Firestore
-        Entrant testEntrant = new Entrant(
-                "Test User",
-                "test@example.com",
-                "1234567890",
-                true,
-                TEST_DEVICE_ID,
-                new Timestamp(new Date())
-        );
-        testEntrant.isAdmin = true;
+        Entrant testEntrant = new Entrant();
+        testEntrant.setName("Test User");
+        testEntrant.setEmail("test@example.com");
+        testEntrant.setPhone("1234567890");
+        testEntrant.setNotificationsEnabled(true);
+        testEntrant.setDeviceId(TEST_DEVICE_ID);
+        testEntrant.setJoinDate(new Timestamp(new Date()));
+        testEntrant.setIsAdmin(true);
 
         Tasks.await(db.collection("entrants").document(TEST_DEVICE_ID).set(testEntrant), 10, TimeUnit.SECONDS);
     }
@@ -131,7 +130,7 @@ public class ProfileActivityTest {
     @Test
     public void testSwitchToOrganizer() throws InterruptedException {
         Thread.sleep(1000);
-        onView(withId(R.id.layoutSwitchOrganizer)).perform(scrollTo(), click());
+        onView(withId(R.id.layoutSwitchRole)).perform(scrollTo(), click());
 
         // Wait for potential navigation
         Thread.sleep(2000);
@@ -146,8 +145,8 @@ public class ProfileActivityTest {
         onView(withId(R.id.btnDeleteAccount)).perform(scrollTo(), click());
 
         // Verify dialog shows up
-        onView(withText("Delete Account")).inRoot(isDialog()).check(matches(isDisplayed()));
-        onView(withText("Are you sure you want to delete your profile? This action cannot be undone and the app will close."))
+        onView(withText("Delete Entrant Account")).inRoot(isDialog()).check(matches(isDisplayed()));
+        onView(withText("Are you sure you want to delete your Entrant profile? Your Organizer profile (if any) will remain."))
                 .inRoot(isDialog()).check(matches(isDisplayed()));
         
         // Cancel the deletion

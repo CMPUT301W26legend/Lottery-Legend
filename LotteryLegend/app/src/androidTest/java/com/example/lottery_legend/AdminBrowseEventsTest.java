@@ -28,7 +28,6 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Test for US 03.04.01: Browsing events as an administrator.
- * Generated with the help of Gemini LLM
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
@@ -43,21 +42,16 @@ public class AdminBrowseEventsTest {
     public void setUp() throws Exception {
         db = FirebaseFirestore.getInstance();
 
-        Event testEvent = new Event(
-                "testOrganizerId",
-                "testEventBrowsing",
-                "This is a test description",
-                false,
-                "Test Location",
-                "2026-01-01",
-                "2026-01-02",
-                "2025-12-01",
-                "2025-12-31",
-                "2026-01-01",
-                100,
-                200
-        );
+        Event testEvent = new Event();
+        testEvent.setOrganizerId("testOrganizerId");
+        testEvent.setTitle("testEventBrowsing");
+        testEvent.setDescription("This is a test description");
+        testEvent.setGeoEnabled(false);
+        testEvent.setEventLocation(new Event.EventLocation("Test Location", "Test Location", 0.0, 0.0));
+        testEvent.setCapacity(100);
+        testEvent.setMaxWaitingList(200);
         testEvent.setEventId("testEventBrowsingID");
+        testEvent.setStatus("open");
 
         Tasks.await(db.collection("events").document("testEventBrowsingID").set(testEvent), 10, TimeUnit.SECONDS);
     }

@@ -42,21 +42,16 @@ public class AdminRemoveEventTest {
     public void setUp() throws Exception {
         db = FirebaseFirestore.getInstance();
 
-        Event testEvent = new Event(
-                "testOrganizerId",
-                "adminEventTest",
-                "This is a test description",
-                false,
-                "Test Location",
-                "2026-01-01",
-                "2026-01-02",
-                "2025-12-01",
-                "2025-12-31",
-                "2026-01-01",
-                100,
-                200
-        );
+        Event testEvent = new Event();
+        testEvent.setOrganizerId("testOrganizerId");
+        testEvent.setTitle("adminEventTest");
+        testEvent.setDescription("This is a test description");
+        testEvent.setGeoEnabled(false);
+        testEvent.setEventLocation(new Event.EventLocation("Test Location", "Test Location", 0.0, 0.0));
+        testEvent.setCapacity(100);
+        testEvent.setMaxWaitingList(200);
         testEvent.setEventId("adminEventTestID");
+        testEvent.setStatus("open");
 
         Tasks.await(db.collection("events").document("adminEventTestID").set(testEvent), 10, TimeUnit.SECONDS);
     }
