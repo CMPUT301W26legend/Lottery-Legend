@@ -12,6 +12,7 @@ import android.content.Intent;
 import androidx.test.core.app.ApplicationProvider;
 
 import com.example.lottery_legend.admin.AdminActivity;
+import com.example.lottery_legend.model.Event;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreSettings;
@@ -44,13 +45,14 @@ public class AdminBrowseEventsTest {
 
     static {
         try {
-            FirebaseFirestore emulatorDb = FirebaseFirestore.getInstance();
-            emulatorDb.useEmulator("10.0.2.2", 8080);
+            FirebaseFirestore firestore = FirebaseFirestore.getInstance();
+            firestore.useEmulator("10.0.2.2", 8080);
             FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
                     .setPersistenceEnabled(false)
                     .build();
-            emulatorDb.setFirestoreSettings(settings);
-        } catch (IllegalStateException e) {
+            firestore.setFirestoreSettings(settings);
+        } catch (Exception e) {
+            // Handle or ignore
         }
     }
     
@@ -70,20 +72,37 @@ public class AdminBrowseEventsTest {
         Tasks.await(db.collection("entrants").document(TEST_DEVICE_ID).set(adminData), 5, TimeUnit.SECONDS);
 
         Event testEvent = new Event(
-                "testOrganizerId",
-                "testEventBrowsing",
-                "This is a test description",
-                false,
-                "Test Location",
-                "2026-01-01",
-                "2026-01-02",
-                "2025-12-01",
-                "2025-12-31",
-                "2026-01-01",
-                100,
-                200
+                "testEventBrowsingID",     // eventId
+                "testOrganizerId",         // organizerId
+                "testEventBrowsing",       // title
+                "This is a test description", // description
+                null,                      // eventLocation
+                0.0,                       // price
+                false,                     // isPrivateEvent
+                false,                     // geoEnabled
+                null,                      // eventStartAt
+                null,                      // eventEndAt
+                null,                      // registrationStartAt
+                null,                      // registrationEndAt
+                null,                      // drawAt
+                100,                       // capacity
+                200,                       // maxWaitingList
+                0,                         // waitingListCount
+                0,                         // selectedCount
+                0,                         // cancelledCount
+                0,                         // enrolledCount
+                null,                      // posterImage
+                null,                      // qrCodeImage
+                null,                      // qrCodeValue
+                null,                      // lotteryGuidelines
+                "open",                    // status
+                null,                      // createdAt
+                null,                      // updatedAt
+                null,                      // waitingList
+                null,                      // comments
+                null,                      // coOrganizers
+                null                       // tickets
         );
-        testEvent.setEventId("testEventBrowsingID");
 
         Tasks.await(db.collection("events").document("testEventBrowsingID").set(testEvent), 10, TimeUnit.SECONDS);
     }

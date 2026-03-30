@@ -12,6 +12,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static org.hamcrest.Matchers.allOf;
 
+import android.content.Intent;
 import android.view.View;
 
 import com.example.lottery_legend.admin.AdminActivity;
@@ -19,7 +20,9 @@ import com.example.lottery_legend.model.Event;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
 
+import androidx.test.core.app.ApplicationProvider;
 import androidx.test.espresso.UiController;
 import androidx.test.espresso.ViewAction;
 import androidx.test.espresso.contrib.RecyclerViewActions;
@@ -34,49 +37,83 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.text.SimpleDateFormat;
-import java.util.Locale;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Test for US 03.06.01: Browsing and removing images as an administrator.
+ * Modified to use Firebase Local Emulator with authorized test user.
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
 public class AdminBrowseAndDeleteImagesTest {
 
     private FirebaseFirestore db;
-    private final String TEST_POSTER = "iVBORw0KGgoAAAANSUhEUgAAAOEAAADhCAMAAAAJbSJIAAAAb1BMVEUAAAD///99fX2MjIybm5v29varq6u4uLjIyMjn5+fX19f5+fnv7+/r6+vV1dXy8vLBwcEjIyNWVlbg4OCpqamSkpLExMQ0NDRubm5hYWGZmZmHh4cODg5paWkvLy95eXlLS0snJydPT08+Pj4VFRUnfKLvAAADnklEQVR4nO3d6XKiQBiF4W4QodkEQeMWozH3f43TSjQuTDKTsqvrfJz3Z6pSnKdcsDQRpXvLbNGliTGmSdMysc3jU+NLo65VeFvwn63vfn81utRejnU6dGVXlKnNrsovG+3gfop6/FFk0nZ52NYbBdRH/TJdlSb6B2ExDw++5/667Xpe/CDMxwuom+6hzWJcfCdMFr4XPqHX6q/CaPTie91T2q6ifmEe+J72tN6KPmGz9L3riU2bR2Ez9b3qqe3Se6EwoCU2t8Jc0l20a1pcCyM5TzJfvU2uhCPfa5w0+xLOZZwH79tWZ2Eu4ZVMX6/Fp3Dse4mz2k5YSL0J7Y1oTsLkw/cQd1VHYRT6nuGwYGKFRuYTade+scLS9wqnJVYo82x/LtQqk/aS+7ZdpjLJD0OlaiusfY9w2iZSEfZ7az9mhb4nOI5C/CjET74wFy801ii7xhpll1IIX2mNsksohC9Rst+mUaqyRtnFFMIX2/up7MbWKDsK8ZMvbJXcD4C7RhTCRyF+QxC2vic4bqZkf8itVEghfBTiRyF+FOIX2nO+7NZK8l+XHgsohI9C/IYgXPue4LhASfyvtesoxI9C/CjEj0L8KMSPQvwoxI9C/CjEj0L8KMSPQvwoxI9C/CjEj0L8KMSPQvwoxI9C/CjEj0L8KMSPQvwoxI9C/CjEj0L8KMSPQvwoxI9C/CjEj0L8KMSPQvwoxI9C/CjEj0L8KMSPQvwoxI9C/CjEbwjfTyP/O4YoRI9C/IYglP/dl/K/v5RC9CjEj0L8KMQvHMA1SuRfZ4ZC9CjEbwhC+dc/lC6Ufw3LIQjlXw9Y/jWdKUQvVqXvCY6rVOp7guMSCuFLlPE9wXGleGE6AGHue4LjGhX5nuA4I16YixdGFMJHIX5WuPG9wW2RymrfG9xmhS++NzitzlQ29T3CabtM6ZXvEU4LtdKy36hJrNBsfa9wWN1YYST5r/WDiRXqueAzYqWPwmLhe4ezluYk1HI/Bm51JyxefS9x1PEmPAl1JfPpdB/rs1DoWT/UX8LozfcaBy3yK6Eu5L06fTf6Wqibne9FT+6Q6luhTne+Nz21Q6nvhbqRdEd9T/WjUBdynm4WRvcJ9WQm47y4D3PdL7SnfgmvbpbxjelWqIsW3bhsjf5OqLWpgr3vlb+uDipzD3oQ2odjk4Q7vPcY612YNJNHTo/wWJZFXblp0rRMkqSK43hsa0enZuG5deCy9eU4s+7A7XGE3VLZTWWaNib/XJpl/ZQ/Z6Qe8ZdxnRMAAAAASUVORK5CYII=";
+    private static final String TEST_DEVICE_ID = "test_admin_123";
+    private final String TEST_POSTER = "iVBORw0KGgoAAAANSUhEUgAAAOEAAADhCAMAAAAJbSJIAAAAb1BMVEUAAAD///99fX2MjIybm5v29varq6u4uLjIyMjn5+fX19f5+fnv7+/r6+vV1dXy8vLBwcEjIyNWVlbg4OCpqamSkpLExMQ0NDRubm5hYWGZmZmHh4cODg5paWkvLy95eXlLS0snJydPT08+Pj4VFRUnfKLvAAADnklEQVR4nO3d6XKiQBiF4W4QodkEQeMWozH3f43TSjQuTDKTsqvrfJz3Z6pSnKdcsDQRpXvLbNGliTGmSdMysc3jU+NLo65VeFvwn63vfn81utRejnU6dGVXlKnNrsovG+3gfop6/FFk0nZ52NYbBdRH/TJdlSb6B2ExDw++5/667Xpe/CDMxwuom+6hzWJcfCdMFr4XPqHX6q/CaPTie91T2q6ifmEe+J72tN6KPmGz9L3riU2bR2Ez9b3qqe3Se6EwoCU2t8Jc0l20a1pcCyM5TzJfvU2uhCPfa5w0+xLOZZwH79tWZ2Eu4ZVMX6/Fp3Dse4mz2k5YSL0J7Y1oTsLkw/cQd1VHYRT6nuGwYGKFRuYTade+scLS9wqnJVYo82x/LtQqk/aS+7ZdpjLJD0OlaiusfY9w2iZSEfZ7az9mhb4nOI5C/CjET74wFy801ii7xhpll1IIX2mNsksohC9Rst+mUaqyRtnFFMIX2/up7MbWKDsK8ZMvbJXcD4C7RhTCRyF+QxC2vic4bqZkf8itVEghfBTiRyF+FOIX2nO+7NZK8l+XHgsohI9C/IYgXPue4LhASfyvtesoxI9C/CjEj0L8KMSPQvwoxI9C/CjEj0L8KMSPQvwoxI9C/CjEj0L8KMSPQvwoxI9C/CjEj0L8KMSPQvwoxI9C/CjEj0L8KMSPQvwoxI9C/CjEj0L8KMSPQvwoxI9C/CjEbwjfTyP/O4YoRI9C/IYglP/dl/K/v5RC9CjEj0L8KMQvHMA1SuRfZ4ZC9CjEbwhC+dc/lC6Ufw3LIQjlXw9Y/jWdKUQvVqXvCY6rVOp7guMSCuFLlPE9wXGleGE6AGHue4LjGhX5nuA4I16YixdGFMJHIX5WuPG9wW2RymrfG9xmhS++NzitzlQ29T3CabtM6ZXvEU4LtdKy36hJrNBsfa9wWN1YYST5r/WDiRXqueAzYqWPwmLhe4ezluYk1HI/Bm51JyxefS9x1PEmPAl1JfPpdB/rs1DoWT/UX8LozfcaBy3yK6Eu5L06fTf6Wqibne9FT+6Q6luhTne+Nz21Q6nvhbqRdEd9T/WjUBdynm4WRvcJ9WQm47y4D3PdL7SnfgmvbpbxjelWqIsW3bhsjf5OqLWpgr3vlb+uDipzD3oQ2odjk4Q7vPcY612YNJNHTo/wWJZFXblp0rRMkqSK43hsa0enZuG5deCy9eU4s+7A7XGE3VLZTWWaNib/XJpl/ZQ/Z6Qe8ZdxnRMAAAAASUVORK5CYII=";
+
+    static {
+        try {
+            FirebaseFirestore firestore = FirebaseFirestore.getInstance();
+            firestore.useEmulator("10.0.2.2", 8080);
+            FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
+                    .setPersistenceEnabled(false)
+                    .build();
+            firestore.setFirestoreSettings(settings);
+        } catch (Exception e) {
+            // Handle or ignore
+        }
+    }
 
     @Rule
     public ActivityScenarioRule<AdminActivity> activityRule =
-            new ActivityScenarioRule<>(AdminActivity.class);
+            new ActivityScenarioRule<>(new Intent(ApplicationProvider.getApplicationContext(), AdminActivity.class)
+                    .putExtra("deviceId", TEST_DEVICE_ID));
 
     @Before
     public void setUp() throws Exception {
         db = FirebaseFirestore.getInstance();
 
-        Event testEvent = new Event();
-        testEvent.setEventId("eventPosterTestID");
-        testEvent.setOrganizerId("testOrganizerId");
-        testEvent.setTitle("eventTestNameMedia");
-        testEvent.setDescription("Description for visible test");
-        testEvent.setGeoEnabled(false);
-        testEvent.setEventLocation(new Event.EventLocation("Test Location", null, null, null));
-        testEvent.setCapacity(100);
-        testEvent.setMaxWaitingList(200);
-        testEvent.setPosterImage(TEST_POSTER);
-        testEvent.setStatus("open");
-        
-        testEvent.setCreatedAt(Timestamp.now());
-        testEvent.setUpdatedAt(Timestamp.now());
+        // Register the test device as an admin in the local emulator
+        Map<String, Object> adminData = new HashMap<>();
+        adminData.put("isAdmin", true);
+        adminData.put("name", "Test Admin");
+        Tasks.await(db.collection("entrants").document(TEST_DEVICE_ID).set(adminData), 5, TimeUnit.SECONDS);
 
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-        testEvent.setEventStartAt(new Timestamp(sdf.parse("2026-01-01")));
-        testEvent.setEventEndAt(new Timestamp(sdf.parse("2026-01-02")));
-        testEvent.setRegistrationStartAt(new Timestamp(sdf.parse("2025-12-01")));
-        testEvent.setRegistrationEndAt(new Timestamp(sdf.parse("2025-12-31")));
-        testEvent.setDrawAt(new Timestamp(sdf.parse("2026-01-01")));
+        // Creating a fake event using the full constructor
+        Event testEvent = new Event(
+                "eventPosterTestID",       // eventId
+                "testOrganizerId",         // organizerId
+                "eventTestNameMedia",      // title
+                "Description for visible test", // description
+                new Event.EventLocation("Test Location", null, null, null), // eventLocation
+                0.0,                       // price
+                false,                     // isPrivateEvent
+                false,                     // geoEnabled
+                null,                      // eventStartAt
+                null,                      // eventEndAt
+                null,                      // registrationStartAt
+                null,                      // registrationEndAt
+                null,                      // drawAt
+                100,                       // capacity
+                200,                       // maxWaitingList
+                0,                         // waitingListCount
+                0,                         // selectedCount
+                0,                         // cancelledCount
+                0,                         // enrolledCount
+                TEST_POSTER,               // posterImage
+                null,                      // qrCodeImage
+                null,                      // qrCodeValue
+                null,                      // lotteryGuidelines
+                "open",                    // status
+                Timestamp.now(),           // createdAt
+                Timestamp.now(),           // updatedAt
+                null,                      // waitingList
+                null,                      // comments
+                null,                      // coOrganizers
+                null                       // tickets
+        );
 
         Tasks.await(db.collection("events").document("eventPosterTestID").set(testEvent), 10, TimeUnit.SECONDS);
     }
@@ -84,14 +121,15 @@ public class AdminBrowseAndDeleteImagesTest {
     @After
     public void tearDown() throws Exception {
         if (db != null) {
-            db.collection("events").document("eventPosterTestID").delete();
+            Tasks.await(db.collection("events").document("eventPosterTestID").delete(), 10, TimeUnit.SECONDS);
+            Tasks.await(db.collection("entrants").document(TEST_DEVICE_ID).delete(), 5, TimeUnit.SECONDS);
         }
     }
 
     @Test
     public void testBrowseAndRemoveVisibleImage() throws InterruptedException {
         onView(withId(R.id.nav_admin_media)).perform(click());
-        Thread.sleep(1000);
+        Thread.sleep(2000);
         
         onView(withId(R.id.admin_media_recycler))
                 .perform(RecyclerViewActions.scrollTo(hasDescendant(allOf(withId(R.id.media_event_title), withText("eventTestNameMedia")))));
@@ -99,7 +137,7 @@ public class AdminBrowseAndDeleteImagesTest {
         onView(allOf(withId(R.id.media_event_title), withText("eventTestNameMedia"))).check(matches(isDisplayed()));
 
         onView(withId(R.id.search_bar_media)).perform(typeText("eventTestNameMedia"), closeSoftKeyboard());
-        Thread.sleep(1000);
+        Thread.sleep(2000);
         
         onView(allOf(withId(R.id.media_event_title), withText("eventTestNameMedia"))).check(matches(isDisplayed()));
 
@@ -111,7 +149,7 @@ public class AdminBrowseAndDeleteImagesTest {
         Thread.sleep(1000);
         onView(withText("Delete Image")).check(matches(isDisplayed()));
         onView(withId(R.id.btn_delete)).perform(click());
-        Thread.sleep(1000);
+        Thread.sleep(2000);
         
         onView(allOf(withId(R.id.media_event_title), withText("eventTestNameMedia"))).check(doesNotExist());
     }
