@@ -13,7 +13,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 /**
  * This class is the main navigation hub for the Administrator panel. It handles the switching
- * between different fragments (Events, Users, Media, Logs). Also updates the top bar to
+ * between different fragments (Events, Users, Media, Logs, Profile). Also updates the top bar to
  * match currently selected fragments.
  *
  */
@@ -56,6 +56,10 @@ public class AdminActivity extends AppCompatActivity {
                 } else if (itemId == R.id.nav_admin_logs) {
                     selectedFragment = new AdminLogsFragment();
                     if (topTitle != null) topTitle.setText("Notification Logs");
+                    if (topSubtitle != null) topSubtitle.setText("Administrator");
+                } else if (itemId == R.id.nav_admin_profile) {
+                    selectedFragment = new AdminProfileFragment();
+                    if (topTitle != null) topTitle.setText("Profile");
                     if (topSubtitle != null) topSubtitle.setText("Administrator");
                 }
 
