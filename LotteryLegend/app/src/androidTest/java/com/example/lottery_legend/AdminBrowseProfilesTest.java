@@ -8,6 +8,9 @@ import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 
+import com.example.lottery_legend.admin.AdminActivity;
+import com.example.lottery_legend.model.Entrant;
+import com.example.lottery_legend.model.Organizer;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -23,12 +26,12 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Test for US 03.05.01: Browsing user profiles as an administrator.
- * Generated with the help of Gemini LLM
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
@@ -45,23 +48,25 @@ public class AdminBrowseProfilesTest {
         db = FirebaseFirestore.getInstance();
         Timestamp now = new Timestamp(new Date());
 
-        Entrant testEntrant = new Entrant(
-                "testEntrant",
-                "entrant@test.com",
-                "1234567890",
-                true,
-                "testEntrantID",
-                now
-        );
+        Entrant testEntrant = new Entrant();
+        testEntrant.setName("testEntrant");
+        testEntrant.setEmail("entrant@test.com");
+        testEntrant.setPhone("1234567890");
+        testEntrant.setNotificationsEnabled(true);
+        testEntrant.setDeviceId("testEntrantID");
+        testEntrant.setJoinDate(now);
+
         Tasks.await(db.collection("entrants").document("testEntrantID").set(testEntrant), 5, TimeUnit.SECONDS);
 
-        Organizer testOrganizer = new Organizer(
-                "testOrganizer",
-                "organizer@test.com",
-                "0987654321",
-                "testOrganizerID",
-                now
-        );
+        Organizer testOrganizer = new Organizer();
+        testOrganizer.setDeviceId("testOrganizerID");
+        testOrganizer.setName("testOrganizer");
+        testOrganizer.setEmail("organizer@test.com");
+        testOrganizer.setPhone("0987654321");
+        testOrganizer.setJoinDate(now);
+        testOrganizer.setUpdatedAt(now);
+        testOrganizer.setCreatedEvents(new ArrayList<>());
+
         Tasks.await(db.collection("organizers").document("testOrganizerID").set(testOrganizer), 5, TimeUnit.SECONDS);
     }
 
@@ -84,7 +89,7 @@ public class AdminBrowseProfilesTest {
     }
 
     @Test
-    public void testTestUsersAreDisplayed() throws InterruptedException {
+    public void testTestUsersAreDisplayed() {
         onView(withId(R.id.nav_admin_users)).perform(click());
 
         onView(withText("Entrants")).perform(click());

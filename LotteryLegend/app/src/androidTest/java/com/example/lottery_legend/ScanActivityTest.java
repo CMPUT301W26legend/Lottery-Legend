@@ -18,6 +18,9 @@ import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
+import com.example.lottery_legend.event.EventDetailsActivity;
+import com.example.lottery_legend.event.ScanActivity;
+import com.example.lottery_legend.model.Event;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -56,21 +59,16 @@ public class ScanActivityTest {
         db = FirebaseFirestore.getInstance();
 
         // Setup initial test event in Firestore
-        Event testEvent = new Event(
-                "testOrganizerId",
-                "Scan Test Event",
-                "Description for Scan Test",
-                false,
-                "Test Location",
-                "2025-01-01",
-                "2025-01-02",
-                "2024-12-01",
-                "2024-12-31",
-                "2025-01-01",
-                100,
-                200
-        );
+        Event testEvent = new Event();
+        testEvent.setOrganizerId("testOrganizerId");
+        testEvent.setTitle("Scan Test Event");
+        testEvent.setDescription("Description for Scan Test");
+        testEvent.setGeoEnabled(false);
+        testEvent.setEventLocation(new Event.EventLocation("Test Location", "Test Location", 0.0, 0.0));
+        testEvent.setCapacity(100);
+        testEvent.setMaxWaitingList(200);
         testEvent.setEventId(TEST_EVENT_ID);
+        testEvent.setStatus("open");
 
         Tasks.await(db.collection("events").document(TEST_EVENT_ID).set(testEvent), 10, TimeUnit.SECONDS);
     }

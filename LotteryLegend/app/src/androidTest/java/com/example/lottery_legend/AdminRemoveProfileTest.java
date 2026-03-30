@@ -11,6 +11,9 @@ import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static org.hamcrest.Matchers.allOf;
 
+import com.example.lottery_legend.admin.AdminActivity;
+import com.example.lottery_legend.model.Entrant;
+import com.example.lottery_legend.model.Organizer;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -26,6 +29,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
@@ -46,22 +50,28 @@ public class AdminRemoveProfileTest {
     public void setUp() throws Exception {
         db = FirebaseFirestore.getInstance();
         Timestamp now = new Timestamp(new Date());
-        Entrant testEntrant = new Entrant(
-                "entrantTest",
-                "remove@test.com",
-                "1234567890",
-                true,
-                "entrantTest",
-                now
-        );
+        
+        Entrant testEntrant = new Entrant();
+        testEntrant.setDeviceId("entrantTest");
+        testEntrant.setName("entrantTest");
+        testEntrant.setEmail("remove@test.com");
+        testEntrant.setPhone("1234567890");
+        testEntrant.setNotificationsEnabled(true);
+        testEntrant.setJoinDate(now);
+        testEntrant.setUpdatedAt(now);
+        testEntrant.setIsAdmin(false);
+
         Tasks.await(db.collection("entrants").document("entrantTest").set(testEntrant), 5, TimeUnit.SECONDS);
 
         Organizer testOrganizer = new Organizer(
                 "organizerTest",
+                "organizerTest",
                 "remove_org@test.com",
                 "0987654321",
-                "organizerTest",
-                now
+                now,
+                now,
+                false,
+                new ArrayList<>()
         );
         Tasks.await(db.collection("organizers").document("organizerTest").set(testOrganizer), 5, TimeUnit.SECONDS);
     }

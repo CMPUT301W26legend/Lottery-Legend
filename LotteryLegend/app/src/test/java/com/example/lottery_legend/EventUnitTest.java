@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import static org.junit.Assert.*;
 
+import com.example.lottery_legend.model.Event;
+
 /**
  * Unit test for the Event model class.
  */
@@ -16,33 +18,29 @@ public class EventUnitTest {
         String title = "Summer Concert";
         String description = "Music under the stars";
         boolean geoEnabled = true;
-        String location = "Central Park";
-        String startDate = "2025-07-01";
-        String endDate = "2025-07-01";
-        String regStart = "2025-06-01";
-        String regEnd = "2025-06-15";
-        String drawDate = "2025-06-16";
+        Event.EventLocation location = new Event.EventLocation("Central Park", "Central Park", 0.0, 0.0);
         int capacity = 500;
         Integer maxWaitingList = 1000;
 
-        Event event = new Event(organizerId, title, description, geoEnabled, location,
-                startDate, endDate, regStart, regEnd, drawDate, capacity, maxWaitingList);
+        Event event = new Event();
+        event.setOrganizerId(organizerId);
+        event.setTitle(title);
+        event.setDescription(description);
+        event.setGeoEnabled(geoEnabled);
+        event.setEventLocation(location);
+        event.setCapacity(capacity);
+        event.setMaxWaitingList(maxWaitingList);
+        event.setStatus("open");
 
-        assertNotNull(event.getEventId());
         assertEquals(organizerId, event.getOrganizerId());
         assertEquals(title, event.getTitle());
         assertEquals(description, event.getDescription());
         assertTrue(event.isGeoEnabled());
-        assertEquals(location, event.getLocation());
-        assertEquals(startDate, event.getEventStartDate());
-        assertEquals(endDate, event.getEventEndDate());
-        assertEquals(regStart, event.getRegistrationStartDate());
-        assertEquals(regEnd, event.getRegistrationEndDate());
-        assertEquals(drawDate, event.getDrawDate());
+        assertEquals(location, event.getEventLocation());
         assertEquals(capacity, event.getCapacity());
         assertEquals(maxWaitingList, event.getMaxWaitingList());
         assertEquals("open", event.getStatus());
-        assertNotNull(event.getWaitingList());
+        assertNull(event.getWaitingList()); // Waiting list is null by default in new Event()
     }
 
     @Test
@@ -58,18 +56,19 @@ public class EventUnitTest {
         event.setStatus("closed");
         assertEquals("closed", event.getStatus());
 
-        List<String> waitingList = new ArrayList<>();
-        waitingList.add("user1");
+        List<Event.WaitingListEntry> waitingList = new ArrayList<>();
+        Event.WaitingListEntry entry = new Event.WaitingListEntry();
+        entry.setDeviceId("user1");
+        waitingList.add(entry);
         event.setWaitingList(waitingList);
         assertEquals(1, event.getWaitingList().size());
-        assertEquals("user1", event.getWaitingList().get(0));
+        assertEquals("user1", event.getWaitingList().get(0).getDeviceId());
     }
 
     @Test
     public void testEmptyConstructor() {
         Event event = new Event();
         assertNull(event.getEventId());
-        assertNotNull(event.getWaitingList());
-        assertTrue(event.getWaitingList().isEmpty());
+        assertNull(event.getWaitingList());
     }
 }

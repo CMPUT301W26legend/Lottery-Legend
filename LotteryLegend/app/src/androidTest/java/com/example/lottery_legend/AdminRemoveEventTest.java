@@ -3,12 +3,12 @@ package com.example.lottery_legend;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
-import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.ViewMatchers.hasDescendant;
-import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 
+import com.example.lottery_legend.admin.AdminActivity;
+import com.example.lottery_legend.model.Event;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -42,21 +42,16 @@ public class AdminRemoveEventTest {
     public void setUp() throws Exception {
         db = FirebaseFirestore.getInstance();
 
-        Event testEvent = new Event(
-                "testOrganizerId",
-                "adminEventTest",
-                "This is a test description",
-                false,
-                "Test Location",
-                "2026-01-01",
-                "2026-01-02",
-                "2025-12-01",
-                "2025-12-31",
-                "2026-01-01",
-                100,
-                200
-        );
+        Event testEvent = new Event();
+        testEvent.setOrganizerId("testOrganizerId");
+        testEvent.setTitle("adminEventTest");
+        testEvent.setDescription("This is a test description");
+        testEvent.setGeoEnabled(false);
+        testEvent.setEventLocation(new Event.EventLocation("Test Location", "Test Location", 0.0, 0.0));
+        testEvent.setCapacity(100);
+        testEvent.setMaxWaitingList(200);
         testEvent.setEventId("adminEventTestID");
+        testEvent.setStatus("open");
 
         Tasks.await(db.collection("events").document("adminEventTestID").set(testEvent), 10, TimeUnit.SECONDS);
     }

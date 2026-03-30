@@ -17,6 +17,8 @@ import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
+import com.example.lottery_legend.model.Event;
+import com.example.lottery_legend.organizer.OrganizerQRCodeActivity;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -64,21 +66,16 @@ public class OrganizerQRCodeActivityTest {
         dummyQrBase64 = Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT);
 
         // Setup initial test data in Firestore
-        Event testEvent = new Event(
-                "testOrganizerId",
-                TEST_EVENT_TITLE,
-                "Description for QR Test",
-                false,
-                "Test Location",
-                "2025-01-01",
-                "2025-01-02",
-                "2024-12-01",
-                "2024-12-31",
-                "2025-01-01",
-                100,
-                200
-        );
+        Event testEvent = new Event();
+        testEvent.setOrganizerId("testOrganizerId");
+        testEvent.setTitle(TEST_EVENT_TITLE);
+        testEvent.setDescription("Description for QR Test");
+        testEvent.setGeoEnabled(false);
+        testEvent.setEventLocation(new Event.EventLocation("Test Location", "Test Location", 0.0, 0.0));
+        testEvent.setCapacity(100);
+        testEvent.setMaxWaitingList(200);
         testEvent.setEventId(TEST_EVENT_ID);
+        testEvent.setStatus("open");
         
         // Wait for Firestore operations to complete
         Tasks.await(db.collection("events").document(TEST_EVENT_ID).set(testEvent), 10, TimeUnit.SECONDS);

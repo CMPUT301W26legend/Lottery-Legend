@@ -20,6 +20,8 @@ import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
+import com.example.lottery_legend.entrant.EditProfileActivity;
+import com.example.lottery_legend.model.Entrant;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -58,14 +60,13 @@ public class EditProfileActivityTest {
     public void setUp() throws Exception {
         db = FirebaseFirestore.getInstance();
         
-        Entrant testUser = new Entrant(
-                "Initial Name", 
-                "initial@example.com", 
-                "123456789", 
-                true, 
-                TEST_DEVICE_ID, 
-                new Timestamp(new Date())
-        );
+        Entrant testUser = new Entrant();
+        testUser.setName("Initial Name");
+        testUser.setEmail("initial@example.com");
+        testUser.setPhone("123456789");
+        testUser.setNotificationsEnabled(true);
+        testUser.setDeviceId(TEST_DEVICE_ID);
+        testUser.setJoinDate(new Timestamp(new Date()));
         
         Tasks.await(db.collection("entrants").document(TEST_DEVICE_ID).set(testUser), 10, TimeUnit.SECONDS);
     }

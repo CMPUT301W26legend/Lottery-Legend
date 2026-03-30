@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.lottery_legend.model.Entrant;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.CollectionReference;
@@ -47,7 +48,8 @@ public class FirestoreUnitTest {
 
     @Test
     public void testFirestoreSetDataCalled() {
-        Entrant entrant = new Entrant("Test User", "test@example.com", "12345", true, "test_user_id", new Timestamp(new Date()));
+        Timestamp now = new Timestamp(new Date());
+        Entrant entrant = new Entrant("test_user_id", "Test User", "test@example.com", "12345", true, now, now, false);
         String deviceId = "test_device_id";
 
         mockDb.collection("entrants").document(deviceId).set(entrant);

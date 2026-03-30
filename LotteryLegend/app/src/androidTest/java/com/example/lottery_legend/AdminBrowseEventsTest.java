@@ -11,6 +11,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import android.content.Intent;
 import androidx.test.core.app.ApplicationProvider;
 
+import com.example.lottery_legend.admin.AdminActivity;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreSettings;
