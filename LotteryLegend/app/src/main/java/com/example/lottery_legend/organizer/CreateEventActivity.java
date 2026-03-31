@@ -1,6 +1,7 @@
 package com.example.lottery_legend.organizer;
 
 import android.app.DatePickerDialog;
+import android.app.TimePickerDialog;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -8,7 +9,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Base64;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -23,7 +23,6 @@ import androidx.core.view.WindowInsetsCompat;
 import com.example.lottery_legend.R;
 import com.example.lottery_legend.model.Event;
 import com.google.android.material.appbar.MaterialToolbar;
-import com.google.android.material.card.MaterialCardView;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.zxing.BarcodeFormat;
@@ -35,6 +34,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.Locale;
 
 /**
@@ -49,15 +49,16 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
     private EditText editTextEventTitle;
     private EditText editTextDescription;
     private EditText editTextLocation;
-    private EditText eventStartDate;
-    private EditText eventEndDate;
-    private EditText registrationStartDate;
-    private EditText registrationEndDate;
-    private EditText drawDate;
+    private EditText editTextPrice;
+    private EditText eventStartDateTime;
+    private EditText eventEndDateTime;
+    private EditText registrationStartDateTime;
+    private EditText registrationEndDateTime;
+    private EditText drawDateTime;
     private EditText editTextCapacity;
     private EditText editTextWaitingList;
     private SwitchCompat switchGeo;
-    private MaterialCardView locationCard;
+    private SwitchCompat switchPrivateEvent;
     private Button createButton, uploadButton;
     private MaterialToolbar toolbar;
 
@@ -82,21 +83,21 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         editTextEventTitle = findViewById(R.id.editTextEventTitle);
         editTextDescription = findViewById(R.id.editTextDescription);
         editTextLocation = findViewById(R.id.editTextLocation);
-        eventStartDate = findViewById(R.id.EventStartDate);
-        eventEndDate = findViewById(R.id.EventEndDate);
-        registrationStartDate = findViewById(R.id.RegistrationStart);
-        registrationEndDate = findViewById(R.id.RegistrationEnd);
-        drawDate = findViewById(R.id.etDrawDate);
+        editTextPrice = findViewById(R.id.editTextPrice);
+        eventStartDateTime = findViewById(R.id.eventStartDateTime);
+        eventEndDateTime = findViewById(R.id.eventEndDateTime);
+        registrationStartDateTime = findViewById(R.id.registrationStartDateTime);
+        registrationEndDateTime = findViewById(R.id.registrationEndDateTime);
+        drawDateTime = findViewById(R.id.drawDateTime);
         editTextCapacity = findViewById(R.id.Capacity);
         editTextWaitingList = findViewById(R.id.WaitingList);
         switchGeo = findViewById(R.id.switchGeo);
-        locationCard = findViewById(R.id.locationCard);
+        switchPrivateEvent = findViewById(R.id.switchPrivateEvent);
         createButton = findViewById(R.id.createButton);
         uploadButton = findViewById(R.id.uploadButton);
 
         // Setup UI logic
-        setupDatePickers();
-        setupGeoSwitch();
+        setupDateTimePickers();
 
         // Toolbar back navigation
         toolbar.setNavigationOnClickListener(v -> finish());
@@ -133,45 +134,33 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
     }
 
     /**
-     * Sets up the geolocation switch to show/hide the location input card.
+     * Configures DateTimePickerDialogs for all date/time input fields.
      */
-    private void setupGeoSwitch() {
-        // Initial visibility
-        locationCard.setVisibility(switchGeo.isChecked() ? View.VISIBLE : View.GONE);
-
-        // Change visibility on toggle
-        switchGeo.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked) {
-                locationCard.setVisibility(View.VISIBLE);
-            } else {
-                locationCard.setVisibility(View.GONE);
-                editTextLocation.setText("");
-            }
-        });
+    private void setupDateTimePickers() {
+        EditText[] dateFields = {eventStartDateTime, eventEndDateTime, registrationStartDateTime, registrationEndDateTime, drawDateTime};
+        for (EditText et : dateFields) {
+            et.setOnClickListener(v -> showDateTimePicker(et));
+        }
     }
 
-    /**
-     * Configures DatePickerDialogs for all date input fields.
-     */
-    private void setupDatePickers() {
-        View.OnClickListener dateListener = v -> {
-            EditText et = (EditText) v;
-            final Calendar c = Calendar.getInstance();
-            int year = c.get(Calendar.YEAR);
-            int month = c.get(Calendar.MONTH);
-            int day = c.get(Calendar.DAY_OF_MONTH);
+    private void showDateTimePicker(EditText et) {
+        final Calendar c = Calendar.getInstance();
+        int year = c.get(Calendar.YEAR);
+        int month = c.get(Calendar.MONTH);
+        int day = c.get(Calendar.DAY_OF_MONTH);
+        int hour = c.get(Calendar.HOUR_OF_DAY);
+        int minute = c.get(Calendar.MINUTE);
 
-            DatePickerDialog datePickerDialog = new DatePickerDialog(CreateEventActivity.this,
-                    (view, year1, monthOfYear, dayOfMonth) -> et.setText((monthOfYear + 1) + "/" + dayOfMonth + "/" + year1), year, month, day);
-            datePickerDialog.show();
-        };
-
-        // Attach listener to all date fields
-        eventStartDate.setOnClickListener(dateListener);
-        eventEndDate.setOnClickListener(dateListener);
-        registrationStartDate.setOnClickListener(dateListener);
-        registrationEndDate.setOnClickListener(dateListener);
-        drawDate.setOnClickListener(dateListener);
+        DatePickerDialog datePickerDialog = new DatePickerDialog(this, (view, year1, monthOfYear, dayOfMonth) -> {
+            TimePickerDialog timePickerDialog = new TimePickerDialog(this, (view1, hourOfDay, minute1) -> {
+                Calendar selected = Calendar.getInstance();
+                selected.set(year1, monthOfYear, dayOfMonth, hourOfDay, minute1);
+                SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy HH:mm", Locale.getDefault());
+                et.setText(sdf.format(selected.getTime()));
+            }, hour, minute, true);
+            timePickerDialog.show();
+        }, year, month, day);
+        datePickerDialog.show();
     }
 
     /**
@@ -181,16 +170,17 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         String title = editTextEventTitle.getText().toString().trim();
         String description = editTextDescription.getText().toString().trim();
         String locationName = editTextLocation.getText().toString().trim();
-        String startDateStr = eventStartDate.getText().toString().trim();
-        String endDateStr = eventEndDate.getText().toString().trim();
-        String regStartStr = registrationStartDate.getText().toString().trim();
-        String regEndStr = registrationEndDate.getText().toString().trim();
-        String drawDateStr = drawDate.getText().toString().trim();
+        String priceStr = editTextPrice.getText().toString().trim();
+        String startDateStr = eventStartDateTime.getText().toString().trim();
+        String endDateStr = eventEndDateTime.getText().toString().trim();
+        String regStartStr = registrationStartDateTime.getText().toString().trim();
+        String regEndStr = registrationEndDateTime.getText().toString().trim();
+        String drawDateStr = drawDateTime.getText().toString().trim();
         String capacityStr = editTextCapacity.getText().toString().trim();
         String waitingListStr = editTextWaitingList.getText().toString().trim();
 
         if (TextUtils.isEmpty(title) || TextUtils.isEmpty(description) ||
-                (switchGeo.isChecked() && TextUtils.isEmpty(locationName)) ||
+                TextUtils.isEmpty(locationName) || TextUtils.isEmpty(priceStr) ||
                 TextUtils.isEmpty(startDateStr) || TextUtils.isEmpty(endDateStr) || TextUtils.isEmpty(regStartStr) ||
                 TextUtils.isEmpty(regEndStr) || TextUtils.isEmpty(drawDateStr) || TextUtils.isEmpty(capacityStr)) {
             Toast.makeText(this, "Please fill in all required fields", Toast.LENGTH_SHORT).show();
@@ -198,6 +188,7 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         }
 
         // Parse numerical fields
+        double price = Double.parseDouble(priceStr);
         int capacity = Integer.parseInt(capacityStr);
         Integer maxWaitingList = null;
         if (!TextUtils.isEmpty(waitingListStr)) {
@@ -209,7 +200,10 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         newEvent.setOrganizerId(deviceId);
         newEvent.setTitle(title);
         newEvent.setDescription(description);
-        newEvent.setGeoEnabled(switchGeo.isChecked());
+        newEvent.setPrice(price);
+        boolean isPrivate = switchPrivateEvent.isChecked();
+        newEvent.setIsPrivateEvent(isPrivate);
+        newEvent.setGeoEnabled(switchGeo.isChecked()); // Controls recording entrant's geo
         newEvent.setEventLocation(new Event.EventLocation(locationName, null, null, null));
         newEvent.setCapacity(capacity);
         newEvent.setMaxWaitingList(maxWaitingList);
@@ -217,22 +211,45 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         newEvent.setCreatedAt(Timestamp.now());
         newEvent.setUpdatedAt(Timestamp.now());
 
-        // Parse date strings to Timestamps
-        SimpleDateFormat sdf = new SimpleDateFormat("M/d/yyyy", Locale.getDefault());
+        // Parse date strings and validate chronological order
+        SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy HH:mm", Locale.getDefault());
         try {
-            newEvent.setEventStartAt(new Timestamp(sdf.parse(startDateStr)));
-            newEvent.setEventEndAt(new Timestamp(sdf.parse(endDateStr)));
-            newEvent.setRegistrationStartAt(new Timestamp(sdf.parse(regStartStr)));
-            newEvent.setRegistrationEndAt(new Timestamp(sdf.parse(regEndStr)));
-            newEvent.setDrawAt(new Timestamp(sdf.parse(drawDateStr)));
+            Date regStart = sdf.parse(regStartStr);
+            Date regEnd = sdf.parse(regEndStr);
+            Date drawDate = sdf.parse(drawDateStr);
+            Date eventStart = sdf.parse(startDateStr);
+            Date eventEnd = sdf.parse(endDateStr);
+
+            if (regStart.after(regEnd)) {
+                Toast.makeText(this, "Registration start must be before end", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (regEnd.after(drawDate)) {
+                Toast.makeText(this, "Registration end must be before draw date", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (drawDate.after(eventStart)) {
+                Toast.makeText(this, "Draw date must be before event start", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (eventStart.after(eventEnd)) {
+                Toast.makeText(this, "Event start must be before end", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            newEvent.setRegistrationStartAt(new Timestamp(regStart));
+            newEvent.setRegistrationEndAt(new Timestamp(regEnd));
+            newEvent.setDrawAt(new Timestamp(drawDate));
+            newEvent.setEventStartAt(new Timestamp(eventStart));
+            newEvent.setEventEndAt(new Timestamp(eventEnd));
         } catch (Exception e) {
             e.printStackTrace();
+            Toast.makeText(this, "Error parsing dates", Toast.LENGTH_SHORT).show();
+            return;
         }
 
-        // Generate a random eventId if one isn't generated by the model's logic
-        if (newEvent.getEventId() == null) {
-            newEvent.setEventId(java.util.UUID.randomUUID().toString());
-        }
+        // Generate a random eventId
+        newEvent.setEventId(java.util.UUID.randomUUID().toString());
 
         // Process poster image if available
         if (imageUri != null) {
@@ -242,10 +259,15 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
             }
         }
         
-        // Generate and set QR code for the event
-        String qrCodeBase64 = generateQRCodeBase64(newEvent.getEventId());
-        newEvent.setQrCodeImage(qrCodeBase64);
-        newEvent.setQrCodeValue(newEvent.getEventId());
+        // Generate and set QR code for the event if not private
+        if (!isPrivate) {
+            String qrCodeBase64 = generateQRCodeBase64(newEvent.getEventId());
+            newEvent.setQrCodeImage(qrCodeBase64);
+            newEvent.setQrCodeValue(newEvent.getEventId());
+        } else {
+            newEvent.setQrCodeImage(null);
+            newEvent.setQrCodeValue(null);
+        }
 
         // Save to Firestore
         db.collection("events").document(newEvent.getEventId())
