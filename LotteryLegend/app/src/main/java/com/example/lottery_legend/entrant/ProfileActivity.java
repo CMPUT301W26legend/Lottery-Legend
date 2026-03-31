@@ -24,6 +24,7 @@ import com.example.lottery_legend.model.Entrant;
 import com.example.lottery_legend.model.Organizer;
 import com.example.lottery_legend.organizer.NavbarOrganizer;
 import com.example.lottery_legend.organizer.OrganizerMainActivity;
+import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -53,9 +54,11 @@ public class ProfileActivity extends AppCompatActivity {
     private Button buttonEditProfile;
     private Button btnContinueAsAdmin;
     private Button btnDeleteAccount;
+    private MaterialToolbar toolbar;
 
     private Entrant currentEntrant;
     private boolean isOrganizerMode = false;
+    private boolean isReadOnly = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,7 +74,9 @@ public class ProfileActivity extends AppCompatActivity {
         db = FirebaseFirestore.getInstance();
         deviceId = getIntent().getStringExtra("deviceId");
         isOrganizerMode = getIntent().getBooleanExtra("isOrganizerMode", false);
+        isReadOnly = getIntent().getBooleanExtra("isReadOnly", false);
 
+        toolbar = findViewById(R.id.topToolbar);
         viewName = findViewById(R.id.viewName);
         viewEmail = findViewById(R.id.viewEmail);
         viewPhone = findViewById(R.id.viewPhone);
@@ -86,6 +91,34 @@ public class ProfileActivity extends AppCompatActivity {
 
         updateUIForMode();
 
+        if (isReadOnly) {
+            setupReadOnlyMode();
+        } else {
+            setupFullMode();
+        }
+
+        refreshProfile();
+    }
+
+    private void setupReadOnlyMode() {
+        buttonEditProfile.setVisibility(View.GONE);
+        layoutSwitchRole.setVisibility(View.GONE);
+        btnDeleteAccount.setVisibility(View.GONE);
+        btnContinueAsAdmin.setVisibility(View.GONE);
+        layoutNotifications.setVisibility(View.GONE);
+        
+        // Hide navbar
+        View navbarContainer = findViewById(R.id.navbar);
+        if (navbarContainer != null) {
+            navbarContainer.setVisibility(View.GONE);
+        }
+        
+        // Add back navigation
+        toolbar.setNavigationIcon(R.drawable.ic_arrow_left);
+        toolbar.setNavigationOnClickListener(v -> finish());
+    }
+
+    private void setupFullMode() {
         // Initially hide the admin button until permissions are verified
         btnContinueAsAdmin.setVisibility(View.GONE);
 
@@ -114,8 +147,6 @@ public class ProfileActivity extends AppCompatActivity {
                 checkAndCreateOrganizerAccount();
             }
         });
-
-        refreshProfile();
     }
 
     private void refreshProfile() {
@@ -124,7 +155,10 @@ public class ProfileActivity extends AppCompatActivity {
         } else {
             fetchEntrantData();
         }
-        setupNavbar();
+        
+        if (!isReadOnly) {
+            setupNavbar();
+        }
     }
 
     private void updateUIForMode() {
@@ -137,17 +171,19 @@ public class ProfileActivity extends AppCompatActivity {
         if (btnDeleteAccount != null) {
             btnDeleteAccount.setText(isOrganizerMode ? "Delete Organizer Account" : "Delete Entrant Account");
         }
-        if (layoutNotifications != null) {
+        if (layoutNotifications != null && !isReadOnly) {
             layoutNotifications.setVisibility(isOrganizerMode ? View.GONE : View.VISIBLE);
         }
         
-        // Dynamic Navbar update
-        View navbarContainer = findViewById(R.id.navbar);
-        if (navbarContainer instanceof ViewGroup) {
-            ViewGroup group = (ViewGroup) navbarContainer;
-            group.removeAllViews();
-            int layoutId = isOrganizerMode ? R.layout.layout_navbar_organizer : R.layout.layout_navbar_entrant;
-            getLayoutInflater().inflate(layoutId, group, true);
+        // Dynamic Navbar update if not read only
+        if (!isReadOnly) {
+            View navbarContainer = findViewById(R.id.navbar);
+            if (navbarContainer instanceof ViewGroup) {
+                ViewGroup group = (ViewGroup) navbarContainer;
+                group.removeAllViews();
+                int layoutId = isOrganizerMode ? R.layout.layout_navbar_organizer : R.layout.layout_navbar_entrant;
+                getLayoutInflater().inflate(layoutId, group, true);
+            }
         }
     }
 
@@ -173,8 +209,8 @@ public class ProfileActivity extends AppCompatActivity {
 
                             switchNotifications.setChecked(currentEntrant.isNotificationsEnabled());
 
-                            // Show admin button if the user has admin privileges
-                            if (documentSnapshot.getBoolean("isAdmin") != null && documentSnapshot.getBoolean("isAdmin")) {
+                            // Show admin button if the user has admin privileges and not read only
+                            if (!isReadOnly && documentSnapshot.getBoolean("isAdmin") != null && documentSnapshot.getBoolean("isAdmin")) {
                                 btnContinueAsAdmin.setVisibility(View.VISIBLE);
                             } else {
                                 btnContinueAsAdmin.setVisibility(View.GONE);
@@ -198,14 +234,16 @@ public class ProfileActivity extends AppCompatActivity {
                 String phone = doc.getString("phone");
                 viewPhone.setText((phone != null && !phone.isEmpty()) ? phone : "No phone number provided");
                 
-                // Still check admin from entrants collection
-                db.collection("entrants").document(deviceId).get().addOnSuccessListener(entrantDoc -> {
-                    if (entrantDoc.exists() && entrantDoc.getBoolean("isAdmin") != null && entrantDoc.getBoolean("isAdmin")) {
-                        btnContinueAsAdmin.setVisibility(View.VISIBLE);
-                    } else {
-                        btnContinueAsAdmin.setVisibility(View.GONE);
-                    }
-                });
+                if (!isReadOnly) {
+                    // Still check admin from entrants collection
+                    db.collection("entrants").document(deviceId).get().addOnSuccessListener(entrantDoc -> {
+                        if (entrantDoc.exists() && entrantDoc.getBoolean("isAdmin") != null && entrantDoc.getBoolean("isAdmin")) {
+                            btnContinueAsAdmin.setVisibility(View.VISIBLE);
+                        } else {
+                            btnContinueAsAdmin.setVisibility(View.GONE);
+                        }
+                    });
+                }
             }
         });
     }
