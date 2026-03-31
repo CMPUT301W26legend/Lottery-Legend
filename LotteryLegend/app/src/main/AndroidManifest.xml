@@ -23,6 +23,9 @@
             android:name=".entrant.HistoryActivity"
             android:exported="false" />
         <activity
+            android:name=".event.ShareQRCodeActivity"
+            android:exported="false" />
+        <activity
             android:name=".event.EventDetailsActivity"
             android:exported="false" />
         <activity

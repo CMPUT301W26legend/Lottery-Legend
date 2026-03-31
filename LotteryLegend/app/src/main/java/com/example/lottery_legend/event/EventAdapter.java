@@ -1,5 +1,6 @@
 package com.example.lottery_legend.event;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -187,6 +188,14 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
                 }
             });
         }
+
+        // Click on the card to open event details
+        holder.itemView.setOnClickListener(v -> {
+            Intent intent = new Intent(v.getContext(), EventDetailsActivity.class);
+            intent.putExtra("eventId", event.getEventId());
+            intent.putExtra("deviceId", currentDeviceId);
+            v.getContext().startActivity(intent);
+        });
     }
 
     /**
