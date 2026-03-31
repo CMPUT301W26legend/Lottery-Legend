@@ -99,8 +99,10 @@ public class NavbarEntrant {
 
         navHistory.setOnClickListener(v -> {
             if (activeTab != Tab.HISTORY) {
-                // Assuming there might be an EntrantHistoryActivity later
-                // For now, maybe just toast or do nothing
+                Intent intent = new Intent(activity, HistoryActivity.class);
+                intent.putExtra("deviceId", deviceId);
+                activity.startActivity(intent);
+                if (!(activity instanceof HistoryActivity)) activity.finish();
             }
         });
 
