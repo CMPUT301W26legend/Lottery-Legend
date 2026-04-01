@@ -77,8 +77,6 @@ public class Event {
 
     /** List of entrants on the waiting list. */
     private List<WaitingListEntry> waitingList;
-    /** List of comments associated with the event. */
-    private List<Comment> comments;
     /** List of co-organizers for the event. */
     private List<CoOrganizer> coOrganizers;
     /** List of tickets issued for the event. */
@@ -92,7 +90,7 @@ public class Event {
     /**
      * Full constructor to initialize all fields of the Event.
      */
-    public Event(String eventId, String organizerId, String title, String description, EventLocation eventLocation, double price, boolean isPrivateEvent, boolean geoEnabled, Timestamp eventStartAt, Timestamp eventEndAt, Timestamp registrationStartAt, Timestamp registrationEndAt, Timestamp drawAt, int capacity, Integer maxWaitingList, int waitingListCount, int selectedCount, int cancelledCount, int enrolledCount, String posterImage, String qrCodeImage, String qrCodeValue, String lotteryGuidelines, String status, Timestamp createdAt, Timestamp updatedAt, List<WaitingListEntry> waitingList, List<Comment> comments, List<CoOrganizer> coOrganizers, List<Ticket> tickets) {
+    public Event(String eventId, String organizerId, String title, String description, EventLocation eventLocation, double price, boolean isPrivateEvent, boolean geoEnabled, Timestamp eventStartAt, Timestamp eventEndAt, Timestamp registrationStartAt, Timestamp registrationEndAt, Timestamp drawAt, int capacity, Integer maxWaitingList, int waitingListCount, int selectedCount, int cancelledCount, int enrolledCount, String posterImage, String qrCodeImage, String qrCodeValue, String lotteryGuidelines, String status, Timestamp createdAt, Timestamp updatedAt, List<WaitingListEntry> waitingList, List<CoOrganizer> coOrganizers, List<Ticket> tickets) {
         this.eventId = eventId;
         this.organizerId = organizerId;
         this.title = title;
@@ -120,7 +118,6 @@ public class Event {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.waitingList = waitingList;
-        this.comments = comments;
         this.coOrganizers = coOrganizers;
         this.tickets = tickets;
     }
@@ -259,11 +256,6 @@ public class Event {
     public List<WaitingListEntry> getWaitingList() { return waitingList; }
     /** @param waitingList List of entrants on the waiting list. */
     public void setWaitingList(List<WaitingListEntry> waitingList) { this.waitingList = waitingList; }
-
-    /** @return List of comments associated with the event. */
-    public List<Comment> getComments() { return comments; }
-    /** @param comments List of comments associated with the event. */
-    public void setComments(List<Comment> comments) { this.comments = comments; }
 
     /** @return List of co-organizers for the event. */
     public List<CoOrganizer> getCoOrganizers() { return coOrganizers; }
@@ -441,94 +433,6 @@ public class Event {
         @Override
         public String toString() {
             return "WaitingListEntry{" + "deviceId='" + deviceId + '\'' + ", participationStatus='" + participationStatus + '\'' + '}';
-        }
-    }
-
-    /**
-     * Represents a comment on an event.
-     */
-    public static class Comment {
-        private String commentId;
-        private String authorId;
-        private String authorType;
-        private String authorNameSnapshot;
-        private String content;
-        private Timestamp createdAt;
-        private Timestamp updatedAt;
-        private String parentCommentId;
-        private String rootCommentId;
-        private int threadLevel;
-        private String replyToUserId;
-        private String replyToUserNameSnapshot;
-        private Map<String, Integer> reactionSummary;
-        private int totalReactionCount;
-
-        /** Default constructor for Firestore. */
-        public Comment() {}
-
-        /** Full constructor. */
-        public Comment(String commentId, String authorId, String authorType, String authorNameSnapshot, String content, Timestamp createdAt, Timestamp updatedAt, String parentCommentId, String rootCommentId, int threadLevel, String replyToUserId, String replyToUserNameSnapshot, Map<String, Integer> reactionSummary, int totalReactionCount) {
-            this.commentId = commentId;
-            this.authorId = authorId;
-            this.authorType = authorType;
-            this.authorNameSnapshot = authorNameSnapshot;
-            this.content = content;
-            this.createdAt = createdAt;
-            this.updatedAt = updatedAt;
-            this.parentCommentId = parentCommentId;
-            this.rootCommentId = rootCommentId;
-            this.threadLevel = threadLevel;
-            this.replyToUserId = replyToUserId;
-            this.replyToUserNameSnapshot = replyToUserNameSnapshot;
-            this.reactionSummary = reactionSummary;
-            this.totalReactionCount = totalReactionCount;
-        }
-
-        public String getCommentId() { return commentId; }
-        public void setCommentId(String commentId) { this.commentId = commentId; }
-
-        public String getAuthorId() { return authorId; }
-        public void setAuthorId(String authorId) { this.authorId = authorId; }
-
-        public String getAuthorType() { return authorType; }
-        public void setAuthorType(String authorType) { this.authorType = authorType; }
-
-        public String getAuthorNameSnapshot() { return authorNameSnapshot; }
-        public void setAuthorNameSnapshot(String authorNameSnapshot) { this.authorNameSnapshot = authorNameSnapshot; }
-
-        public String getContent() { return content; }
-        public void setContent(String content) { this.content = content; }
-
-        public Timestamp getCreatedAt() { return createdAt; }
-        public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
-
-        public Timestamp getUpdatedAt() { return updatedAt; }
-        public void setUpdatedAt(Timestamp updatedAt) { this.updatedAt = updatedAt; }
-
-        public String getParentCommentId() { return parentCommentId; }
-        public void setParentCommentId(String parentCommentId) { this.parentCommentId = parentCommentId; }
-
-        public String getRootCommentId() { return rootCommentId; }
-        public void setRootCommentId(String rootCommentId) { this.rootCommentId = rootCommentId; }
-
-        public int getThreadLevel() { return threadLevel; }
-        public void setThreadLevel(int threadLevel) { this.threadLevel = threadLevel; }
-
-        public String getReplyToUserId() { return replyToUserId; }
-        public void setReplyToUserId(String replyToUserId) { this.replyToUserId = replyToUserId; }
-
-        public String getReplyToUserNameSnapshot() { return replyToUserNameSnapshot; }
-        public void setReplyToUserNameSnapshot(String replyToUserNameSnapshot) { this.replyToUserNameSnapshot = replyToUserNameSnapshot; }
-
-        public Map<String, Integer> getReactionSummary() { return reactionSummary; }
-        public void setReactionSummary(Map<String, Integer> reactionSummary) { this.reactionSummary = reactionSummary; }
-
-        public int getTotalReactionCount() { return totalReactionCount; }
-        public void setTotalReactionCount(int totalReactionCount) { this.totalReactionCount = totalReactionCount; }
-
-        @Override
-        public String toString() {
-            return "Comment{" + "commentId='" + commentId + '\'' + ", authorNameSnapshot='" + authorNameSnapshot + '\'' + '}';
         }
     }
 

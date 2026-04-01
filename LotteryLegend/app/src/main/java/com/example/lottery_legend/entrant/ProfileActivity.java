@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -249,23 +250,39 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private void showDeleteConfirmationDialog() {
-        String title = isOrganizerMode ? "Delete Organizer Account" : "Delete Entrant Account";
-        String message = isOrganizerMode ? 
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_profile_delete, null);
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(dialogView)
+                .create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        TextView title = dialogView.findViewById(R.id.textDeleteTitle);
+        TextView message = dialogView.findViewById(R.id.textDeleteMessage);
+        Button btnCancel = dialogView.findViewById(R.id.btnCancelDelete);
+        Button btnConfirm = dialogView.findViewById(R.id.btnConfirmDelete);
+
+        String titleStr = isOrganizerMode ? "Delete Organizer Account" : "Delete Entrant Account";
+        String messageStr = isOrganizerMode ? 
                 "Are you sure you want to delete your Organizer profile? Your Entrant profile (if any) will remain." :
                 "Are you sure you want to delete your Entrant profile? Your Organizer profile (if any) will remain.";
-        
-        new AlertDialog.Builder(this)
-                .setTitle(title)
-                .setMessage(message)
-                .setPositiveButton("Delete", (dialog, which) -> {
-                    if (isOrganizerMode) {
-                        deleteOrganizerAccount();
-                    } else {
-                        deleteEntrantAccount();
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+
+        title.setText(titleStr);
+        message.setText(messageStr);
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        btnConfirm.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (isOrganizerMode) {
+                deleteOrganizerAccount();
+            } else {
+                deleteEntrantAccount();
+            }
+        });
+
+        dialog.show();
     }
 
     private void deleteEntrantAccount() {

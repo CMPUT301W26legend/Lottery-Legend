@@ -20,6 +20,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.LotteryLegend">
         <activity
+            android:name=".entrant.CommentsActivity"
+            android:exported="false" />
+        <activity
             android:name=".entrant.HistoryActivity"
             android:exported="false" />
         <activity
