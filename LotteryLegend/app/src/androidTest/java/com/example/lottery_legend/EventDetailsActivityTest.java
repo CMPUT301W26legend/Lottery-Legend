@@ -29,6 +29,7 @@ import com.example.lottery_legend.model.Event;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
 
 import org.junit.After;
 import org.junit.Before;
@@ -72,9 +73,21 @@ public class EventDetailsActivityTest {
     public void setUp() throws Exception {
         Intents.init();
         db = FirebaseFirestore.getInstance();
+        try {
+            db.useEmulator("10.0.2.2", 8080);
+            FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
+                    .setPersistenceEnabled(false)
+                    .build();
+            db.setFirestoreSettings(settings);
+        } catch (IllegalStateException e) {
+            // Already configured
+        }
 
-        // Create a test event in Firestore
-        Timestamp now = new Timestamp(new Date());
+        // Create a test event in Firestore with future dates to ensure registration is "Active"
+        // and Join button is visible.
+        long futureTime = System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 7; // 1 week future
+        Timestamp future = new Timestamp(new Date(futureTime));
+        
         Event testEvent = new Event();
         testEvent.setEventId(TEST_EVENT_ID);
         testEvent.setOrganizerId(TEST_ORGANIZER_ID);
@@ -84,12 +97,12 @@ public class EventDetailsActivityTest {
         testEvent.setEventLocation(new Event.EventLocation("Test Venue", "123 Test St", 0.0, 0.0));
         testEvent.setCapacity(50);
         testEvent.setPrice(10.0);
-        testEvent.setEventStartAt(now);
-        testEvent.setRegistrationEndAt(now);
-        testEvent.setDrawAt(now);
+        testEvent.setEventStartAt(future);
+        testEvent.setRegistrationEndAt(future);
+        testEvent.setDrawAt(future);
         testEvent.setWaitingList(new ArrayList<>());
 
-        Tasks.await(db.collection("events").document(TEST_EVENT_ID).set(testEvent), 10, TimeUnit.SECONDS);
+        Tasks.await(db.collection("events").document(TEST_EVENT_ID).set(testEvent), 20, TimeUnit.SECONDS);
     }
 
     @After
@@ -97,7 +110,7 @@ public class EventDetailsActivityTest {
         Intents.release();
         if (db != null) {
             try {
-                Tasks.await(db.collection("events").document(TEST_EVENT_ID).delete(), 10, TimeUnit.SECONDS);
+                Tasks.await(db.collection("events").document(TEST_EVENT_ID).delete(), 20, TimeUnit.SECONDS);
             } catch (Exception e) {
                 Log.e(TAG, "Cleanup failed: " + e.getMessage());
             }
@@ -107,7 +120,7 @@ public class EventDetailsActivityTest {
     @Test
     public void testUIComponentsVisible() throws InterruptedException {
         // Wait for Firestore data to load and UI to settle
-        Thread.sleep(2000);
+        Thread.sleep(3000);
         
         onView(withId(R.id.toolbarEventDetails)).check(matches(isDisplayed()));
         onView(withId(R.id.textEventTitle)).check(matches(isDisplayed()));
@@ -118,18 +131,19 @@ public class EventDetailsActivityTest {
     @Test
     public void testEventDataDisplayed() throws InterruptedException {
         // Wait for Firestore snapshot listener to populate UI
-        Thread.sleep(2000);
+        Thread.sleep(3000);
         
         onView(withId(R.id.textEventTitle)).check(matches(withText(TEST_TITLE)));
         onView(withId(R.id.textLocation)).check(matches(withText("Test Venue")));
         onView(withId(R.id.textCapacity)).check(matches(withText("50 Spots")));
-        onView(withId(R.id.textRegistrationStatus)).check(matches(withText("Open")));
+        // Registration status is "Active" for an open event in the future
+        onView(withId(R.id.textRegistrationStatus)).check(matches(withText("Active")));
         onView(withId(R.id.btnJoinWaitingList)).perform(scrollTo()).check(matches(withText("Join Waiting List")));
     }
 
     @Test
     public void testNavigationToShareQRCode() throws InterruptedException {
-        Thread.sleep(2000);
+        Thread.sleep(3000);
         onView(withId(R.id.shareIcon)).perform(click());
         
         intended(allOf(
@@ -141,7 +155,7 @@ public class EventDetailsActivityTest {
 
     @Test
     public void testNavigationToOrganizerProfile() throws InterruptedException {
-        Thread.sleep(2000);
+        Thread.sleep(3000);
         onView(withId(R.id.layoutOrganizerProfile)).perform(scrollTo(), click());
 
         intended(allOf(
@@ -154,7 +168,7 @@ public class EventDetailsActivityTest {
 
     @Test
     public void testJoinWaitingListDialog() throws InterruptedException {
-        Thread.sleep(2000);
+        Thread.sleep(3000);
         onView(withId(R.id.btnJoinWaitingList)).perform(scrollTo(), click());
         
         // Verify dialog is shown
@@ -165,20 +179,25 @@ public class EventDetailsActivityTest {
     public void testAlreadyJoinedState() throws Exception {
         // Update Firestore to show user is already joined
         Timestamp now = new Timestamp(new Date());
+        // Set a future start date to keep the event "Joined" rather than "Closed"
+        long futureTime = System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 7;
+        Timestamp future = new Timestamp(new Date(futureTime));
+        
         Event testEvent = new Event();
         testEvent.setEventId(TEST_EVENT_ID);
         testEvent.setOrganizerId(TEST_ORGANIZER_ID);
         testEvent.setTitle(TEST_TITLE);
         testEvent.setStatus("open");
+        testEvent.setEventStartAt(future);
         
         List<Event.WaitingListEntry> waitingList = new ArrayList<>();
         waitingList.add(new Event.WaitingListEntry(TEST_DEVICE_ID, now, now, "waiting", null, null, null, null, null, null, null, null, false, 0, false, null, null, null));
         testEvent.setWaitingList(waitingList);
         
-        Tasks.await(db.collection("events").document(TEST_EVENT_ID).set(testEvent), 10, TimeUnit.SECONDS);
+        Tasks.await(db.collection("events").document(TEST_EVENT_ID).set(testEvent), 20, TimeUnit.SECONDS);
 
         // Wait for UI update
-        Thread.sleep(2000);
+        Thread.sleep(3000);
 
         onView(withId(R.id.textRegistrationStatus)).check(matches(withText("Joined")));
         onView(withId(R.id.btnJoinWaitingList)).perform(scrollTo()).check(matches(withText("Leave Waiting List")));

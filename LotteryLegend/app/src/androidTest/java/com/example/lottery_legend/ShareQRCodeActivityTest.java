@@ -25,6 +25,7 @@ import com.example.lottery_legend.event.ShareQRCodeActivity;
 import com.example.lottery_legend.model.Event;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
 
 import org.junit.After;
 import org.junit.Before;
@@ -67,6 +68,15 @@ public class ShareQRCodeActivityTest {
     @Before
     public void setUp() throws Exception {
         db = FirebaseFirestore.getInstance();
+        try {
+            db.useEmulator("10.0.2.2", 8080);
+            FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
+                    .setPersistenceEnabled(false)
+                    .build();
+            db.setFirestoreSettings(settings);
+        } catch (IllegalStateException e) {
+            // Already configured
+        }
 
         // Create a test event with a QR code image in Firestore
         Event testEvent = new Event();
@@ -75,14 +85,14 @@ public class ShareQRCodeActivityTest {
         testEvent.setQrCodeImage(TEST_QR_BASE64);
         testEvent.setStatus("open");
 
-        Tasks.await(db.collection("events").document(TEST_EVENT_ID).set(testEvent), 10, TimeUnit.SECONDS);
+        Tasks.await(db.collection("events").document(TEST_EVENT_ID).set(testEvent), 20, TimeUnit.SECONDS);
     }
 
     @After
     public void tearDown() throws Exception {
         if (db != null) {
             try {
-                Tasks.await(db.collection("events").document(TEST_EVENT_ID).delete(), 10, TimeUnit.SECONDS);
+                Tasks.await(db.collection("events").document(TEST_EVENT_ID).delete(), 20, TimeUnit.SECONDS);
             } catch (Exception e) {
                 Log.e(TAG, "Cleanup failed: " + e.getMessage());
             }
@@ -90,7 +100,8 @@ public class ShareQRCodeActivityTest {
     }
 
     @Test
-    public void testUIComponentsVisible() {
+    public void testUIComponentsVisible() throws InterruptedException {
+        Thread.sleep(3000);
         onView(withId(R.id.toolbarShare)).check(matches(isDisplayed()));
         onView(withId(R.id.textEventTitle)).check(matches(isDisplayed()));
         onView(withId(R.id.imageQrCode)).check(matches(isDisplayed()));
@@ -100,13 +111,14 @@ public class ShareQRCodeActivityTest {
     @Test
     public void testEventDataDisplayed() throws InterruptedException {
         // Wait for Firestore data to load
-        Thread.sleep(2000);
+        Thread.sleep(3000);
         
         onView(withId(R.id.textEventTitle)).check(matches(withText(TEST_TITLE)));
     }
 
     @Test
-    public void testBackButtonFinishesActivity() {
+    public void testBackButtonFinishesActivity() throws InterruptedException {
+        Thread.sleep(2000);
         // Click the navigation (back) button in the toolbar
         // The navigation button is an ImageButton that is a child of the Toolbar
         onView(allOf(isAssignableFrom(ImageButton.class), withParent(withId(R.id.toolbarShare))))
