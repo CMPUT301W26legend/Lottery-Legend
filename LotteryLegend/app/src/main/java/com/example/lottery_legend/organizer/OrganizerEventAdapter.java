@@ -85,9 +85,7 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
 
         holder.eventName.setText(event.getTitle());
         
-        String statusText = event.getStatus() != null ? event.getStatus().toUpperCase() : "OPEN";
-        holder.status.setText(statusText);
-        holder.status.setTextColor(Color.parseColor("#2563EB"));
+        updateStatusUI(holder.status, event);
         
         String deadlineStr = "";
         Timestamp registrationEndAt = event.getRegistrationEndAt();
@@ -100,7 +98,11 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
         holder.eventInfo.setText(info);
         
         int waitingCount = (event.getWaitingList() != null) ? event.getWaitingList().size() : 0;
-        holder.waiting.setText(waitingCount + " waiting");
+        if (event.getMaxWaitingList() != null) {
+            holder.waiting.setText(String.format(Locale.getDefault(), "%d/%d waiting", waitingCount, event.getMaxWaitingList()));
+        } else {
+            holder.waiting.setText(String.format(Locale.getDefault(), "%d waiting", waitingCount));
+        }
         
         holder.selected.setText(event.getSelectedCount() + " selected");
 
@@ -112,6 +114,22 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
             intent.putExtra("deviceId", deviceId);
             v.getContext().startActivity(intent);
         });
+    }
+
+    private void updateStatusUI(TextView statusView, Event event) {
+        Timestamp now = Timestamp.now();
+        String status = event.getStatus() != null ? event.getStatus().toLowerCase() : "open";
+        
+        if (event.getEventStartAt() != null && event.getEventStartAt().compareTo(now) < 0) {
+            statusView.setText("CLOSED");
+            statusView.setTextColor(Color.parseColor("#9CA3AF"));
+        } else if ("drawed".equals(status)) {
+            statusView.setText("DRAWED");
+            statusView.setTextColor(Color.parseColor("#F57C00"));
+        } else {
+            statusView.setText("ACTIVE");
+            statusView.setTextColor(Color.parseColor("#388E3C"));
+        }
     }
 
     /**

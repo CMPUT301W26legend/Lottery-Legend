@@ -99,7 +99,6 @@ public class AdminBrowseEventsTest {
                 null,                      // createdAt
                 null,                      // updatedAt
                 null,                      // waitingList
-                null,                      // comments
                 null,                      // coOrganizers
                 null                       // tickets
         );

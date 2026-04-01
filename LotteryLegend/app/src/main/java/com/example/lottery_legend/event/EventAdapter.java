@@ -1,5 +1,6 @@
 package com.example.lottery_legend.event;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -112,7 +113,11 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
         }
 
         int waitingListSize = (event.getWaitingList() != null) ? event.getWaitingList().size() : 0;
-        holder.waitingCount.setText(String.valueOf(waitingListSize));
+        if (event.getMaxWaitingList() != null) {
+            holder.waitingCount.setText(String.format(Locale.getDefault(), "%d/%d waiting", waitingListSize, event.getMaxWaitingList()));
+        } else {
+            holder.waitingCount.setText(String.format(Locale.getDefault(), "%d waiting", waitingListSize));
+        }
 
         holder.locationRow.setVisibility(event.isGeoEnabled() ? View.VISIBLE : View.GONE);
 
@@ -148,44 +153,55 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
         // Reset alpha to full opacity by default
         setAlpha(holder, 1.0f);
 
-        // Configure UI based on event status and user's join status
-        if (!Objects.equals(event.getStatus(), "open")) {
-            holder.status.setText("Closed");
-            holder.status.setTextColor(Color.parseColor("#64748B"));
-            holder.joinButton.setVisibility(View.GONE);
-            setAlpha(holder, 0.5f); // Dim the card content
-        } else if (isJoined) {
-            // User is already on the waiting list
-            holder.status.setText("Joined");
-            holder.status.setTextColor(Color.parseColor("#F59E0B"));
-            holder.joinButton.setVisibility(View.VISIBLE);
-            holder.joinButton.setText("Leave Waiting List");
-            holder.joinButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#EF4444")));
+        updateStatusUI(holder, event, isJoined);
 
-            holder.joinButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    // Open dialog to confirm leaving the list
+        // Click on the card to open event details
+        holder.itemView.setOnClickListener(v -> {
+            Intent intent = new Intent(v.getContext(), EventDetailsActivity.class);
+            intent.putExtra("eventId", event.getEventId());
+            intent.putExtra("deviceId", currentDeviceId);
+            v.getContext().startActivity(intent);
+        });
+    }
+
+    private void updateStatusUI(ViewHolder holder, Event event, boolean isJoined) {
+        Timestamp now = Timestamp.now();
+        String status = event.getStatus() != null ? event.getStatus().toLowerCase() : "open";
+        
+        if (event.getEventStartAt() != null && event.getEventStartAt().compareTo(now) < 0) {
+            holder.status.setText("Closed");
+            holder.status.setTextColor(Color.parseColor("#9CA3AF"));
+            holder.joinButton.setVisibility(View.GONE);
+            setAlpha(holder, 0.5f);
+        } else if ("drawed".equals(status)) {
+            holder.status.setText("Drawed");
+            holder.status.setTextColor(Color.parseColor("#F57C00"));
+            holder.joinButton.setVisibility(View.GONE);
+        } else {
+            // "Open" or "Active"
+            if (isJoined) {
+                holder.status.setText("Joined");
+                holder.status.setTextColor(Color.parseColor("#F59E0B"));
+                holder.joinButton.setVisibility(View.VISIBLE);
+                holder.joinButton.setText("Leave Waiting List");
+                holder.joinButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#EF4444")));
+
+                holder.joinButton.setOnClickListener(v -> {
                     WaitingListDialogFragment.newInstance(event, currentDeviceId)
                             .show(((AppCompatActivity) v.getContext()).getSupportFragmentManager(), "Leave Waiting List");
-                }
-            });
-        } else {
-            // Event is open and user hasn't joined yet
-            holder.status.setText("Open");
-            holder.status.setTextColor(Color.parseColor("#10B981"));
-            holder.joinButton.setVisibility(View.VISIBLE);
-            holder.joinButton.setText("Join WaitingList");
-            holder.joinButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#2563EB")));
+                });
+            } else {
+                holder.status.setText("Active");
+                holder.status.setTextColor(Color.parseColor("#388E3C"));
+                holder.joinButton.setVisibility(View.VISIBLE);
+                holder.joinButton.setText("Join WaitingList");
+                holder.joinButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#2563EB")));
 
-            holder.joinButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    // Open dialog to confirm joining the list
+                holder.joinButton.setOnClickListener(v -> {
                     WaitingListDialogFragment.newInstance(event, currentDeviceId)
                             .show(((AppCompatActivity) v.getContext()).getSupportFragmentManager(), "Join Waiting List");
-                }
-            });
+                });
+            }
         }
     }
 

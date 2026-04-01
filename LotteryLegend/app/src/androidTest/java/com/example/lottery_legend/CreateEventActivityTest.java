@@ -16,6 +16,7 @@ import static org.hamcrest.Matchers.equalTo;
 import android.content.Context;
 import android.content.Intent;
 import android.widget.DatePicker;
+import android.widget.TimePicker;
 
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.espresso.contrib.PickerActions;
@@ -59,12 +60,15 @@ public class CreateEventActivityTest {
         onView(withId(R.id.editTextDescription))
                 .perform(typeText("This is an automated test description."), closeSoftKeyboard());
 
-        setDate(R.id.EventStartDate, 2025, 12, 1);
-        setDate(R.id.EventEndDate, 2025, 12, 2);
+        onView(withId(R.id.editTextPrice)).perform(scrollTo(), typeText("10.0"), closeSoftKeyboard());
+        onView(withId(R.id.editTextLocation)).perform(scrollTo(), typeText("Test Location"), closeSoftKeyboard());
 
-        setDate(R.id.RegistrationStart, 2025, 11, 1);
-        setDate(R.id.RegistrationEnd, 2025, 11, 30);
-        setDate(R.id.etDrawDate, 2025, 12, 1);
+        setDate(R.id.eventStartDateTime, 2025, 12, 1);
+        setDate(R.id.eventEndDateTime, 2025, 12, 2);
+
+        setDate(R.id.registrationStartDateTime, 2025, 11, 1);
+        setDate(R.id.registrationEndDateTime, 2025, 11, 30);
+        setDate(R.id.drawDateTime, 2025, 12, 1);
 
         onView(withId(R.id.Capacity)).perform(scrollTo(), typeText("50"), closeSoftKeyboard());
 
@@ -75,8 +79,15 @@ public class CreateEventActivityTest {
 
     private void setDate(int viewId, int year, int month, int day) {
         onView(withId(viewId)).perform(scrollTo(), click());
+        
+        // Handle DatePickerDialog
         onView(withClassName(equalTo(DatePicker.class.getName())))
                 .perform(PickerActions.setDate(year, month, day));
+        onView(withId(android.R.id.button1)).perform(click());
+        
+        // Handle TimePickerDialog (it opens automatically after DatePicker)
+        onView(withClassName(equalTo(TimePicker.class.getName())))
+                .perform(PickerActions.setTime(12, 0));
         onView(withId(android.R.id.button1)).perform(click());
     }
 }

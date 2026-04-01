@@ -100,7 +100,6 @@ public class AdminRemoveEventTest {
                 Timestamp.now(),           // createdAt
                 Timestamp.now(),           // updatedAt
                 null,                      // waitingList
-                null,                      // comments
                 null,                      // coOrganizers
                 null                       // tickets
         );
