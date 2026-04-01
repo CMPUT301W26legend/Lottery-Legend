@@ -67,7 +67,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:lineSpacingExtra="2dp"
-                android:text="Great lottery pool! Looking forward to seeing the results. Has anyone checked the latest draw numbers?"
+                android:text="Comment content"
                 android:textColor="#374151"
                 android:textSize="15sp" />
 
@@ -80,11 +80,12 @@
                 android:orientation="horizontal">
 
                 <com.google.android.material.card.MaterialCardView
-                    android:layout_width="34dp"
-                    android:layout_height="22dp"
-                    android:layout_marginEnd="6dp"
+                    android:id="@+id/cardLike"
+                    android:layout_width="wrap_content"
+                    android:layout_height="24dp"
+                    android:layout_marginEnd="8dp"
                     app:cardBackgroundColor="#F3F4F6"
-                    app:cardCornerRadius="11dp"
+                    app:cardCornerRadius="12dp"
                     app:cardElevation="0dp"
                     app:strokeWidth="0dp">
 
@@ -92,31 +93,34 @@
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:gravity="center"
-                        android:orientation="horizontal">
+                        android:orientation="horizontal"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp">
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="👍"
-                            android:textSize="11sp" />
+                            android:textSize="12sp" />
 
                         <TextView
                             android:id="@+id/textLikeCount"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="3dp"
-                            android:text="5"
-                            android:textColor="#2563EB"
-                            android:textSize="11sp" />
+                            android:layout_marginStart="4dp"
+                            android:text="0"
+                            android:textColor="#6B7280"
+                            android:textSize="12sp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
                 <com.google.android.material.card.MaterialCardView
-                    android:layout_width="34dp"
-                    android:layout_height="22dp"
-                    android:layout_marginEnd="6dp"
+                    android:id="@+id/cardLove"
+                    android:layout_width="wrap_content"
+                    android:layout_height="24dp"
+                    android:layout_marginEnd="8dp"
                     app:cardBackgroundColor="#F3F4F6"
-                    app:cardCornerRadius="11dp"
+                    app:cardCornerRadius="12dp"
                     app:cardElevation="0dp"
                     app:strokeWidth="0dp">
 
@@ -124,23 +128,58 @@
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:gravity="center"
-                        android:orientation="horizontal">
+                        android:orientation="horizontal"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp">
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="♡"
-                            android:textColor="#EF4444"
-                            android:textSize="11sp" />
+                            android:text="❤️"
+                            android:textSize="12sp" />
 
                         <TextView
                             android:id="@+id/textHeartCount"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="3dp"
-                            android:text="2"
+                            android:layout_marginStart="4dp"
+                            android:text="0"
                             android:textColor="#6B7280"
-                            android:textSize="11sp" />
+                            android:textSize="12sp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardHelpful"
+                    android:layout_width="wrap_content"
+                    android:layout_height="24dp"
+                    app:cardBackgroundColor="#F3F4F6"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:orientation="horizontal"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="⭐"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/textHelpfulCount"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:text="0"
+                            android:textColor="#6B7280"
+                            android:textSize="12sp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -163,28 +202,30 @@
                     android:textSize="13sp" />
 
                 <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="14dp"
-                    android:text="👍"
-                    android:textColor="#6B7280"
-                    android:textSize="13sp" />
-
-                <TextView
                     android:id="@+id/buttonReact"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
+                    android:layout_marginStart="16dp"
                     android:text="React"
                     android:textColor="#374151"
                     android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/buttonDelete"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:text="Delete"
+                    android:textColor="#EF4444"
+                    android:textSize="13sp"
+                    android:visibility="gone" />
 
                 <TextView
                     android:id="@+id/buttonViewReplies"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
-                    android:text="View 3 Replies"
+                    android:text="View Replies"
                     android:textColor="#374151"
                     android:textSize="13sp" />
             </LinearLayout>

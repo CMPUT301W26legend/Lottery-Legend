@@ -20,9 +20,15 @@ public class Comment {
     private int threadLevel;        // 0, 1, 2
     private String replyToUserId;
     private String replyToUserNameSnapshot;
-    private int reactionCount;
+    
+    // Reaction Counts
+    private int likeCount;
+    private int loveCount;
+    private int helpfulCount;
+    
+    private int reactionCount; // Total reactions
     private int replyCount;
-    private Map<String, Integer> reactionTypeCounts; // e.g., {"LIKE": 5, "LOVE": 2, "HELPFUL": 1}
+    private Map<String, Integer> reactionTypeCounts; // Deprecated but keeping for compatibility if needed
 
     public Comment() {}
 
@@ -61,6 +67,15 @@ public class Comment {
 
     public String getReplyToUserNameSnapshot() { return replyToUserNameSnapshot; }
     public void setReplyToUserNameSnapshot(String replyToUserNameSnapshot) { this.replyToUserNameSnapshot = replyToUserNameSnapshot; }
+
+    public int getLikeCount() { return likeCount; }
+    public void setLikeCount(int likeCount) { this.likeCount = likeCount; }
+
+    public int getLoveCount() { return loveCount; }
+    public void setLoveCount(int loveCount) { this.loveCount = loveCount; }
+
+    public int getHelpfulCount() { return helpfulCount; }
+    public void setHelpfulCount(int helpfulCount) { this.helpfulCount = helpfulCount; }
 
     public int getReactionCount() { return reactionCount; }
     public void setReactionCount(int reactionCount) { this.reactionCount = reactionCount; }
