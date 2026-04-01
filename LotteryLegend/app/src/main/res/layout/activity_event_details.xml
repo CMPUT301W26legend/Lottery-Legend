@@ -1,11 +1,484 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".event.EventDetailsActivity">
 
-  </androidx.constraintlayout.widget.ConstraintLayout>
+  <!-- Top Toolbar -->
+  <com.google.android.material.appbar.MaterialToolbar
+      android:id="@+id/toolbarEventDetails"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_alignParentTop="true"
+      android:background="#2563EB"
+      app:title="Event Details"
+      app:titleCentered="true"
+      app:titleTextColor="@android:color/white"
+      app:navigationIcon="@drawable/ic_arrow_left" >
+
+    <ImageButton
+        android:id="@+id/shareIcon"
+        android:layout_width="48dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:layout_marginEnd="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="QR Code"
+        android:src="@drawable/ic_share"
+        app:tint="@color/white" />
+
+    <ImageButton
+        android:id="@+id/commentIcon"
+        android:layout_width="48dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Map"
+        android:src="@drawable/ic_comment"
+        app:tint="@color/white" />
+
+  </com.google.android.material.appbar.MaterialToolbar>
+
+  <!-- Bottom Nav -->
+  <include
+      android:id="@+id/navbar"
+      layout="@layout/layout_navbar_entrant"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_alignParentBottom="true" />
+
+  <!-- Main Scroll Content -->
+  <ScrollView
+      android:id="@+id/scrollEventDetails"
+      android:layout_width="match_parent"
+      android:layout_height="match_parent"
+      android:layout_below="@id/toolbarEventDetails"
+      android:layout_above="@id/navbar"
+      android:fillViewport="true"
+      android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+      <!-- Poster Image -->
+      <ImageView
+          android:id="@+id/posterImage"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:adjustViewBounds="true"
+          android:scaleType="fitCenter"
+          android:src="@drawable/img_poster"
+          android:contentDescription="event image"/>
+
+      <!-- White content area -->
+      <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:orientation="vertical"
+          android:background="@android:color/white"
+          android:paddingStart="16dp"
+          android:paddingTop="16dp"
+          android:paddingEnd="16dp"
+          android:paddingBottom="20dp">
+
+        <!-- Title -->
+        <TextView
+            android:id="@+id/textEventTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Summer Music Festival"
+            android:textColor="#111827"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <!-- Status -->
+        <TextView
+            android:id="@+id/textRegistrationStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Open"
+            android:textColor="#10B981"
+            android:textSize="13sp" />
+
+        <!-- Info list -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:orientation="vertical">
+
+          <!-- Event Date -->
+          <LinearLayout
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:orientation="horizontal"
+              android:layout_marginBottom="14dp">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginTop="2dp"
+                android:src="@drawable/ic_calendar"
+                android:contentDescription="Event date"
+                app:tint="#2563EB"/>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+              <TextView
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:text="Event Date"
+                  android:textColor="#111827"
+                  android:textSize="15sp" />
+
+              <TextView
+                  android:id="@+id/textEventDate"
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="2dp"
+                  android:text="February 15-17, 2026"
+                  android:textColor="#64748B"
+                  android:textSize="14sp" />
+            </LinearLayout>
+          </LinearLayout>
+
+          <!-- Registration Deadline -->
+          <LinearLayout
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:orientation="horizontal"
+              android:layout_marginBottom="14dp">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginTop="2dp"
+                android:src="@drawable/ic_clock"
+                android:contentDescription="Registration deadline"
+                app:tint="#2563EB" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+              <TextView
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:text="Registration Deadline"
+                  android:textColor="#111827"
+                  android:textSize="15sp" />
+
+              <TextView
+                  android:id="@+id/textRegistrationDeadline"
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="2dp"
+                  android:text="January 30, 2026th 11:59 PM"
+                  android:textColor="#64748B"
+                  android:textSize="14sp" />
+            </LinearLayout>
+          </LinearLayout>
+
+          <!-- Location -->
+          <LinearLayout
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:orientation="horizontal"
+              android:layout_marginBottom="14dp">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginTop="2dp"
+                android:src="@drawable/ic_location"
+                android:contentDescription="Location" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+              <TextView
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:text="Location"
+                  android:textColor="#111827"
+                  android:textSize="15sp" />
+
+              <TextView
+                  android:id="@+id/textLocation"
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="2dp"
+                  android:text="Fort Edmonton Park, Edmonton"
+                  android:textColor="#64748B"
+                  android:textSize="14sp" />
+            </LinearLayout>
+          </LinearLayout>
+
+          <!-- Price -->
+          <LinearLayout
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:orientation="horizontal"
+              android:layout_marginBottom="14dp">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginTop="2dp"
+                android:src="@drawable/ic_dollar"
+                android:contentDescription="Price"
+                app:tint="#2563EB" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+              <TextView
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:text="Price"
+                  android:textColor="#111827"
+                  android:textSize="15sp" />
+
+              <TextView
+                  android:id="@+id/textPrice"
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="2dp"
+                  android:text="Free Entry"
+                  android:textColor="#64748B"
+                  android:textSize="14sp" />
+            </LinearLayout>
+          </LinearLayout>
+
+          <!-- Capacity -->
+          <LinearLayout
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:orientation="horizontal"
+              android:layout_marginBottom="14dp">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginTop="2dp"
+                android:src="@drawable/ic_people"
+                android:contentDescription="Capacity"
+                app:tint="#2563EB" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+              <TextView
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:text="Capacity"
+                  android:textColor="#111827"
+                  android:textSize="15sp" />
+
+              <TextView
+                  android:id="@+id/textCapacity"
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="2dp"
+                  android:text="50 Spots"
+                  android:textColor="#64748B"
+                  android:textSize="14sp" />
+            </LinearLayout>
+          </LinearLayout>
+
+          <!-- Waiting List -->
+          <LinearLayout
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:orientation="horizontal"
+              android:layout_marginBottom="8dp">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginTop="2dp"
+                android:src="@drawable/ic_waiting_list"
+                android:contentDescription="Waiting list"
+                app:tint="#2563EB"/>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+              <TextView
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:text="Waiting List"
+                  android:textColor="#111827"
+                  android:textSize="15sp" />
+
+              <TextView
+                  android:id="@+id/textWaitingList"
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="2dp"
+                  android:text="124 entrants registered"
+                  android:textColor="#64748B"
+                  android:textSize="14sp" />
+            </LinearLayout>
+          </LinearLayout>
+        </LinearLayout>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="10dp"
+            android:background="#E5E7EB" />
+
+        <!-- About Event -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="About Event"
+            android:textColor="#111827"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/textAboutEvent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:lineSpacingExtra="2dp"
+            android:text="Join us for an amazing summer music festival. Experience three days of incredible performances across multiple stages."
+            android:textColor="#64748B"
+            android:textSize="15sp" />
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="18dp"
+            android:background="#E5E7EB" />
+
+        <!-- Lottery Guidelines -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="Lottery Guidelines"
+            android:textColor="#111827"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/textLotteryGuidelines"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:lineSpacingExtra="4dp"
+            android:text="• Random selection on February 1st 08:00 AM&#10;• Winners notified via app&#10;• 48 hours to accept invitation&#10;• Replacements drawn if declined"
+            android:textColor="#64748B"
+            android:textSize="15sp" />
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="18dp"
+            android:background="#E5E7EB" />
+
+        <!-- Organizer -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="Organizer"
+            android:textColor="#111827"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/layoutOrganizerProfile"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+          <ImageView
+              android:id="@+id/imageOrganizerAvatar"
+              android:layout_width="40dp"
+              android:layout_height="40dp"
+              android:background="@drawable/ic_profile_avatar"
+              android:padding="8dp"
+              android:contentDescription="Organizer avatar" />
+
+          <LinearLayout
+              android:layout_width="wrap_content"
+              android:layout_height="wrap_content"
+              android:layout_marginStart="10dp"
+              android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/textOrganizerName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Organizer"
+                android:textColor="#111827"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/textViewProfile"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="view profile"
+                android:textColor="#3B82F6"
+                android:textSize="13sp" />
+          </LinearLayout>
+        </LinearLayout>
+
+        <!-- Join Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnJoinWaitingList"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="18dp"
+            android:text="Join Waiting List"
+            android:textAllCaps="false"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            app:backgroundTint="#3B82F6"
+            app:cornerRadius="8dp" />
+
+      </LinearLayout>
+    </LinearLayout>
+  </ScrollView>
+
+</RelativeLayout>
