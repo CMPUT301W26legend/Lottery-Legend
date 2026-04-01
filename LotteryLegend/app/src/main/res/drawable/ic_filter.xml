@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp"
+    android:height="40dp"
+    android:viewportWidth="40"
+    android:viewportHeight="40">
+
+    <!-- Background (with opacity) -->
+    <path
+        android:pathData="M32 0C36.4183 0 40 3.58172 40 8V32C40 36.4183 36.4183 40 32 40H8C3.58172 40 0 36.4183 0 32V8C0 3.58172 3.58172 0 8 0H32Z"
+        android:fillColor="#33FFFFFF"/> <!-- 0.2 opacity = 33 -->
+
+    <!-- Funnel / filter icon -->
+    <path
+        android:pathData="M12.1219 12.7156C12.3281 12.2781 12.7656 12 13.25 12H26.75C27.2344 12 27.6719 12.2781 27.8781 12.7156C28.0844 13.1531 28.0219 13.6688 27.7156 14.0438L22 21.0281V25C22 25.3781 21.7875 25.725 21.4469 25.8938C21.1062 26.0625 20.7031 26.0281 20.4 25.8L18.4 24.3C18.1469 24.1125 18 23.8156 18 23.5V21.0281L12.2812 14.0406C11.9781 13.6688 11.9125 13.15 12.1219 12.7156Z"
+        android:fillColor="#FFFFFF"/>
+
+</vector>

@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F8FAFC"
+    tools:context=".organizer.WaitingListActivity">
+
+    <!-- Top blue header area -->
+    <LinearLayout
+        android:id="@+id/headerContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:orientation="vertical"
+        android:background="#2563EB"
+        android:paddingStart="16dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="14dp">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbarWaitingList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            app:navigationIcon="@drawable/ic_arrow_left"
+            app:navigationIconTint="@android:color/white"
+            app:title="Waiting List"
+            app:titleTextColor="@android:color/white"
+            app:titleCentered="false" >
+
+            <ImageButton
+                android:id="@+id/mapIcon"
+                android:layout_width="48dp"
+                android:layout_height="match_parent"
+                android:layout_gravity="end"
+                android:layout_marginEnd="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="QR Code"
+                android:src="@drawable/ic_map"
+                app:tint="@color/white" />
+
+        </com.google.android.material.appbar.MaterialToolbar>
+
+        <TextView
+            android:id="@+id/textEntrantCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="-4dp"
+            android:text="45 entrants"
+            android:textColor="#DBEAFE"
+            android:textSize="12sp" />
+
+        <!-- Search + filter row -->
+        <LinearLayout
+            android:id="@+id/searchRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/searchCard"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                app:cardCornerRadius="10dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="#4F7DF0">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp">
+
+                    <ImageView
+                        android:id="@+id/iconSearch"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_search"
+                        android:tint="#DBEAFE"
+                        android:contentDescription="Search" />
+
+                    <EditText
+                        android:id="@+id/editSearchEntrants"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:background="@android:color/transparent"
+                        android:hint="Search entrants..."
+                        android:inputType="text"
+                        android:textColor="@android:color/white"
+                        android:textColorHint="#DBEAFE"
+                        android:textSize="13sp"
+                        android:padding="0dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btnFilter"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="8dp"
+                app:cardCornerRadius="10dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="#4F7DF0">
+
+                <ImageButton
+                    android:id="@+id/buttonFilter"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@android:color/transparent"
+                    android:src="@drawable/ic_filter"
+                    android:tint="@android:color/white"
+                    android:contentDescription="Filter" />
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Content area -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerWaitingList"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/headerContainer"
+        android:layout_above="@id/layoutNavbarOrganizerWrapper"
+        android:clipToPadding="false"
+        android:paddingStart="12dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="12dp"
+        tools:listitem="@layout/item_waiting_list_entrant" />
+
+    <!-- Bottom organizer navbar -->
+    <FrameLayout
+        android:id="@+id/layoutNavbarOrganizerWrapper"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true">
+
+        <include layout="@layout/layout_navbar_organizer" />
+    </FrameLayout>
+
+</RelativeLayout>
