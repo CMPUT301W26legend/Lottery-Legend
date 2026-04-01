@@ -50,6 +50,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
     private ImageButton editIcon, updatePoster, commentIcon, mapIcon, shareIcon;
 
     private String currentPosterBase64;
+    private String currentUserName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,6 +70,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         initViews();
         setupListeners();
         fetchEventDetails();
+        fetchCurrentUserName();
 
         NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.HISTORY);
     }
@@ -130,7 +132,16 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
             dialog.show(getSupportFragmentManager(), "PosterUploadDialog");
         });
 
-        commentIcon.setOnClickListener(v -> Toast.makeText(this, "Comments coming soon", Toast.LENGTH_SHORT).show());
+        commentIcon.setOnClickListener(v -> {
+            if (eventId != null) {
+                Intent intent = new Intent(OrganizerEventDetailsActivity.this, OrganizerCommentsActivity.class);
+                intent.putExtra("eventId", eventId);
+                intent.putExtra("deviceId", deviceId);
+                intent.putExtra("authorName", currentUserName != null ? currentUserName : "Organizer");
+                startActivity(intent);
+            }
+        });
+
         mapIcon.setOnClickListener(v -> Toast.makeText(this, "Map coming soon", Toast.LENGTH_SHORT).show());
 
         btnViewWaitingList.setOnClickListener(v -> Toast.makeText(this, "View Waiting List coming soon", Toast.LENGTH_SHORT).show());
@@ -138,6 +149,15 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         btnSendNotification.setOnClickListener(v -> Toast.makeText(this, "Send Notification coming soon", Toast.LENGTH_SHORT).show());
         
         btnDeleteEvent.setOnClickListener(v -> showDeleteConfirmationDialog());
+    }
+
+    private void fetchCurrentUserName() {
+        if (deviceId == null) return;
+        db.collection("organizers").document(deviceId).get().addOnSuccessListener(doc -> {
+            if (doc.exists()) {
+                currentUserName = doc.getString("name");
+            }
+        });
     }
 
     private void showDeleteConfirmationDialog() {
