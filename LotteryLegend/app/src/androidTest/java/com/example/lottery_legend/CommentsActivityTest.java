@@ -12,6 +12,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withHint;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
+import static org.hamcrest.Matchers.allOf;
 
 import android.content.Context;
 import android.content.Intent;
@@ -31,6 +32,7 @@ import com.example.lottery_legend.model.Comment;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
 
 import org.hamcrest.Matcher;
 import org.junit.After;
@@ -74,6 +76,15 @@ public class CommentsActivityTest {
     @Before
     public void setUp() throws Exception {
         db = FirebaseFirestore.getInstance();
+        try {
+            db.useEmulator("10.0.2.2", 8080);
+            FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
+                    .setPersistenceEnabled(false)
+                    .build();
+            db.setFirestoreSettings(settings);
+        } catch (IllegalStateException e) {
+            // Already configured
+        }
 
         // Pre-populate with one comment
         Comment comment = new Comment();
@@ -88,7 +99,7 @@ public class CommentsActivityTest {
         comment.setReactionCount(0);
 
         Tasks.await(db.collection("events").document(TEST_EVENT_ID)
-                .collection("comments").document("test-comment-id").set(comment), 10, TimeUnit.SECONDS);
+                .collection("comments").document("test-comment-id").set(comment), 20, TimeUnit.SECONDS);
     }
 
     @After
@@ -102,7 +113,7 @@ public class CommentsActivityTest {
                                 doc.getReference().delete();
                             }
                             return null;
-                        }), 10, TimeUnit.SECONDS);
+                        }), 20, TimeUnit.SECONDS);
             } catch (Exception e) {
                 Log.e(TAG, "Cleanup failed: " + e.getMessage());
             }
@@ -110,7 +121,8 @@ public class CommentsActivityTest {
     }
 
     @Test
-    public void testUIComponentsVisible() {
+    public void testUIComponentsVisible() throws InterruptedException {
+        Thread.sleep(3000);
         onView(withId(R.id.toolbarComments)).check(matches(isDisplayed()));
         onView(withId(R.id.recyclerViewComments)).check(matches(isDisplayed()));
         onView(withId(R.id.commentInputContainer)).check(matches(isDisplayed()));
@@ -121,7 +133,7 @@ public class CommentsActivityTest {
     @Test
     public void testCommentsLoaded() throws InterruptedException {
         // Wait for Firestore data
-        Thread.sleep(2000);
+        Thread.sleep(3000);
 
         onView(withId(R.id.recyclerViewComments))
                 .perform(RecyclerViewActions.scrollTo(hasDescendant(withText(TEST_COMMENT_CONTENT))));
@@ -132,12 +144,13 @@ public class CommentsActivityTest {
     @Test
     public void testPostComment() throws InterruptedException {
         String newComment = "New comment from UI test";
+        Thread.sleep(2000);
         
         onView(withId(R.id.editTextComment)).perform(typeText(newComment), closeSoftKeyboard());
         onView(withId(R.id.buttonSendComment)).perform(click());
 
         // Wait for Firestore roundtrip
-        Thread.sleep(2000);
+        Thread.sleep(3000);
 
         onView(withId(R.id.recyclerViewComments))
                 .perform(RecyclerViewActions.scrollTo(hasDescendant(withText(newComment))));
@@ -146,7 +159,7 @@ public class CommentsActivityTest {
 
     @Test
     public void testReplyInteraction() throws InterruptedException {
-        Thread.sleep(2000);
+        Thread.sleep(3000);
 
         // Click Reply button on the pre-populated comment
         onView(withId(R.id.recyclerViewComments))
@@ -159,7 +172,7 @@ public class CommentsActivityTest {
 
     @Test
     public void testReactionDialog() throws InterruptedException {
-        Thread.sleep(2000);
+        Thread.sleep(3000);
 
         // Click React button on the first comment
         onView(withId(R.id.recyclerViewComments))
@@ -174,7 +187,7 @@ public class CommentsActivityTest {
 
     @Test
     public void testDeleteComment() throws InterruptedException {
-        Thread.sleep(2000);
+        Thread.sleep(3000);
 
         // Long click on the pre-populated comment to trigger deletion (since we are the author)
         onView(withId(R.id.recyclerViewComments))
@@ -182,7 +195,7 @@ public class CommentsActivityTest {
                         longClick()));
 
         // Wait for deletion to reflect
-        Thread.sleep(2000);
+        Thread.sleep(3000);
 
         onView(withText(TEST_COMMENT_CONTENT)).check(doesNotExist());
     }
