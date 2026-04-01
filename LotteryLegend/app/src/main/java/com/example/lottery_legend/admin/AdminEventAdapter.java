@@ -67,7 +67,11 @@ public class AdminEventAdapter extends RecyclerView.Adapter<AdminEventAdapter.Ev
         holder.info.setText(info);
         
         int waiting = (event.getWaitingList() != null) ? event.getWaitingList().size() : 0;
-        holder.waitingCount.setText(String.format(Locale.getDefault(), "%d waiting", waiting));
+        if (event.getMaxWaitingList() != null) {
+            holder.waitingCount.setText(String.format(Locale.getDefault(), "%d/%d waiting", waiting, event.getMaxWaitingList()));
+        } else {
+            holder.waitingCount.setText(String.format(Locale.getDefault(), "%d waiting", waiting));
+        }
 
         holder.removeButton.setOnClickListener(v -> showDeleteDialog(event));
         

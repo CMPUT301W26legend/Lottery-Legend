@@ -26,6 +26,7 @@ import com.example.lottery_legend.entrant.ProfileActivity;
 import com.example.lottery_legend.model.Event;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
+import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.text.SimpleDateFormat;
@@ -143,7 +144,11 @@ public class EventDetailsActivity extends AppCompatActivity {
         textCapacity.setText(event.getCapacity() + " Spots");
         
         int waitingListSize = (event.getWaitingList() != null) ? event.getWaitingList().size() : 0;
-        textWaitingList.setText(waitingListSize + " entrants registered");
+        if (event.getMaxWaitingList() != null) {
+            textWaitingList.setText(String.format(Locale.getDefault(), "%d/%d entrants registered", waitingListSize, event.getMaxWaitingList()));
+        } else {
+            textWaitingList.setText(String.format(Locale.getDefault(), "%d entrants registered", waitingListSize));
+        }
 
         SimpleDateFormat sdf = new SimpleDateFormat("MMMM dd, yyyy HH:mm", Locale.getDefault());
         
@@ -175,36 +180,7 @@ public class EventDetailsActivity extends AppCompatActivity {
             }
         }
 
-        // Configure UI based on event status and user's join status
-        if (!Objects.equals(event.getStatus(), "open")) {
-            textRegistrationStatus.setText("Closed");
-            textRegistrationStatus.setTextColor(Color.parseColor("#64748B")); // Grey for closed
-            btnJoinWaitingList.setVisibility(View.GONE);
-        } else {
-            btnJoinWaitingList.setVisibility(View.VISIBLE);
-            
-            if (isJoined) {
-                textRegistrationStatus.setText("Joined");
-                textRegistrationStatus.setTextColor(Color.parseColor("#F59E0B")); // Orange for joined
-                
-                btnJoinWaitingList.setText("Leave Waiting List");
-                btnJoinWaitingList.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#EF4444")));
-                btnJoinWaitingList.setOnClickListener(v -> {
-                    WaitingListDialogFragment.newInstance(event, deviceId)
-                            .show(getSupportFragmentManager(), "Leave Waiting List");
-                });
-            } else {
-                textRegistrationStatus.setText("Open");
-                textRegistrationStatus.setTextColor(Color.parseColor("#10B981")); // Green for open
-
-                btnJoinWaitingList.setText("Join Waiting List");
-                btnJoinWaitingList.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#3B82F6")));
-                btnJoinWaitingList.setOnClickListener(v -> {
-                    WaitingListDialogFragment.newInstance(event, deviceId)
-                            .show(getSupportFragmentManager(), "Join Waiting List");
-                });
-            }
-        }
+        updateStatusUI(event, isJoined);
 
         // Decode and set the poster image if available
         if (event.getPosterImage() != null && !event.getPosterImage().isEmpty()) {
@@ -216,6 +192,60 @@ public class EventDetailsActivity extends AppCompatActivity {
                 }
             } catch (Exception e) {
                 posterImage.setImageResource(R.drawable.img_poster);
+            }
+        }
+    }
+
+    private void updateStatusUI(Event event, boolean isJoined) {
+        Timestamp now = Timestamp.now();
+        String status = event.getStatus() != null ? event.getStatus().toLowerCase() : "open";
+        
+        boolean isPastStartDate = event.getEventStartAt() != null && event.getEventStartAt().compareTo(now) < 0;
+
+        if (isPastStartDate || "closed".equals(status)) {
+            textRegistrationStatus.setText("Closed");
+            textRegistrationStatus.setTextColor(Color.parseColor("#9CA3AF"));
+            
+            if (isJoined) {
+                btnJoinWaitingList.setVisibility(View.VISIBLE);
+                btnJoinWaitingList.setText("Leave Waiting List");
+                btnJoinWaitingList.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#EF4444")));
+                btnJoinWaitingList.setOnClickListener(v -> {
+                    WaitingListDialogFragment.newInstance(event, deviceId)
+                            .show(getSupportFragmentManager(), "Leave Waiting List");
+                });
+            } else {
+                btnJoinWaitingList.setVisibility(View.GONE);
+            }
+
+            if (isPastStartDate && !"closed".equals(status)) {
+                db.collection("events").document(event.getEventId()).update("status", "closed");
+            }
+        } else if ("drawed".equals(status)) {
+            textRegistrationStatus.setText("Drawed");
+            textRegistrationStatus.setTextColor(Color.parseColor("#F57C00"));
+            btnJoinWaitingList.setVisibility(View.GONE);
+        } else {
+            // ACTIVE / OPEN
+            btnJoinWaitingList.setVisibility(View.VISIBLE);
+            if (isJoined) {
+                textRegistrationStatus.setText("Joined");
+                textRegistrationStatus.setTextColor(Color.parseColor("#F59E0B"));
+                btnJoinWaitingList.setText("Leave Waiting List");
+                btnJoinWaitingList.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#EF4444")));
+                btnJoinWaitingList.setOnClickListener(v -> {
+                    WaitingListDialogFragment.newInstance(event, deviceId)
+                            .show(getSupportFragmentManager(), "Leave Waiting List");
+                });
+            } else {
+                textRegistrationStatus.setText("Active");
+                textRegistrationStatus.setTextColor(Color.parseColor("#388E3C"));
+                btnJoinWaitingList.setText("Join Waiting List");
+                btnJoinWaitingList.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#3B82F6")));
+                btnJoinWaitingList.setOnClickListener(v -> {
+                    WaitingListDialogFragment.newInstance(event, deviceId)
+                            .show(getSupportFragmentManager(), "Join Waiting List");
+                });
             }
         }
     }

@@ -85,7 +85,11 @@ public class WaitingListDialogFragment extends DialogFragment {
         }
 
         int waitingListSize = (event.getWaitingList() != null) ? event.getWaitingList().size() : 0;
-        waitingCountText.setText(String.valueOf(waitingListSize));
+        if (event.getMaxWaitingList() != null) {
+            waitingCountText.setText(String.format(Locale.getDefault(), "%d/%d", waitingListSize, event.getMaxWaitingList()));
+        } else {
+            waitingCountText.setText(String.valueOf(waitingListSize));
+        }
 
         // Decode and set the poster image if it exists
         if (event.getPosterImage() != null && !event.getPosterImage().isEmpty()) {
@@ -127,6 +131,16 @@ public class WaitingListDialogFragment extends DialogFragment {
             btnConfirm.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#EF4444")));
         }
 
+        // Check if event is closed based on current time and start date
+        Timestamp now = Timestamp.now();
+        boolean isClosed = (event.getEventStartAt() != null && event.getEventStartAt().compareTo(now) < 0) || "closed".equalsIgnoreCase(event.getStatus());
+
+        if (isClosed && !isJoined) {
+            if (dialogPrompt != null) dialogPrompt.setText("This event is closed and no longer accepting new entries.");
+            btnConfirm.setEnabled(false);
+            btnConfirm.setAlpha(0.5f);
+        }
+
         // Cancel button dismisses the dialog
         btnCancel.setOnClickListener(v -> dismiss());
 
@@ -136,45 +150,59 @@ public class WaitingListDialogFragment extends DialogFragment {
             public void onClick(View v) {
                 if (event == null || deviceId == null) return;
 
-                boolean currentlyJoined = false;
-                Event.WaitingListEntry existingEntry = null;
-                if (event.getWaitingList() != null) {
-                    for (Event.WaitingListEntry entry : event.getWaitingList()) {
-                        if (Objects.equals(entry.getDeviceId(), deviceId)) {
-                            currentlyJoined = true;
-                            existingEntry = entry;
-                            break;
-                        }
-                    }
-                }
+                // Re-check status before proceeding
+                FirebaseFirestore.getInstance().collection("events").document(event.getEventId())
+                        .get()
+                        .addOnSuccessListener(documentSnapshot -> {
+                            Event updatedEvent = documentSnapshot.toObject(Event.class);
+                            if (updatedEvent == null) return;
 
-                if (currentlyJoined) {
-                    // Remove user from waitingList in Firestore
-                    FirebaseFirestore.getInstance().collection("events").document(event.getEventId())
-                            .update("waitingList", FieldValue.arrayRemove(existingEntry))
-                            .addOnSuccessListener(aVoid -> {
-                                if (isAdded()) {
-                                    Toast.makeText(getContext(), "Left waiting list", Toast.LENGTH_SHORT).show();
-                                    dismiss();
+                            Timestamp currentNow = Timestamp.now();
+                            boolean currentlyClosed = (updatedEvent.getEventStartAt() != null && updatedEvent.getEventStartAt().compareTo(currentNow) < 0) || "closed".equalsIgnoreCase(updatedEvent.getStatus());
+
+                            boolean currentlyJoined = false;
+                            Event.WaitingListEntry existingEntry = null;
+                            if (updatedEvent.getWaitingList() != null) {
+                                for (Event.WaitingListEntry entry : updatedEvent.getWaitingList()) {
+                                    if (Objects.equals(entry.getDeviceId(), deviceId)) {
+                                        currentlyJoined = true;
+                                        existingEntry = entry;
+                                        break;
+                                    }
                                 }
-                            });
-                } else {
-                    // Add user to waitingList in Firestore
-                    Event.WaitingListEntry newEntry = new Event.WaitingListEntry();
-                    newEntry.setDeviceId(deviceId);
-                    newEntry.setJoinedAt(Timestamp.now());
-                    newEntry.setUpdatedAt(Timestamp.now());
-                    newEntry.setParticipationStatus("waiting");
-                    
-                    FirebaseFirestore.getInstance().collection("events").document(event.getEventId())
-                            .update("waitingList", FieldValue.arrayUnion(newEntry))
-                            .addOnSuccessListener(aVoid -> {
-                                if (isAdded()) {
-                                    Toast.makeText(getContext(), "Joined waiting list!", Toast.LENGTH_SHORT).show();
-                                    dismiss();
-                                }
-                            });
-                }
+                            }
+
+                            if (currentlyJoined) {
+                                // User can always leave, even if closed
+                                FirebaseFirestore.getInstance().collection("events").document(event.getEventId())
+                                        .update("waitingList", FieldValue.arrayRemove(existingEntry))
+                                        .addOnSuccessListener(aVoid -> {
+                                            if (isAdded()) {
+                                                Toast.makeText(getContext(), "Left waiting list", Toast.LENGTH_SHORT).show();
+                                                dismiss();
+                                            }
+                                        });
+                            } else if (currentlyClosed) {
+                                Toast.makeText(getContext(), "Event is closed. Cannot join.", Toast.LENGTH_SHORT).show();
+                                dismiss();
+                            } else {
+                                // Add user to waitingList in Firestore
+                                Event.WaitingListEntry newEntry = new Event.WaitingListEntry();
+                                newEntry.setDeviceId(deviceId);
+                                newEntry.setJoinedAt(Timestamp.now());
+                                newEntry.setUpdatedAt(Timestamp.now());
+                                newEntry.setParticipationStatus("waiting");
+                                
+                                FirebaseFirestore.getInstance().collection("events").document(event.getEventId())
+                                        .update("waitingList", FieldValue.arrayUnion(newEntry))
+                                        .addOnSuccessListener(aVoid -> {
+                                            if (isAdded()) {
+                                                Toast.makeText(getContext(), "Joined waiting list!", Toast.LENGTH_SHORT).show();
+                                                dismiss();
+                                            }
+                                        });
+                            }
+                        });
             }
         });
 
