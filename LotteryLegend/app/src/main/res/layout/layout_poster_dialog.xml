@@ -15,6 +15,7 @@
         android:padding="28dp">
 
         <TextView
+            android:id="@+id/textPosterTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
@@ -37,7 +38,7 @@
                 android:id="@+id/imagePosterPreview"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:scaleType="centerInside"
+                android:scaleType="centerCrop"
                 android:src="@drawable/img_poster" />
 
             <ImageView
@@ -53,6 +54,7 @@
         </com.google.android.material.card.MaterialCardView>
 
         <TextView
+            android:id="@+id/textPosterDescription"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"

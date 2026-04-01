@@ -23,10 +23,13 @@
             android:name=".entrant.CommentsActivity"
             android:exported="false" />
         <activity
-            android:name=".entrant.HistoryActivity"
+            android:name=".organizer.EditEventActivity"
             android:exported="false" />
         <activity
             android:name=".event.ShareQRCodeActivity"
+            android:exported="false" />
+        <activity
+            android:name=".entrant.HistoryActivity"
             android:exported="false" />
         <activity
             android:name=".event.EventDetailsActivity"
