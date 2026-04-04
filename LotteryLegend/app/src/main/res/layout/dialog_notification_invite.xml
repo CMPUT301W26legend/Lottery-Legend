@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="16dp"
+    app:cardBackgroundColor="@android:color/white"
+    app:cardCornerRadius="28dp"
+    app:cardElevation="0dp">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="24dp"
+        android:paddingTop="24dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="24dp">
+
+        <ImageView
+            android:id="@+id/ivCloseInviteDialog"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_alignParentEnd="true"
+            android:contentDescription="Close"
+            android:src="@drawable/ic_close"
+            app:tint="#374151" />
+
+        <TextView
+            android:id="@+id/tvInviteTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/ivCloseInviteDialog"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="8dp"
+            android:text="You Are Invited"
+            android:textColor="#111827"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cardInviteEventInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/tvInviteTitle"
+            android:layout_marginTop="28dp"
+            app:cardBackgroundColor="#F3F4F6"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    android:id="@+id/tvInviteEventName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Summer Music Festival"
+                    android:textColor="#111827"
+                    android:textSize="17sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:id="@+id/ivEventDate"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="Event date"
+                        android:src="@drawable/ic_calendar"
+                        app:tint="#9CA3AF" />
+
+                    <TextView
+                        android:id="@+id/tvEventDate"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:text="Event: February 1, 2026"
+                        android:textColor="#4B5563"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:id="@+id/ivRespondBy"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="Respond by"
+                        android:src="@drawable/ic_clock"
+                        app:tint="#9CA3AF" />
+
+                    <TextView
+                        android:id="@+id/tvRespondBy"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:text="Respond by: January 20, 2026"
+                        android:textColor="#4B5563"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <TextView
+            android:id="@+id/tvInviteMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/cardInviteEventInfo"
+            android:layout_marginTop="26dp"
+            android:lineSpacingExtra="2dp"
+            android:text="You have been selected. Please respond."
+            android:textColor="#374151"
+            android:textSize="16sp" />
+
+        <LinearLayout
+            android:id="@+id/layoutInviteActions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/tvInviteMessage"
+            android:layout_marginTop="28dp"
+            android:orientation="horizontal"
+            android:weightSum="2">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDeclineInvite"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:text="Decline"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                app:backgroundTint="#EF4444"
+                app:cornerRadius="18dp"
+                app:elevation="0dp" />
+
+            <Space
+                android:layout_width="12dp"
+                android:layout_height="1dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAcceptInvite"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:text="Accept"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                app:backgroundTint="#2563EB"
+                app:cornerRadius="18dp"
+                app:elevation="0dp" />
+        </LinearLayout>
+
+    </RelativeLayout>
+
+</androidx.cardview.widget.CardView>

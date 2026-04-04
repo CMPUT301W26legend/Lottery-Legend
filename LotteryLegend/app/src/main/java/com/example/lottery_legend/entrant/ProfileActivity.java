@@ -52,6 +52,7 @@ public class ProfileActivity extends AppCompatActivity {
     private SwitchMaterial switchNotifications;
     private LinearLayout layoutSwitchRole;
     private LinearLayout layoutNotifications;
+    private LinearLayout layoutGoToNotifications;
     private Button buttonEditProfile;
     private Button btnContinueAsAdmin;
     private Button btnDeleteAccount;
@@ -84,6 +85,7 @@ public class ProfileActivity extends AppCompatActivity {
         switchNotifications = findViewById(R.id.switchNotifications);
         layoutSwitchRole = findViewById(R.id.layoutSwitchRole);
         layoutNotifications = findViewById(R.id.layoutNotifications);
+        layoutGoToNotifications = findViewById(R.id.layoutGoToNotifications);
         buttonEditProfile = findViewById(R.id.buttonEditProfile);
         btnContinueAsAdmin = findViewById(R.id.btnContinueAsAdmin);
         btnDeleteAccount = findViewById(R.id.btnDeleteAccount);
@@ -107,6 +109,7 @@ public class ProfileActivity extends AppCompatActivity {
         btnDeleteAccount.setVisibility(View.GONE);
         btnContinueAsAdmin.setVisibility(View.GONE);
         layoutNotifications.setVisibility(View.GONE);
+        layoutGoToNotifications.setVisibility(View.GONE);
         
         // Hide navbar
         View navbarContainer = findViewById(R.id.navbar);
@@ -138,6 +141,12 @@ public class ProfileActivity extends AppCompatActivity {
 
         btnDeleteAccount.setOnClickListener(v -> {
             showDeleteConfirmationDialog();
+        });
+
+        layoutGoToNotifications.setOnClickListener(v -> {
+            Intent intent = new Intent(ProfileActivity.this, NotificationActivity.class);
+            intent.putExtra("deviceId", deviceId);
+            startActivity(intent);
         });
 
         // Setup click listener for switching mode
@@ -172,8 +181,14 @@ public class ProfileActivity extends AppCompatActivity {
         if (btnDeleteAccount != null) {
             btnDeleteAccount.setText(isOrganizerMode ? "Delete Organizer Account" : "Delete Entrant Account");
         }
-        if (layoutNotifications != null && !isReadOnly) {
-            layoutNotifications.setVisibility(isOrganizerMode ? View.GONE : View.VISIBLE);
+        
+        if (!isReadOnly) {
+            if (layoutNotifications != null) {
+                layoutNotifications.setVisibility(isOrganizerMode ? View.GONE : View.VISIBLE);
+            }
+            if (layoutGoToNotifications != null) {
+                layoutGoToNotifications.setVisibility(isOrganizerMode ? View.GONE : View.VISIBLE);
+            }
         }
         
         // Dynamic Navbar update if not read only
