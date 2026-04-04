@@ -64,6 +64,16 @@ public class AdminEventDetailFragment extends Fragment {
 
         view.findViewById(R.id.btn_delete_event_admin).setOnClickListener(v -> showDeleteDialog());
 
+        view.findViewById(R.id.btn_view_comments_admin).setOnClickListener(v -> {
+            Intent intent = new Intent(getActivity(), com.example.lottery_legend.entrant.CommentsActivity.class);
+            intent.putExtra("eventId", eventId);
+            intent.putExtra("deviceId", "ADMIN_DEVICE_ID");
+            intent.putExtra("authorName", "Administrator");
+            intent.putExtra("authorType", "ORGANIZER");
+            intent.putExtra("isAdmin", true);
+            startActivity(intent);
+        });
+
         view.findViewById(R.id.organizer_profile_click).setOnClickListener(v -> {
             if (organizerId != null) {
                 fetchOrganizerAndNavigate();
@@ -110,7 +120,7 @@ public class AdminEventDetailFragment extends Fragment {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
 
         tvTitle.setText(currentEvent.getTitle());
-        
+
         String startStr = currentEvent.getEventStartAt() != null ? sdf.format(currentEvent.getEventStartAt().toDate()) : "N/A";
         String endStr = currentEvent.getEventEndAt() != null ? sdf.format(currentEvent.getEventEndAt().toDate()) : "";
         String eventDateRange = startStr + (!endStr.isEmpty() ? " - " + endStr : "");
@@ -123,14 +133,14 @@ public class AdminEventDetailFragment extends Fragment {
         tvLocation.setText(locationName);
 
         tvCapacity.setText(String.format(Locale.getDefault(), "%d Spots", currentEvent.getCapacity()));
-        
+
         int waiting = currentEvent.getWaitingListCount();
         if (waiting == 1) {
             tvWaitingList.setText("1 entrant registered");
         } else {
             tvWaitingList.setText(String.format(Locale.getDefault(), "%d entrants registered", waiting));
         }
-        
+
         tvAbout.setText(currentEvent.getDescription());
 
         String drawStr = currentEvent.getDrawAt() != null ? sdf.format(currentEvent.getDrawAt().toDate()) : "N/A";
