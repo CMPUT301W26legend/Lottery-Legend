@@ -1,11 +1,12 @@
 package com.example.lottery_legend.model;
 
 import com.google.firebase.Timestamp;
+import java.io.Serializable;
 
 /**
  * Model class for Notifications in the system.
  */
-public class Notification {
+public class Notification implements Serializable {
     private String notificationId;
     private String senderId;
     private String recipientId;
@@ -17,6 +18,9 @@ public class Notification {
     private boolean isRead;
     private Timestamp createdAt;
     private String actionStatus; // NONE, PENDING, ACCEPTED, DECLINED, DISMISSED
+
+    private String eventTitle;
+    private String senderName;
 
     public Notification() {}
 
@@ -59,4 +63,21 @@ public class Notification {
     public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
     public String getActionStatus() { return actionStatus; }
     public void setActionStatus(String actionStatus) { this.actionStatus = actionStatus; }
+
+    public String getEventTitle() { return eventTitle; }
+    public void setEventTitle(String eventTitle) { this.eventTitle = eventTitle; }
+    public String getSenderName() { return senderName; }
+    public void setSenderName(String senderName) { this.senderName = senderName; }
+
+    /**
+     * Helper to get the Receiver Group based on notification type.
+     */
+    public String getReceiverGroup() {
+        if (type == null) return "Users";
+        switch (type) {
+            case "LOTTERY_WIN": return "Selected Users";
+            case "LOTTERY_LOSE": return "Waiting Users";
+            default: return "Users";
+        }
+    }
 }
