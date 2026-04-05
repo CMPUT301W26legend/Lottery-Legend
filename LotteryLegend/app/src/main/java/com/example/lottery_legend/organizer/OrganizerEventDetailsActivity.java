@@ -22,13 +22,21 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.lottery_legend.R;
+import com.example.lottery_legend.model.Entrant;
 import com.example.lottery_legend.model.Event;
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.Tasks;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.Timestamp;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.WriteBatch;
 
 import java.io.ByteArrayOutputStream;
@@ -37,9 +45,11 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Activity for organizers to view the details of a specific event they have created.
@@ -55,7 +65,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
     private TextView textEventTitle, textEventStatus;
     private TextView textEventDate, textRegistrationDeadline, textLocation, textPrice;
     private TextView textDescription, textLotteryGuidelines;
-    private Button btnViewWaitingList, btnRunLotteryDraw, btnSendNotification, btnDeleteEvent;
+    private Button btnViewWaitingList, btnRunLotteryDraw, btnSendNotification, btnDeleteEvent, btnInviteEntrants;
     private ImageButton editIcon, updatePoster, commentIcon, mapIcon, shareIcon;
 
     private String currentPosterBase64;
@@ -112,6 +122,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         btnRunLotteryDraw = findViewById(R.id.btnRunLotteryDraw);
         btnSendNotification = findViewById(R.id.btnSendNotification);
         btnDeleteEvent = findViewById(R.id.btnDeleteEvent);
+        btnInviteEntrants = findViewById(R.id.btnInviteEntrants);
     }
 
     private void setupListeners() {
@@ -172,6 +183,8 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         );
 
         btnDeleteEvent.setOnClickListener(v -> showDeleteConfirmationDialog());
+
+        btnInviteEntrants.setOnClickListener(v -> showInviteSearchDialog());
     }
 
     private void fetchCurrentUserName() {
@@ -281,6 +294,12 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         }
 
         updateStatusUI(event);
+
+        if (event.isIsPrivateEvent()) {
+            btnInviteEntrants.setVisibility(View.VISIBLE);
+        } else {
+            btnInviteEntrants.setVisibility(View.GONE);
+        }
 
         currentPosterBase64 = event.getPosterImage();
         if (currentPosterBase64 != null && !currentPosterBase64.isEmpty()) {
@@ -471,6 +490,170 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
                                 Toast.LENGTH_SHORT
                         ).show()
                 );
+    }
+
+    private void showInviteSearchDialog() {
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_invite_entrants_search, null);
+        EditText editName = view.findViewById(R.id.editSearchName);
+        EditText editEmail = view.findViewById(R.id.editSearchEmail);
+        EditText editPhone = view.findViewById(R.id.editSearchPhone);
+        Button btnCancel = view.findViewById(R.id.btnCancelSearch);
+        Button btnSearch = view.findViewById(R.id.btnPerformSearch);
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setView(view)
+                .create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+
+        btnSearch.setOnClickListener(v -> {
+            String name = editName.getText().toString().trim();
+            String email = editEmail.getText().toString().trim();
+            String phone = editPhone.getText().toString().trim();
+
+            if (name.isEmpty() && email.isEmpty() && phone.isEmpty()) {
+                Toast.makeText(this, "Please enter at least one search criterion", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            performEntrantSearch(name, email, phone);
+            dialog.dismiss();
+        });
+
+        dialog.show();
+    }
+
+    private void performEntrantSearch(String name, String email, String phone) {
+        List<Task<QuerySnapshot>> tasks = new ArrayList<>();
+
+        // Create prefix-range queries for non-empty fields
+        if (!name.isEmpty()) {
+            tasks.add(db.collection("entrants").orderBy("name").startAt(name).endAt(name + "\uf8ff").get());
+        }
+        if (!email.isEmpty()) {
+            // Case Sensitivity: ensure lowercase for email if database requirement exists
+            String emailSearch = email.toLowerCase();
+            tasks.add(db.collection("entrants").orderBy("email").startAt(emailSearch).endAt(emailSearch + "\uf8ff").get());
+        }
+        if (!phone.isEmpty()) {
+            tasks.add(db.collection("entrants").orderBy("phone").startAt(phone).endAt(phone + "\uf8ff").get());
+        }
+
+        Tasks.whenAllSuccess(tasks).addOnSuccessListener(list -> {
+            Map<String, Entrant> uniqueResults = new HashMap<>();
+            for (Object item : list) {
+                QuerySnapshot snapshot = (QuerySnapshot) item;
+                for (DocumentSnapshot doc : snapshot.getDocuments()) {
+                    Entrant entrant = doc.toObject(Entrant.class);
+                    if (entrant != null) {
+                        uniqueResults.put(entrant.getDeviceId(), entrant);
+                    }
+                }
+            }
+
+            List<Entrant> results = new ArrayList<>(uniqueResults.values());
+            if (results.isEmpty()) {
+                Toast.makeText(this, "No entrants found matching criteria", Toast.LENGTH_SHORT).show();
+            } else {
+                showSearchResultsDialog(results);
+            }
+        }).addOnFailureListener(e -> {
+            Toast.makeText(this, "Search failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private void showSearchResultsDialog(List<Entrant> results) {
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_invite_search_results, null);
+        RecyclerView recycler = view.findViewById(R.id.recyclerSearchResults);
+        Button btnBack = view.findViewById(R.id.btnBackToSearch);
+        Button btnInvite = view.findViewById(R.id.btnInviteSelected);
+        ImageButton btnClose = view.findViewById(R.id.btnCloseResults);
+
+        Map<String, String> entrantStatuses = new HashMap<>();
+        if (currentEvent != null && currentEvent.getWaitingList() != null) {
+            for (Event.WaitingListEntry entry : currentEvent.getWaitingList()) {
+                if (entry != null && entry.getDeviceId() != null) {
+                    entrantStatuses.put(entry.getDeviceId(), entry.getParticipationStatus());
+                }
+            }
+        }
+
+        InviteSearchAdapter adapter = new InviteSearchAdapter(results, entrantStatuses);
+        recycler.setLayoutManager(new LinearLayoutManager(this));
+        recycler.setAdapter(adapter);
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setView(view)
+                .create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        btnBack.setOnClickListener(v -> {
+            dialog.dismiss();
+            showInviteSearchDialog();
+        });
+
+        btnClose.setOnClickListener(v -> dialog.dismiss());
+
+        btnInvite.setOnClickListener(v -> {
+            List<String> selectedIds = adapter.getSelectedEntrantIds();
+            if (selectedIds.isEmpty()) {
+                Toast.makeText(this, "No entrants selected", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            inviteSelectedEntrants(selectedIds);
+            dialog.dismiss();
+        });
+
+        dialog.show();
+    }
+
+    private void inviteSelectedEntrants(List<String> entrantIds) {
+        if (currentEvent == null || eventId == null) return;
+
+        List<Event.WaitingListEntry> waitingList = currentEvent.getWaitingList();
+        if (waitingList == null) waitingList = new ArrayList<>();
+
+        WriteBatch batch = db.batch();
+        Timestamp now = Timestamp.now();
+
+        for (String eid : entrantIds) {
+            Event.WaitingListEntry entry = new Event.WaitingListEntry();
+            entry.setDeviceId(eid);
+            entry.setJoinedAt(now);
+            entry.setUpdatedAt(now);
+            entry.setInviteSentAt(now);
+            entry.setParticipationStatus("invited");
+            waitingList.add(entry);
+
+            Map<String, Object> notification = new HashMap<>();
+            notification.put("recipientId", eid);
+            notification.put("senderId", deviceId);
+            notification.put("recipientType", "ENTRANT");
+            notification.put("eventId", eventId);
+            notification.put("type", "INVITATION");
+            notification.put("title", "Event Invitation");
+            notification.put("message", "You have been invited to join the waiting list for " + currentEvent.getTitle());
+            notification.put("isRead", false);
+            notification.put("createdAt", now);
+            notification.put("actionStatus", "PENDING");
+
+            batch.set(db.collection("notifications").document(), notification);
+        }
+
+        batch.update(db.collection("events").document(eventId), "waitingList", waitingList);
+
+        batch.commit().addOnSuccessListener(aVoid -> {
+            Toast.makeText(this, "Invites sent successfully", Toast.LENGTH_SHORT).show();
+        }).addOnFailureListener(e -> {
+            Toast.makeText(this, "Failed to send invites: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        });
     }
 
     @Override
