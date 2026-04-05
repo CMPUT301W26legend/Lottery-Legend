@@ -1,7 +1,11 @@
 package com.example.lottery_legend.entrant;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.FrameLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -44,6 +48,8 @@ public class HistoryActivity extends AppCompatActivity {
     private TabLayout tabLayout;
     private RecyclerView recyclerView;
     private HistoryAdapter adapter;
+    private FrameLayout layoutNotification;
+    private TextView tvNotificationBadge;
 
     private final List<Event> allJoinedEvents = new ArrayList<>();
     private final List<Event> filteredEvents = new ArrayList<>();
@@ -63,6 +69,7 @@ public class HistoryActivity extends AppCompatActivity {
         setupRecyclerView();
         setupTabs();
         setupNavbar();
+        setupNotificationBadge();
 
         loadJoinedEvents();
     }
@@ -77,6 +84,8 @@ public class HistoryActivity extends AppCompatActivity {
         toolbar = findViewById(R.id.toolbarHistory);
         tabLayout = findViewById(R.id.tabLayoutHistory);
         recyclerView = findViewById(R.id.recyclerHistory);
+        layoutNotification = findViewById(R.id.layoutNotification);
+        tvNotificationBadge = findViewById(R.id.tvNotificationBadge);
     }
 
     private void setupToolbar() {
@@ -84,6 +93,32 @@ public class HistoryActivity extends AppCompatActivity {
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("History");
         }
+        
+        layoutNotification.setOnClickListener(v -> {
+            Intent intent = new Intent(HistoryActivity.this, NotificationActivity.class);
+            intent.putExtra("deviceId", deviceId);
+            startActivity(intent);
+        });
+    }
+
+    private void setupNotificationBadge() {
+        if (deviceId == null) return;
+        db.collection("notifications")
+                .whereEqualTo("recipientId", deviceId)
+                .whereEqualTo("isRead", false)
+                .addSnapshotListener((value, error) -> {
+                    if (error != null || value == null) {
+                        tvNotificationBadge.setVisibility(View.GONE);
+                        return;
+                    }
+                    int count = value.size();
+                    if (count > 0) {
+                        tvNotificationBadge.setVisibility(View.VISIBLE);
+                        tvNotificationBadge.setText(String.valueOf(count));
+                    } else {
+                        tvNotificationBadge.setVisibility(View.GONE);
+                    }
+                });
     }
 
     private void setupRecyclerView() {

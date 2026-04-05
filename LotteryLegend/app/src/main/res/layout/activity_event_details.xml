@@ -11,34 +11,75 @@
   <com.google.android.material.appbar.MaterialToolbar
       android:id="@+id/toolbarEventDetails"
       android:layout_width="match_parent"
-      android:layout_height="wrap_content"
+      android:layout_height="56dp"
       android:layout_alignParentTop="true"
       android:background="#2563EB"
       app:title="Event Details"
-      app:titleCentered="true"
+      app:titleCentered="false"
       app:titleTextColor="@android:color/white"
-      app:navigationIcon="@drawable/ic_arrow_left" >
+      app:navigationIcon="@drawable/ic_arrow_left"
+      app:navigationIconTint="@android:color/white">
 
-    <ImageButton
-        android:id="@+id/shareIcon"
-        android:layout_width="48dp"
-        android:layout_height="match_parent"
-        android:layout_gravity="end"
-        android:layout_marginEnd="8dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="QR Code"
-        android:src="@drawable/ic_share"
-        app:tint="@color/white" />
+      <LinearLayout
+          android:layout_width="wrap_content"
+          android:layout_height="match_parent"
+          android:layout_gravity="end"
+          android:gravity="center_vertical"
+          android:orientation="horizontal">
 
-    <ImageButton
-        android:id="@+id/commentIcon"
-        android:layout_width="48dp"
-        android:layout_height="match_parent"
-        android:layout_gravity="end"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="Map"
-        android:src="@drawable/ic_comment"
-        app:tint="@color/white" />
+          <FrameLayout
+              android:id="@+id/layoutNotification"
+              android:layout_width="48dp"
+              android:layout_height="48dp"
+              android:foreground="?attr/selectableItemBackgroundBorderless"
+              android:clickable="true"
+              android:focusable="true">
+
+              <ImageView
+                  android:id="@+id/ivNotification"
+                  android:layout_width="24dp"
+                  android:layout_height="24dp"
+                  android:layout_gravity="center"
+                  android:contentDescription="Notifications"
+                  android:src="@drawable/ic_notification_bell_entrant"
+                  app:tint="@android:color/white" />
+
+              <TextView
+                  android:id="@+id/tvNotificationBadge"
+                  android:layout_width="18dp"
+                  android:layout_height="18dp"
+                  android:layout_gravity="end|top"
+                  android:layout_marginTop="5dp"
+                  android:layout_marginEnd="5dp"
+                  android:background="@drawable/bg_notification_badge"
+                  android:gravity="center"
+                  android:text="0"
+                  android:textColor="@android:color/white"
+                  android:textSize="10sp"
+                  android:textStyle="bold"
+                  android:visibility="gone" />
+          </FrameLayout>
+
+        <ImageButton
+            android:id="@+id/commentIcon"
+            android:layout_width="40dp"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Comments"
+            android:src="@drawable/ic_comment"
+            app:tint="@color/white" />
+
+          <ImageButton
+              android:id="@+id/shareIcon"
+              android:layout_width="40dp"
+              android:layout_height="match_parent"
+              android:background="?attr/selectableItemBackgroundBorderless"
+              android:contentDescription="QR Code"
+              android:src="@drawable/ic_share"
+              app:tint="@color/white" />
+
+      </LinearLayout>
 
   </com.google.android.material.appbar.MaterialToolbar>
 
