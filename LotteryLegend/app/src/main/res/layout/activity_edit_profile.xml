@@ -54,11 +54,13 @@
             android:orientation="vertical"
             android:padding="24dp">
 
-            <ImageView
+            <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/imgAvatar"
                 android:layout_width="100dp"
                 android:layout_height="100dp"
                 android:layout_gravity="center"
+                android:scaleType="centerCrop"
+                app:shapeAppearanceOverlay="@style/CircleImage"
                 android:src="@drawable/ic_profile_avatar"
                 android:contentDescription="profile photo"/>
 

@@ -1,13 +1,17 @@
 package com.example.lottery_legend.entrant;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Base64;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -47,6 +51,7 @@ public class ProfileActivity extends AppCompatActivity {
     private TextView viewName;
     private TextView viewEmail;
     private TextView viewPhone;
+    private ImageView imgAvatar;
     private TextView toolbarRoleText;
     private TextView switchRoleLabel;
     private SwitchMaterial switchNotifications;
@@ -82,6 +87,7 @@ public class ProfileActivity extends AppCompatActivity {
         viewName = findViewById(R.id.viewName);
         viewEmail = findViewById(R.id.viewEmail);
         viewPhone = findViewById(R.id.viewPhone);
+        imgAvatar = findViewById(R.id.imgAvatar);
         switchNotifications = findViewById(R.id.switchNotifications);
         layoutSwitchRole = findViewById(R.id.layoutSwitchRole);
         layoutNotifications = findViewById(R.id.layoutNotifications);
@@ -225,6 +231,13 @@ public class ProfileActivity extends AppCompatActivity {
                             }
 
                             switchNotifications.setChecked(currentEntrant.isNotificationsEnabled());
+                            
+                            String profileImage = currentEntrant.getProfileImage();
+                            if (profileImage != null && !profileImage.isEmpty()) {
+                                displayBase64Image(profileImage);
+                            } else {
+                                imgAvatar.setImageResource(R.drawable.ic_profile_avatar);
+                            }
 
                             // Show admin button if the user has admin privileges and not read only
                             if (!isReadOnly && documentSnapshot.getBoolean("isAdmin") != null && documentSnapshot.getBoolean("isAdmin")) {
@@ -251,6 +264,13 @@ public class ProfileActivity extends AppCompatActivity {
                 String phone = doc.getString("phone");
                 viewPhone.setText((phone != null && !phone.isEmpty()) ? phone : "No phone number provided");
                 
+                String profileImage = doc.getString("profileImage");
+                if (profileImage != null && !profileImage.isEmpty()) {
+                    displayBase64Image(profileImage);
+                } else {
+                    imgAvatar.setImageResource(R.drawable.ic_profile_avatar);
+                }
+                
                 if (!isReadOnly) {
                     // Still check admin from entrants collection
                     db.collection("entrants").document(deviceId).get().addOnSuccessListener(entrantDoc -> {
@@ -263,6 +283,17 @@ public class ProfileActivity extends AppCompatActivity {
                 }
             }
         });
+    }
+
+    private void displayBase64Image(String base64) {
+        try {
+            byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
+            Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+            if (bitmap != null) {
+                imgAvatar.setImageBitmap(bitmap);
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     private void showDeleteConfirmationDialog() {

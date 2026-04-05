@@ -33,6 +33,9 @@ public class Entrant {
     /** Flag indicating if the user has administrative privileges. */
     private boolean isAdmin;
 
+    /** Base64 encoded profile image. */
+    private String profileImage;
+
     /**
      * Default no-argument constructor required for Firebase Firestore.
      */
@@ -40,7 +43,7 @@ public class Entrant {
     }
 
     /**
-     * Full constructor to initialize all fields of the Entrant.
+     * Constructor without profile image.
      *
      * @param deviceId             The unique device ID.
      * @param name                 The name of the entrant.
@@ -54,6 +57,25 @@ public class Entrant {
     public Entrant(String deviceId, String name, String email, String phone,
                    boolean notificationsEnabled, Timestamp joinDate,
                    Timestamp updatedAt, boolean isAdmin) {
+        this(deviceId, name, email, phone, notificationsEnabled, joinDate, updatedAt, isAdmin, null);
+    }
+
+    /**
+     * Full constructor to initialize all fields of the Entrant.
+     *
+     * @param deviceId             The unique device ID.
+     * @param name                 The name of the entrant.
+     * @param email                The email of the entrant.
+     * @param phone                The phone number of the entrant.
+     * @param notificationsEnabled Whether notifications are active.
+     * @param joinDate             The date the entrant joined.
+     * @param updatedAt           The date of the last update.
+     * @param isAdmin              Administrative status.
+     * @param profileImage         Base64 encoded profile image.
+     */
+    public Entrant(String deviceId, String name, String email, String phone,
+                   boolean notificationsEnabled, Timestamp joinDate,
+                   Timestamp updatedAt, boolean isAdmin, String profileImage) {
         this.deviceId = deviceId;
         this.name = name;
         this.email = email;
@@ -62,6 +84,7 @@ public class Entrant {
         this.joinDate = joinDate;
         this.updatedAt = updatedAt;
         this.isAdmin = isAdmin;
+        this.profileImage = profileImage;
     }
 
     /** @return The unique device identifier. */
@@ -142,6 +165,16 @@ public class Entrant {
     /** @param isAdmin True to set user as admin. */
     public void setIsAdmin(boolean isAdmin) {
         this.isAdmin = isAdmin;
+    }
+
+    /** @return The Base64 encoded profile image. */
+    public String getProfileImage() {
+        return profileImage;
+    }
+
+    /** @param profileImage The Base64 encoded profile image to set. */
+    public void setProfileImage(String profileImage) {
+        this.profileImage = profileImage;
     }
 
     /**

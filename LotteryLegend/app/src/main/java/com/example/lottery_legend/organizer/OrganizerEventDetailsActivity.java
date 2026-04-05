@@ -61,11 +61,11 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
     private String eventId;
     private String deviceId;
 
-    private ImageView eventPoster;
+    private ImageView eventPoster, imageOrganizerProfile;
     private TextView textWaitingCount, textSelectedCount, textCapacity;
     private TextView textEventTitle, textEventStatus, tagCoOrganizer, textEventVisibility;
     private TextView textEventDate, textRegistrationDeadline, textLocation, textPrice;
-    private TextView textDescription, textLotteryGuidelines;
+    private TextView textDescription, textLotteryGuidelines, textOrganizerName;
     private Button btnViewWaitingList, btnRunLotteryDraw, btnSendNotification, btnDeleteEvent, btnInviteEntrants;
     private ImageButton editIcon, updatePoster, commentIcon, mapIcon, shareIcon;
 
@@ -107,6 +107,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         shareIcon = findViewById(R.id.shareIcon);
 
         eventPoster = findViewById(R.id.eventPoster);
+        imageOrganizerProfile = findViewById(R.id.imageOrganizerProfile);
         textWaitingCount = findViewById(R.id.textWaitingCount);
         textSelectedCount = findViewById(R.id.textSelectedCount);
         textCapacity = findViewById(R.id.textCapacity);
@@ -120,6 +121,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         textPrice = findViewById(R.id.textPrice);
         textDescription = findViewById(R.id.textDescription);
         textLotteryGuidelines = findViewById(R.id.textLotteryGuidelines);
+        textOrganizerName = findViewById(R.id.textOrganizerName);
 
         btnViewWaitingList = findViewById(R.id.btnViewWaitingList);
         btnRunLotteryDraw = findViewById(R.id.btnRunLotteryDraw);
@@ -263,6 +265,21 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
             tagCoOrganizer.setVisibility(View.GONE);
         }
 
+        // Fetch organizer details (name and profile image)
+        if (event.getOrganizerId() != null) {
+            db.collection("organizers").document(event.getOrganizerId()).get().addOnSuccessListener(doc -> {
+                if (doc.exists()) {
+                    textOrganizerName.setText(doc.getString("name"));
+                    String profileImage = doc.getString("profileImage");
+                    if (profileImage != null && !profileImage.isEmpty()) {
+                        displayBase64Image(profileImage, imageOrganizerProfile);
+                    } else {
+                        imageOrganizerProfile.setImageResource(R.drawable.ic_profile_avatar);
+                    }
+                }
+            });
+        }
+
         int waitingListSize = (event.getWaitingList() != null) ? event.getWaitingList().size() : 0;
         if (event.getMaxWaitingList() != null) {
             textWaitingCount.setText(String.format(Locale.getDefault(), "%d/%d", waitingListSize, event.getMaxWaitingList()));
@@ -334,6 +351,17 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
             }
         } else {
             eventPoster.setImageResource(R.drawable.img_poster);
+        }
+    }
+
+    private void displayBase64Image(String base64, ImageView imageView) {
+        try {
+            byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
+            Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+            if (bitmap != null && imageView != null) {
+                imageView.setImageBitmap(bitmap);
+            }
+        } catch (Exception ignored) {
         }
     }
 

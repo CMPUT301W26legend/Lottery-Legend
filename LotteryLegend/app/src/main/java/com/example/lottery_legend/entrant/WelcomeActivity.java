@@ -1,10 +1,14 @@
 package com.example.lottery_legend.entrant;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.util.Base64;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -80,6 +84,27 @@ public class WelcomeActivity extends AppCompatActivity {
         View editProfileRow = findViewById(R.id.editProfileRow);
         View btnInvitations = findViewById(R.id.btnInvitations);
         View btnViewEvents = findViewById(R.id.btnViewEvents);
+        ImageView profileIcon = findViewById(R.id.profileIcon);
+
+        // Load profile image
+        db.collection("entrants").document(deviceId).get().addOnSuccessListener(doc -> {
+            String profileImage = null;
+            if (doc.exists()) {
+                profileImage = doc.getString("profileImage");
+            } else {
+                db.collection("organizers").document(deviceId).get().addOnSuccessListener(orgDoc -> {
+                    if (orgDoc.exists()) {
+                        String orgProfileImage = orgDoc.getString("profileImage");
+                        if (orgProfileImage != null && !orgProfileImage.isEmpty()) {
+                            displayBase64Image(orgProfileImage, profileIcon);
+                        }
+                    }
+                });
+            }
+            if (profileImage != null && !profileImage.isEmpty()) {
+                displayBase64Image(profileImage, profileIcon);
+            }
+        });
 
         if (enterAppButton != null) {
             enterAppButton.setOnClickListener(v -> {
@@ -126,6 +151,17 @@ public class WelcomeActivity extends AppCompatActivity {
                 startActivity(intent);
                 finish();
             });
+        }
+    }
+
+    private void displayBase64Image(String base64, ImageView imageView) {
+        try {
+            byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
+            Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+            if (bitmap != null && imageView != null) {
+                imageView.setImageBitmap(bitmap);
+            }
+        } catch (Exception ignored) {
         }
     }
 

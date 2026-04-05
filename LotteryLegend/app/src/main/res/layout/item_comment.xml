@@ -18,12 +18,14 @@
         android:paddingBottom="4dp">
 
         <!-- Avatar -->
-        <ImageView
+        <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/imageAvatar"
             android:layout_width="34dp"
             android:layout_height="34dp"
             android:layout_marginTop="2dp"
             android:contentDescription="User Avatar"
+            android:scaleType="centerCrop"
+            app:shapeAppearanceOverlay="@style/CircleImage"
             android:src="@drawable/ic_profile_avatar" />
 
         <!-- Right content -->
