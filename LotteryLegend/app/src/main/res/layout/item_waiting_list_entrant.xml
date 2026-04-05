@@ -22,15 +22,16 @@
         android:paddingBottom="14dp">
 
         <!-- Profile -->
-        <ImageView
+        <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/imageEntrantProfile"
             android:layout_width="36dp"
             android:layout_height="36dp"
             android:layout_alignParentStart="true"
             android:layout_centerVertical="true"
-            android:background="@drawable/ic_profile_avatar"
             android:contentDescription="Entrant profile"
-            android:padding="8dp" />
+            android:scaleType="centerCrop"
+            app:shapeAppearanceOverlay="@style/CircleImage"
+            android:src="@drawable/ic_profile_avatar" />
 
         <!-- Right status -->
         <TextView

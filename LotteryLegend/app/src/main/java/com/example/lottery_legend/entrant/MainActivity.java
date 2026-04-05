@@ -344,7 +344,14 @@ public class MainActivity extends AppCompatActivity {
                 for (QueryDocumentSnapshot doc : value) {
                     Event event = doc.toObject(Event.class);
                     if (event != null && event.getOrganizerId() != null && !event.getOrganizerId().equals(deviceId)) {
-                        allEvents.add(event);
+                        // Check if device is a co-organizer
+                        doc.getReference().collection("coOrganizers").document(deviceId).get()
+                                .addOnSuccessListener(coDoc -> {
+                                    if (!coDoc.exists()) {
+                                        allEvents.add(event);
+                                        applyFilters();
+                                    }
+                                });
                     }
                 }
             }

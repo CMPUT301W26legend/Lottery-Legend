@@ -1,25 +1,34 @@
 package com.example.lottery_legend.entrant;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
+import android.util.Base64;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.lottery_legend.R;
-import com.example.lottery_legend.model.Entrant;
 import com.example.lottery_legend.organizer.NavbarOrganizer;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
+
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 
 /**
  * Activity for entrants and organizers to edit their profile information.
@@ -33,8 +42,21 @@ public class EditProfileActivity extends AppCompatActivity {
     private EditText editTextName;
     private EditText editTextEmail;
     private EditText editTextPhone;
+    private ImageView imgAvatar;
+    private TextView tvUploadPhoto;
     private Button saveButton;
     private TextView toolbarRoleText;
+
+    private String profileImageBase64;
+
+    private final ActivityResultLauncher<String> imagePickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.GetContent(),
+            uri -> {
+                if (uri != null) {
+                    processAndSetImage(uri);
+                }
+            }
+    );
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,12 +80,17 @@ public class EditProfileActivity extends AppCompatActivity {
         editTextName = findViewById(R.id.etName);
         editTextEmail = findViewById(R.id.etEmail);
         editTextPhone = findViewById(R.id.etPhone);
+        imgAvatar = findViewById(R.id.imgAvatar);
+        tvUploadPhoto = findViewById(R.id.tvUploadPhoto);
         saveButton = findViewById(R.id.btnSave);
         toolbarRoleText = findViewById(R.id.toolbarRoleText);
 
         updateUIForMode();
         fetchProfileData();
 
+        tvUploadPhoto.setOnClickListener(v -> imagePickerLauncher.launch("image/*"));
+        imgAvatar.setOnClickListener(v -> imagePickerLauncher.launch("image/*"));
+        
         saveButton.setOnClickListener(v -> saveProfileData());
     }
 
@@ -97,9 +124,52 @@ public class EditProfileActivity extends AppCompatActivity {
                         editTextName.setText(documentSnapshot.getString("name"));
                         editTextEmail.setText(documentSnapshot.getString("email"));
                         editTextPhone.setText(documentSnapshot.getString("phone"));
+                        
+                        profileImageBase64 = documentSnapshot.getString("profileImage");
+                        if (profileImageBase64 != null && !profileImageBase64.isEmpty()) {
+                            displayBase64Image(profileImageBase64);
+                        }
                     }
                 })
                 .addOnFailureListener(e -> Toast.makeText(this, "Error loading data", Toast.LENGTH_SHORT).show());
+    }
+
+    private void processAndSetImage(Uri uri) {
+        try {
+            InputStream inputStream = getContentResolver().openInputStream(uri);
+            Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+            if (inputStream != null) inputStream.close();
+
+            if (bitmap != null) {
+                // Resize if too large
+                int maxWidth = 500;
+                int maxHeight = 500;
+                if (bitmap.getWidth() > maxWidth || bitmap.getHeight() > maxHeight) {
+                    float ratio = Math.min((float) maxWidth / bitmap.getWidth(), (float) maxHeight / bitmap.getHeight());
+                    bitmap = Bitmap.createScaledBitmap(bitmap, Math.round(ratio * bitmap.getWidth()), Math.round(ratio * bitmap.getHeight()), true);
+                }
+
+                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 70, outputStream);
+                byte[] byteArray = outputStream.toByteArray();
+                profileImageBase64 = Base64.encodeToString(byteArray, Base64.DEFAULT);
+                
+                imgAvatar.setImageBitmap(bitmap);
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void displayBase64Image(String base64) {
+        try {
+            byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
+            Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+            if (bitmap != null) {
+                imgAvatar.setImageBitmap(bitmap);
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     /**
@@ -121,6 +191,7 @@ public class EditProfileActivity extends AppCompatActivity {
                 .update("name", name,
                         "email", email,
                         "phone", phone,
+                        "profileImage", profileImageBase64,
                         "updatedAt", Timestamp.now())
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(this, "Profile updated successfully!", Toast.LENGTH_SHORT).show();

@@ -35,6 +35,7 @@ import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.WriteBatch;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.WriterException;
@@ -46,8 +47,10 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Activity for organizers to edit an existing event.
@@ -141,7 +144,7 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
     private void initViews() {
         toolbar = findViewById(R.id.toolbarCreateEvent);
         toolbar.setTitle("Edit Event");
-        
+
         editTextEventTitle = findViewById(R.id.editTextEventTitle);
         editTextDescription = findViewById(R.id.editTextDescription);
         editTextLocation = findViewById(R.id.editTextLocation);
@@ -219,7 +222,7 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
                 if (event.getMaxWaitingList() != null) {
                     editTextWaitingList.setText(String.valueOf(event.getMaxWaitingList()));
                 }
-                
+
                 switchGeo.setChecked(event.isGeoEnabled());
                 switchPrivateEvent.setChecked(event.isIsPrivateEvent());
 
@@ -328,29 +331,33 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
                 qrCodeValue = eventId;
             }
 
-            db.collection("events").document(eventId)
-                    .update(
-                            "title", title,
-                            "description", description,
-                            "eventLocation.name", locationName,
-                            "eventLocation.address", locationName,
-                            "eventLocation.latitude", selectedLat,
-                            "eventLocation.longitude", selectedLng,
-                            "price", price,
-                            "capacity", capacity,
-                            "maxWaitingList", maxWaitingList,
-                            "geoEnabled", switchGeo.isChecked(),
-                            "isPrivateEvent", isPrivate,
-                            "registrationStartAt", new Timestamp(regStart),
-                            "registrationEndAt", new Timestamp(regEnd),
-                            "drawAt", new Timestamp(drawDate),
-                            "eventStartAt", new Timestamp(eventStart),
-                            "eventEndAt", new Timestamp(eventEnd),
-                            "posterImage", finalPosterBase64,
-                            "qrCodeImage", qrCodeImage,
-                            "qrCodeValue", qrCodeValue,
-                            "updatedAt", Timestamp.now()
-                    )
+            Map<String, Object> updates = new HashMap<>();
+            updates.put("title", title);
+            updates.put("description", description);
+            updates.put("eventLocation.name", locationName);
+            updates.put("eventLocation.address", locationName);
+            updates.put("eventLocation.latitude", selectedLat);
+            updates.put("eventLocation.longitude", selectedLng);
+            updates.put("price", price);
+            updates.put("capacity", capacity);
+            updates.put("maxWaitingList", maxWaitingList);
+            updates.put("geoEnabled", switchGeo.isChecked());
+            updates.put("isPrivateEvent", isPrivate);
+            updates.put("registrationStartAt", new Timestamp(regStart));
+            updates.put("registrationEndAt", new Timestamp(regEnd));
+            updates.put("drawAt", new Timestamp(drawDate));
+            updates.put("eventStartAt", new Timestamp(eventStart));
+            updates.put("eventEndAt", new Timestamp(eventEnd));
+            updates.put("posterImage", finalPosterBase64);
+            updates.put("qrCodeImage", qrCodeImage);
+            updates.put("qrCodeValue", qrCodeValue);
+            updates.put("updatedAt", Timestamp.now());
+
+            WriteBatch batch = db.batch();
+            batch.update(db.collection("events").document(eventId), updates);
+            batch.update(db.collection("organizers").document(deviceId).collection("createdEvents").document(eventId), updates);
+
+            batch.commit()
                     .addOnSuccessListener(aVoid -> {
                         Toast.makeText(EditEventActivity.this, "Event Updated Successfully!", Toast.LENGTH_SHORT).show();
                         finish();
