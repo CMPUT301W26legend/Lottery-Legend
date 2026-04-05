@@ -1,18 +1,21 @@
 package com.example.lottery_legend.organizer;
 
-import android.app.AlertDialog;
+import android.content.Intent;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.graphics.Insets;
@@ -23,16 +26,16 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.lottery_legend.R;
 import com.example.lottery_legend.model.Comment;
-import com.google.android.material.button.MaterialButton;
+import com.example.lottery_legend.model.Reaction;
+import com.google.android.material.card.MaterialCardView;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentReference;
-import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.Query;
-import com.google.firebase.firestore.WriteBatch;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -53,12 +56,29 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
 
     private Comment replyingTo = null;
 
+    private final Map<String, Reaction> userReactions = new HashMap<>();
+    private final List<Comment> allComments = new ArrayList<>();
+    private final Map<String, Integer> directReplyCountMap = new HashMap<>();
+
+    private ListenerRegistration commentsRegistration;
+    private ListenerRegistration reactionsRegistration;
+
+    private final ActivityResultLauncher<Intent> threadLauncher =
+            registerForActivityResult(
+                    new ActivityResultContracts.StartActivityForResult(),
+                    result -> {
+                        if (result.getResultCode() == RESULT_OK) {
+                            restartRealtimeListeners();
+                        }
+                    }
+            );
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_organizer_comments);
-        
+
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
@@ -66,21 +86,43 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
         });
 
         db = FirebaseFirestore.getInstance();
+
         eventId = getIntent().getStringExtra("eventId");
         deviceId = getIntent().getStringExtra("deviceId");
         authorName = getIntent().getStringExtra("authorName");
 
         setupViews();
-        loadComments();
+
+        if (TextUtils.isEmpty(eventId)) {
+            finish();
+        }
+
+        NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.HOME);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (!TextUtils.isEmpty(eventId)) {
+            startRealtimeListeners();
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        stopRealtimeListeners();
     }
 
     private void setupViews() {
         Toolbar toolbar = findViewById(R.id.toolbarComments);
         setSupportActionBar(toolbar);
+
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setDisplayShowTitleEnabled(false);
         }
+
         toolbar.setNavigationOnClickListener(v -> finish());
 
         recyclerView = findViewById(R.id.recyclerViewComments);
@@ -100,25 +142,96 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
         });
     }
 
-    private void loadComments() {
-        db.collection("events").document(eventId)
+    private void startRealtimeListeners() {
+        stopRealtimeListeners();
+        listenComments();
+        listenCurrentUserReactions();
+    }
+
+    private void restartRealtimeListeners() {
+        startRealtimeListeners();
+    }
+
+    private void stopRealtimeListeners() {
+        if (commentsRegistration != null) {
+            commentsRegistration.remove();
+            commentsRegistration = null;
+        }
+        if (reactionsRegistration != null) {
+            reactionsRegistration.remove();
+            reactionsRegistration = null;
+        }
+    }
+
+    private void listenComments() {
+        commentsRegistration = db.collection("events")
+                .document(eventId)
                 .collection("comments")
-                .orderBy("createdAt", Query.Direction.ASCENDING)
                 .addSnapshotListener((value, error) -> {
-                    if (error != null) {
-                        Toast.makeText(this, "Error loading comments", Toast.LENGTH_SHORT).show();
+                    if (error != null || value == null) {
                         return;
                     }
-                    if (value != null) {
-                        List<Comment> allComments = value.toObjects(Comment.class);
-                        List<Comment> parentComments = new ArrayList<>();
-                        for (Comment c : allComments) {
-                            if (c.getThreadLevel() == 0) {
-                                parentComments.add(c);
-                            }
+
+                    List<Comment> comments = value.toObjects(Comment.class);
+
+                    Collections.sort(comments, (c1, c2) -> {
+                        if (c1.getCreatedAt() == null && c2.getCreatedAt() == null) return 0;
+                        if (c1.getCreatedAt() == null) return -1;
+                        if (c2.getCreatedAt() == null) return 1;
+                        return c1.getCreatedAt().compareTo(c2.getCreatedAt());
+                    });
+
+                    allComments.clear();
+                    allComments.addAll(comments);
+
+                    rebuildDirectReplyCountMap(comments);
+
+                    List<Comment> parentComments = new ArrayList<>();
+                    for (Comment comment : comments) {
+                        if (comment.getThreadLevel() == 0) {
+                            parentComments.add(comment);
                         }
-                        adapter.setComments(parentComments);
                     }
+
+                    adapter.setComments(parentComments);
+                });
+    }
+
+    private void rebuildDirectReplyCountMap(List<Comment> comments) {
+        directReplyCountMap.clear();
+
+        for (Comment comment : comments) {
+            if (comment == null) continue;
+
+            if (comment.getThreadLevel() == 1) {
+                String rootCommentId = comment.getRootCommentId();
+                if (!TextUtils.isEmpty(rootCommentId)) {
+                    int current = directReplyCountMap.getOrDefault(rootCommentId, 0);
+                    directReplyCountMap.put(rootCommentId, current + 1);
+                }
+            }
+        }
+    }
+
+    private void listenCurrentUserReactions() {
+        reactionsRegistration = db.collectionGroup("reactions")
+                .whereEqualTo("deviceId", deviceId)
+                .addSnapshotListener((value, error) -> {
+                    if (error != null || value == null) {
+                        return;
+                    }
+
+                    userReactions.clear();
+
+                    for (com.google.firebase.firestore.QueryDocumentSnapshot doc : value) {
+                        if (doc.getReference().getParent() != null
+                                && doc.getReference().getParent().getParent() != null) {
+                            String commentId = doc.getReference().getParent().getParent().getId();
+                            userReactions.put(commentId, doc.toObject(Reaction.class));
+                        }
+                    }
+
+                    adapter.notifyDataSetChanged();
                 });
     }
 
@@ -126,7 +239,11 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
         String content = editComment.getText().toString().trim();
         if (TextUtils.isEmpty(content)) return;
 
-        DocumentReference ref = db.collection("events").document(eventId).collection("comments").document();
+        DocumentReference ref = db.collection("events")
+                .document(eventId)
+                .collection("comments")
+                .document();
+
         Comment comment = new Comment();
         comment.setCommentId(ref.getId());
         comment.setAuthorId(deviceId);
@@ -136,25 +253,24 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
         comment.setCreatedAt(Timestamp.now());
         comment.setUpdatedAt(Timestamp.now());
         comment.setThreadLevel(0);
-        comment.setReactionCount(0);
+        comment.setParentCommentId(null);
+        comment.setRootCommentId(null);
+        comment.setReplyToUserId(null);
+        comment.setReplyToUserNameSnapshot(null);
         comment.setReplyCount(0);
-        comment.setReactionTypeCounts(new HashMap<>());
 
-        ref.set(comment).addOnSuccessListener(aVoid -> {
-            editComment.setText("");
-            recyclerView.postDelayed(() -> {
-                if (adapter.getItemCount() > 0) {
-                    recyclerView.smoothScrollToPosition(adapter.getItemCount() - 1);
-                }
-            }, 300);
-        });
+        ref.set(comment).addOnSuccessListener(aVoid -> editComment.setText(""));
     }
 
     private void postReply() {
         String content = editComment.getText().toString().trim();
-        if (TextUtils.isEmpty(content)) return;
+        if (TextUtils.isEmpty(content) || replyingTo == null) return;
 
-        DocumentReference ref = db.collection("events").document(eventId).collection("comments").document();
+        DocumentReference ref = db.collection("events")
+                .document(eventId)
+                .collection("comments")
+                .document();
+
         Comment reply = new Comment();
         reply.setCommentId(ref.getId());
         reply.setAuthorId(deviceId);
@@ -163,94 +279,101 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
         reply.setContent(content);
         reply.setCreatedAt(Timestamp.now());
         reply.setUpdatedAt(Timestamp.now());
+
+        String rootId = !TextUtils.isEmpty(replyingTo.getRootCommentId())
+                ? replyingTo.getRootCommentId()
+                : replyingTo.getCommentId();
+
+        reply.setRootCommentId(rootId);
         reply.setParentCommentId(replyingTo.getCommentId());
-        reply.setRootCommentId(replyingTo.getRootCommentId() != null ? replyingTo.getRootCommentId() : replyingTo.getCommentId());
         reply.setThreadLevel(replyingTo.getThreadLevel() + 1);
-        reply.setReactionCount(0);
-        reply.setReplyCount(0);
-        reply.setReactionTypeCounts(new HashMap<>());
 
-        WriteBatch batch = db.batch();
-        batch.set(ref, reply);
-        
-        DocumentReference parentRef = db.collection("events").document(eventId)
-                .collection("comments").document(replyingTo.getCommentId());
-        batch.update(parentRef, "replyCount", FieldValue.increment(1));
+        if (reply.getThreadLevel() == 1) {
+            reply.setReplyToUserId(null);
+            reply.setReplyToUserNameSnapshot(null);
+        } else {
+            reply.setReplyToUserId(replyingTo.getAuthorId());
+            reply.setReplyToUserNameSnapshot(replyingTo.getAuthorNameSnapshot());
+        }
 
-        batch.commit().addOnSuccessListener(aVoid -> {
+        ref.set(reply).addOnSuccessListener(aVoid -> {
             editComment.setText("");
             editComment.setHint("Write a comment...");
             replyingTo = null;
-            Toast.makeText(this, "Reply posted", Toast.LENGTH_SHORT).show();
         });
     }
 
     private void deleteComment(Comment comment) {
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_comment_delete, null);
-        AlertDialog dialog = new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this, R.style.TransparentDialog)
                 .setView(dialogView)
                 .create();
 
-        MaterialButton btnCancel = dialogView.findViewById(R.id.buttonCancelDelete);
-        MaterialButton btnConfirm = dialogView.findViewById(R.id.buttonConfirmDelete);
+        dialogView.findViewById(R.id.buttonCancelDelete).setOnClickListener(v -> dialog.dismiss());
 
-        if (btnCancel != null) {
-            btnCancel.setOnClickListener(v -> dialog.dismiss());
-        }
-        if (btnConfirm != null) {
-            btnConfirm.setOnClickListener(v -> {
-                db.collection("events").document(eventId)
-                        .collection("comments").document(comment.getCommentId())
-                        .delete()
-                        .addOnSuccessListener(aVoid -> {
-                            Toast.makeText(this, "Comment deleted", Toast.LENGTH_SHORT).show();
-                            dialog.dismiss();
-                        });
-            });
-        }
+        dialogView.findViewById(R.id.buttonConfirmDelete).setOnClickListener(v -> {
+            db.collection("events")
+                    .document(eventId)
+                    .collection("comments")
+                    .document(comment.getCommentId())
+                    .delete()
+                    .addOnSuccessListener(aVoid -> dialog.dismiss());
+        });
 
         dialog.show();
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        }
     }
 
-    private void showReactionDialog(Comment comment) {
-        String[] options = {"LIKE 👍", "LOVE ❤️", "HELPFUL ⭐"};
-        String[] types = {"LIKE", "LOVE", "HELPFUL"};
+    private void toggleReaction(Comment comment, String type) {
+        DocumentReference commentRef = db.collection("events")
+                .document(eventId)
+                .collection("comments")
+                .document(comment.getCommentId());
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("React with");
-        builder.setItems(options, (dialog, which) -> {
-            toggleReaction(comment, types[which]);
-        });
-        builder.show();
-    }
+        DocumentReference reactionRef = commentRef
+                .collection("reactions")
+                .document(deviceId);
 
-    private void toggleReaction(Comment comment, String reactionType) {
-        DocumentReference reactionRef = db.collection("events").document(eventId)
-                .collection("comments").document(comment.getCommentId())
-                .collection("reactions").document(deviceId + "_" + reactionType);
-
-        reactionRef.get().addOnSuccessListener(doc -> {
-            WriteBatch batch = db.batch();
-            DocumentReference commentRef = db.collection("events").document(eventId)
-                    .collection("comments").document(comment.getCommentId());
-
-            if (doc.exists()) {
-                batch.delete(reactionRef);
-                batch.update(commentRef, "reactionCount", FieldValue.increment(-1));
-                batch.update(commentRef, "reactionTypeCounts." + reactionType, FieldValue.increment(-1));
-            } else {
-                Map<String, Object> reaction = new HashMap<>();
-                reaction.put("deviceId", deviceId);
-                reaction.put("reactionType", reactionType);
-                reaction.put("createdAt", Timestamp.now());
-                batch.set(reactionRef, reaction);
-                batch.update(commentRef, "reactionCount", FieldValue.increment(1));
-                batch.update(commentRef, "reactionTypeCounts." + reactionType, FieldValue.increment(1));
+        db.runTransaction(transaction -> {
+            Reaction existing = transaction.get(reactionRef).toObject(Reaction.class);
+            if (existing == null) {
+                existing = new Reaction();
+                existing.setDeviceId(deviceId);
             }
-            batch.commit();
+
+            boolean newValue;
+            String countField;
+
+            switch (type) {
+                case "LIKE":
+                    newValue = !existing.isLike();
+                    existing.setLike(newValue);
+                    countField = "likeCount";
+                    break;
+                case "LOVE":
+                    newValue = !existing.isLove();
+                    existing.setLove(newValue);
+                    countField = "loveCount";
+                    break;
+                case "HELPFUL":
+                    newValue = !existing.isHelpful();
+                    existing.setHelpful(newValue);
+                    countField = "helpfulCount";
+                    break;
+                default:
+                    return null;
+            }
+
+            existing.setUpdatedAt(Timestamp.now());
+            transaction.set(reactionRef, existing);
+
+            int inc = newValue ? 1 : -1;
+            transaction.update(
+                    commentRef,
+                    countField, com.google.firebase.firestore.FieldValue.increment(inc),
+                    "reactionCount", com.google.firebase.firestore.FieldValue.increment(inc)
+            );
+
+            return null;
         });
     }
 
@@ -258,15 +381,16 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
         private List<Comment> comments = new ArrayList<>();
 
         public void setComments(List<Comment> newComments) {
-            this.comments = newComments;
+            comments = newComments != null ? newComments : new ArrayList<>();
             notifyDataSetChanged();
         }
 
         @NonNull
         @Override
         public CommentViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_comment_organizer, parent, false);
-            return new CommentViewHolder(view);
+            return new CommentViewHolder(
+                    LayoutInflater.from(parent.getContext()).inflate(R.layout.item_comment_organizer, parent, false)
+            );
         }
 
         @Override
@@ -275,38 +399,46 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
         }
 
         @Override
-        public int getItemCount() { return comments.size(); }
+        public int getItemCount() {
+            return comments.size();
+        }
     }
 
     private class CommentViewHolder extends RecyclerView.ViewHolder {
-        TextView authorName, time, content, reply, react, btnDelete, buttonViewReplies;
-        TextView likeCount, heartCount, likeEmoji, heartEmoji;
-        View likeCard, heartCard, reactionSummary;
-        ImageView avatar;
+
+        TextView authorName;
+        TextView time;
+        TextView content;
+        TextView reply;
+        TextView react;
+        TextView buttonViewReplies;
+        TextView buttonDelete;
+        TextView likeCount;
+        TextView heartCount;
+
+        MaterialCardView cardLike;
+        MaterialCardView cardLove;
+
+        View reactionSummary;
 
         public CommentViewHolder(@NonNull View itemView) {
             super(itemView);
+
             authorName = itemView.findViewById(R.id.textCommentUserName);
             time = itemView.findViewById(R.id.textCommentTime);
             content = itemView.findViewById(R.id.textCommentContent);
             reply = itemView.findViewById(R.id.buttonReply);
             react = itemView.findViewById(R.id.buttonReact);
-            btnDelete = itemView.findViewById(R.id.buttonDelete);
             buttonViewReplies = itemView.findViewById(R.id.buttonViewReplies);
-            avatar = itemView.findViewById(R.id.imageAvatar);
+            buttonDelete = itemView.findViewById(R.id.buttonDelete);
+
             reactionSummary = itemView.findViewById(R.id.layoutReactionSummary);
-            
             likeCount = itemView.findViewById(R.id.textLikeCount);
             heartCount = itemView.findViewById(R.id.textHeartCount);
-            
-            if (likeCount != null) {
-                likeEmoji = (TextView) ((ViewGroup) likeCount.getParent()).getChildAt(0);
-                likeCard = (View) likeCount.getParent().getParent();
-            }
-            if (heartCount != null) {
-                heartEmoji = (TextView) ((ViewGroup) heartCount.getParent()).getChildAt(0);
-                heartCard = (View) heartCount.getParent().getParent();
-            }
+
+            // Corrected IDs from item_comment_organizer.xml
+            cardLike = itemView.findViewById(R.id.cardLike);
+            cardLove = itemView.findViewById(R.id.cardLove);
         }
 
         public void bind(Comment comment) {
@@ -314,50 +446,22 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
             content.setText(comment.getContent());
 
             if (comment.getCreatedAt() != null) {
-                SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault());
-                time.setText(sdf.format(comment.getCreatedAt().toDate()));
-            }
-
-            if (comment.getReactionCount() > 0 && comment.getReactionTypeCounts() != null) {
-                reactionSummary.setVisibility(View.VISIBLE);
-                Map<String, Integer> counts = comment.getReactionTypeCounts();
-                List<String> activeTypes = new ArrayList<>();
-                if (counts.getOrDefault("LIKE", 0) > 0) activeTypes.add("LIKE");
-                if (counts.getOrDefault("LOVE", 0) > 0) activeTypes.add("LOVE");
-                if (counts.getOrDefault("HELPFUL", 0) > 0) activeTypes.add("HELPFUL");
-
-                if (activeTypes.size() > 0) {
-                    likeCard.setVisibility(View.VISIBLE);
-                    String type = activeTypes.get(0);
-                    likeEmoji.setText(getEmoji(type));
-                    likeCount.setText(String.valueOf(counts.get(type)));
-                    likeCard.setOnClickListener(v -> toggleReaction(comment, type));
-                } else {
-                    likeCard.setVisibility(View.GONE);
-                }
-
-                if (activeTypes.size() > 1) {
-                    heartCard.setVisibility(View.VISIBLE);
-                    String type = activeTypes.get(1);
-                    heartEmoji.setText(getEmoji(type));
-                    heartCount.setText(String.valueOf(counts.get(type)));
-                    heartCard.setOnClickListener(v -> toggleReaction(comment, type));
-                } else {
-                    heartCard.setVisibility(View.GONE);
-                }
+                time.setText(new SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
+                        .format(comment.getCreatedAt().toDate()));
             } else {
-                reactionSummary.setVisibility(View.GONE);
+                time.setText("");
             }
 
-            if (comment.getReplyCount() > 0) {
+            updateReactionUI(comment);
+
+            int directReplyCount = directReplyCountMap.getOrDefault(comment.getCommentId(), 0);
+
+            if (directReplyCount > 0) {
                 buttonViewReplies.setVisibility(View.VISIBLE);
-                buttonViewReplies.setText("View " + comment.getReplyCount() + " Replies");
+                buttonViewReplies.setText("View " + directReplyCount + " Replies");
             } else {
                 buttonViewReplies.setVisibility(View.GONE);
             }
-
-            btnDelete.setVisibility(View.VISIBLE);
-            btnDelete.setOnClickListener(v -> deleteComment(comment));
 
             reply.setOnClickListener(v -> {
                 replyingTo = comment;
@@ -365,19 +469,57 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
                 editComment.requestFocus();
             });
 
-            react.setOnClickListener(v -> showReactionDialog(comment));
-            
-            buttonViewReplies.setOnClickListener(v -> {
-                Toast.makeText(OrganizerCommentsActivity.this, "Opening Replies Activity...", Toast.LENGTH_SHORT).show();
+            react.setOnClickListener(v -> {
+                String[] options = {"LIKE 👍", "LOVE ❤️", "HELPFUL ⭐"};
+                new AlertDialog.Builder(OrganizerCommentsActivity.this)
+                        .setTitle("React with")
+                        .setItems(options, (dialog, which) -> {
+                            String[] types = {"LIKE", "LOVE", "HELPFUL"};
+                            toggleReaction(comment, types[which]);
+                        })
+                        .show();
             });
+
+            buttonViewReplies.setOnClickListener(v -> {
+                Intent intent = new Intent(OrganizerCommentsActivity.this, OrganizerCommentThreadActivity.class);
+                intent.putExtra("eventId", eventId);
+                intent.putExtra("parentCommentId", comment.getCommentId());
+                intent.putExtra("deviceId", deviceId);
+                intent.putExtra("currentUserName", OrganizerCommentsActivity.this.authorName);
+                intent.putExtra("currentUserType", authorType);
+                threadLauncher.launch(intent);
+            });
+
+            // Organizer can always delete
+            buttonDelete.setVisibility(View.VISIBLE);
+            buttonDelete.setOnClickListener(v -> deleteComment(comment));
+
+            if (cardLike != null) cardLike.setOnClickListener(v -> toggleReaction(comment, "LIKE"));
+            if (cardLove != null) cardLove.setOnClickListener(v -> toggleReaction(comment, "LOVE"));
         }
 
-        private String getEmoji(String type) {
-            switch (type) {
-                case "LIKE": return "👍";
-                case "LOVE": return "❤️";
-                case "HELPFUL": return "⭐";
-                default: return "";
+        private void updateReactionUI(Comment comment) {
+            reactionSummary.setVisibility(comment.getReactionCount() > 0 ? View.VISIBLE : View.GONE);
+
+            if (likeCount != null) likeCount.setText(String.valueOf(comment.getLikeCount()));
+            if (heartCount != null) heartCount.setText(String.valueOf(comment.getLoveCount()));
+
+            if (cardLike != null) cardLike.setVisibility(comment.getLikeCount() > 0 ? View.VISIBLE : View.GONE);
+            if (cardLove != null) cardLove.setVisibility(comment.getLoveCount() > 0 ? View.VISIBLE : View.GONE);
+
+            Reaction reaction = userReactions.get(comment.getCommentId());
+
+            if (cardLike != null) setCardSelected(cardLike, reaction != null && reaction.isLike(), Color.parseColor("#2563EB"), likeCount);
+            if (cardLove != null) setCardSelected(cardLove, reaction != null && reaction.isLove(), Color.parseColor("#EF4444"), heartCount);
+        }
+
+        private void setCardSelected(MaterialCardView card, boolean selected, int color, TextView countText) {
+            if (selected) {
+                card.setCardBackgroundColor(ColorStateList.valueOf(Color.parseColor("#FFFFFF")));
+                if (countText != null) countText.setTextColor(color);
+            } else {
+                card.setCardBackgroundColor(ColorStateList.valueOf(Color.parseColor("#F3F4F6")));
+                if (countText != null) countText.setTextColor(Color.parseColor("#6B7280"));
             }
         }
     }

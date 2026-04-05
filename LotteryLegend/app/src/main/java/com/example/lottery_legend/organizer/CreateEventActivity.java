@@ -128,6 +128,8 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         initViews();
         setupDateTimePickers();
         setupListeners();
+
+        NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.HOME);
     }
 
     private void initPlaces() {

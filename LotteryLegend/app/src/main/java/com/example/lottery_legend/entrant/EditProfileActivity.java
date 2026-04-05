@@ -3,9 +3,9 @@ package com.example.lottery_legend.entrant;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -17,22 +17,24 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.example.lottery_legend.R;
 import com.example.lottery_legend.model.Entrant;
+import com.example.lottery_legend.organizer.NavbarOrganizer;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 /**
- * Activity for entrants to edit their profile information.
- * This activity allows users to update their name, email, and phone number
+ * Activity for entrants and organizers to edit their profile information.
  */
 public class EditProfileActivity extends AppCompatActivity {
 
     private FirebaseFirestore db;
     private String deviceId;
+    private boolean isOrganizerMode = false;
 
     private EditText editTextName;
     private EditText editTextEmail;
     private EditText editTextPhone;
     private Button saveButton;
+    private TextView toolbarRoleText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,35 +51,55 @@ public class EditProfileActivity extends AppCompatActivity {
             });
         }
 
-        // Initialize Firestore and retrieve deviceId from the starting intent
         db = FirebaseFirestore.getInstance();
-
         deviceId = getIntent().getStringExtra("deviceId");
+        isOrganizerMode = getIntent().getBooleanExtra("isOrganizerMode", false);
 
         editTextName = findViewById(R.id.etName);
         editTextEmail = findViewById(R.id.etEmail);
         editTextPhone = findViewById(R.id.etPhone);
         saveButton = findViewById(R.id.btnSave);
+        toolbarRoleText = findViewById(R.id.toolbarRoleText);
 
-        // Fetch current profile data from Firestore to pre-populate the input fields
-        db.collection("entrants").document(deviceId)
+        updateUIForMode();
+        fetchProfileData();
+
+        saveButton.setOnClickListener(v -> saveProfileData());
+    }
+
+    private void updateUIForMode() {
+        if (toolbarRoleText != null) {
+            toolbarRoleText.setText(isOrganizerMode ? "Organizer" : "Entrant");
+        }
+
+        // Setup Navbar
+        View navbarContainer = findViewById(R.id.navbarContainer);
+        if (navbarContainer instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) navbarContainer;
+            group.removeAllViews();
+            int layoutId = isOrganizerMode ? R.layout.layout_navbar_organizer : R.layout.layout_navbar_entrant;
+            getLayoutInflater().inflate(layoutId, group, true);
+        }
+
+        if (isOrganizerMode) {
+            NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.PROFILE);
+        } else {
+            NavbarEntrant.setup(this, deviceId, NavbarEntrant.Tab.PROFILE);
+        }
+    }
+
+    private void fetchProfileData() {
+        String collection = isOrganizerMode ? "organizers" : "entrants";
+        db.collection(collection).document(deviceId)
                 .get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
-                        Entrant entrant = documentSnapshot.toObject(Entrant.class);
-                        if (entrant != null) {
-                            editTextName.setText(entrant.getName());
-                            editTextEmail.setText(entrant.getEmail());
-                            editTextPhone.setText(entrant.getPhone());
-                        }
+                        editTextName.setText(documentSnapshot.getString("name"));
+                        editTextEmail.setText(documentSnapshot.getString("email"));
+                        editTextPhone.setText(documentSnapshot.getString("phone"));
                     }
                 })
                 .addOnFailureListener(e -> Toast.makeText(this, "Error loading data", Toast.LENGTH_SHORT).show());
-
-        saveButton.setOnClickListener(v -> saveProfileData());
-
-        // Initialize the bottom navigation bar
-        setupNavbar();
     }
 
     /**
@@ -89,14 +111,13 @@ public class EditProfileActivity extends AppCompatActivity {
         String email = editTextEmail.getText().toString().trim();
         String phone = editTextPhone.getText().toString().trim();
 
-        // Mandatory field validation
         if (name.isEmpty() || email.isEmpty()) {
             Toast.makeText(this, "Please fill in Name and Email", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Update the entrant's document in the "entrants" collection
-        db.collection("entrants").document(deviceId)
+        String collection = isOrganizerMode ? "organizers" : "entrants";
+        db.collection(collection).document(deviceId)
                 .update("name", name,
                         "email", email,
                         "phone", phone,
@@ -104,9 +125,9 @@ public class EditProfileActivity extends AppCompatActivity {
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(this, "Profile updated successfully!", Toast.LENGTH_SHORT).show();
 
-                    // Navigate back to ProfileActivity and clear the activity stack
                     Intent intent = new Intent(this, ProfileActivity.class);
                     intent.putExtra("deviceId", deviceId);
+                    intent.putExtra("isOrganizerMode", isOrganizerMode);
                     intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                     startActivity(intent);
                     finish();
@@ -114,28 +135,5 @@ public class EditProfileActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> {
                     Toast.makeText(this, "Update failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
-    }
-
-    /**
-     * Configures the navigation bar, highlighting the profile section and setting up click listeners.
-     */
-    private void setupNavbar() {
-        View navbar = findViewById(R.id.navbar);
-        if (navbar != null) {
-            // Highlight the profile icon to indicate the current section
-            ImageView imageProfile = navbar.findViewById(R.id.imageNavProfile);
-            TextView textProfile = navbar.findViewById(R.id.textNavProfile);
-            imageProfile.setImageTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#2563EB")));
-            textProfile.setTextColor(android.graphics.Color.parseColor("#2563EB"));
-
-            // Set listener for the home item to navigate back to ProfileActivity
-            View homeItem = navbar.findViewById(R.id.navHome);
-            homeItem.setOnClickListener(v -> {
-                Intent intent = new Intent(this, ProfileActivity.class);
-                intent.putExtra("deviceId", deviceId);
-                startActivity(intent);
-                finish();
-            });
-        }
     }
 }
