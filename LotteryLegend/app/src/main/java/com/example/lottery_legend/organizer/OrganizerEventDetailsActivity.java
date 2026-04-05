@@ -63,7 +63,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
 
     private ImageView eventPoster;
     private TextView textWaitingCount, textSelectedCount, textCapacity;
-    private TextView textEventTitle, textEventStatus;
+    private TextView textEventTitle, textEventStatus, textEventVisibility;
     private TextView textEventDate, textRegistrationDeadline, textLocation, textPrice;
     private TextView textDescription, textLotteryGuidelines;
     private Button btnViewWaitingList, btnRunLotteryDraw, btnSendNotification, btnDeleteEvent, btnInviteEntrants;
@@ -112,6 +112,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         textCapacity = findViewById(R.id.textCapacity);
         textEventTitle = findViewById(R.id.textEventTitle);
         textEventStatus = findViewById(R.id.textEventStatus);
+        textEventVisibility = findViewById(R.id.textEventVisibility);
         textEventDate = findViewById(R.id.textEventDate);
         textRegistrationDeadline = findViewById(R.id.textRegistrationDeadline);
         textLocation = findViewById(R.id.textLocation);
@@ -306,8 +307,10 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
 
         if (event.isIsPrivateEvent()) {
             btnInviteEntrants.setVisibility(View.VISIBLE);
+            textEventVisibility.setVisibility(View.VISIBLE);
         } else {
             btnInviteEntrants.setVisibility(View.GONE);
+            textEventVisibility.setVisibility(View.GONE);
         }
 
         currentPosterBase64 = event.getPosterImage();
@@ -631,6 +634,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
 
         WriteBatch batch = db.batch();
         Timestamp now = Timestamp.now();
+        boolean isPrivate = currentEvent.isIsPrivateEvent();
 
         for (String eid : entrantIds) {
             Event.WaitingListEntry entry = new Event.WaitingListEntry();
@@ -638,6 +642,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
             entry.setJoinedAt(now);
             entry.setUpdatedAt(now);
             entry.setInviteSentAt(now);
+            // Project Rule: set participationStatus = "invited" for private invites
             entry.setParticipationStatus("invited");
             waitingList.add(entry);
 
@@ -646,9 +651,11 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
             notification.put("senderId", deviceId);
             notification.put("recipientType", "ENTRANT");
             notification.put("eventId", eventId);
-            notification.put("type", "INVITATION");
-            notification.put("title", "Event Invitation");
-            notification.put("message", "You have been invited to join the waiting list for " + currentEvent.getTitle());
+            notification.put("type", isPrivate ? "PRIVATE_INVITE" : "INVITATION");
+            notification.put("title", isPrivate ? "Private Event Invitation" : "Event Invitation");
+            notification.put("message", isPrivate
+                    ? "You have been privately invited to join " + currentEvent.getTitle()
+                    : "You have been invited to join the waiting list for " + currentEvent.getTitle());
             notification.put("isRead", false);
             notification.put("createdAt", now);
             notification.put("actionStatus", "PENDING");

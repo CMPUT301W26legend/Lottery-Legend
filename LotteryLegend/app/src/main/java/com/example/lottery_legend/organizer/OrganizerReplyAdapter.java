@@ -1,4 +1,4 @@
-package com.example.lottery_legend.entrant;
+package com.example.lottery_legend.organizer;
 
 import android.content.Context;
 import android.graphics.Color;
@@ -20,7 +20,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHolder> {
+/**
+ * Adapter for displaying replies in a comment thread for Organizers.
+ * Differs from entrant version by always allowing deletion of any reply.
+ */
+public class OrganizerReplyAdapter extends RecyclerView.Adapter<OrganizerReplyAdapter.ReplyViewHolder> {
 
     public interface OnReplyInteractionListener {
         void onReplyClicked(Comment comment);
@@ -34,10 +38,10 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
 
     private final List<Comment> replies = new ArrayList<>();
 
-    public ReplyAdapter(Context context,
-                        String currentUserType,
-                        String deviceId,
-                        OnReplyInteractionListener listener) {
+    public OrganizerReplyAdapter(Context context,
+                                String currentUserType,
+                                String deviceId,
+                                OnReplyInteractionListener listener) {
         this.context = context;
         this.currentUserType = currentUserType;
         this.deviceId = deviceId;
@@ -107,7 +111,6 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
 
             textReplyContent.setText(comment.getContent());
 
-            // 二级回复显示 @target
             if (comment.getThreadLevel() >= 2 && !TextUtils.isEmpty(comment.getReplyToUserNameSnapshot())) {
                 textReplyToUser.setVisibility(View.VISIBLE);
                 textReplyToUser.setText("@" + comment.getReplyToUserNameSnapshot());
@@ -116,8 +119,6 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
                 textReplyToUser.setVisibility(View.GONE);
             }
 
-            // 阶梯式缩进修复：
-            // parent 不动，这里只处理 reply item
             applyIndentation(comment);
 
             buttonReplyReply.setOnClickListener(v -> {
@@ -126,10 +127,9 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
                 }
             });
 
-            boolean canDelete = (!TextUtils.isEmpty(deviceId) && deviceId.equals(comment.getAuthorId()));
-
+            // Organizer can always delete any reply
             if (buttonReplyDelete != null) {
-                buttonReplyDelete.setVisibility(canDelete ? View.VISIBLE : View.GONE);
+                buttonReplyDelete.setVisibility(View.VISIBLE);
                 buttonReplyDelete.setOnClickListener(v -> {
                     if (listener != null) {
                         listener.onDeleteClicked(comment);
@@ -144,7 +144,6 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
 
             int level = comment.getThreadLevel();
 
-            // 根据设计做适度阶梯，不要过大
             int startMarginDp;
             int lineStartDp;
 
@@ -152,7 +151,6 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
                 startMarginDp = 0;
                 lineStartDp = 4;
             } else {
-                // level 2 整体后移一点
                 startMarginDp = 22;
                 lineStartDp = 16;
             }
@@ -165,8 +163,6 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
                         (ViewGroup.MarginLayoutParams) viewThreadLine.getLayoutParams();
                 lineParams.setMarginStart(dp(lineStartDp));
                 viewThreadLine.setLayoutParams(lineParams);
-
-                // 一级和二级都显示线，但二级跟着缩进一起后移
                 viewThreadLine.setVisibility(View.VISIBLE);
             }
         }

@@ -103,6 +103,8 @@ public class CommentsActivity extends AppCompatActivity {
         if (TextUtils.isEmpty(eventId)) {
             finish();
         }
+
+        NavbarEntrant.setup(this, deviceId, NavbarEntrant.Tab.HOME);
     }
 
     @Override

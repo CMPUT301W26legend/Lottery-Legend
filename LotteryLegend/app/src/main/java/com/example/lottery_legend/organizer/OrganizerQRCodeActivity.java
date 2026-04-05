@@ -68,6 +68,8 @@ public class OrganizerQRCodeActivity extends AppCompatActivity {
         }
 
         toolbar.setNavigationOnClickListener(v -> finish());
+
+        NavbarOrganizer.setup(this, getIntent().getStringExtra("deviceId"), NavbarOrganizer.Tab.HOME);
     }
 
     /**

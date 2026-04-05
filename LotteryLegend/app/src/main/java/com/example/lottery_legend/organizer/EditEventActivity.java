@@ -135,6 +135,7 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
         setupDateTimePickers();
         setupListeners();
         loadEventData();
+        NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.HOME);
     }
 
     private void initViews() {

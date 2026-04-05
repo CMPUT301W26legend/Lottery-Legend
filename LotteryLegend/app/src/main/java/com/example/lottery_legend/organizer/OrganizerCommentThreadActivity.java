@@ -1,4 +1,4 @@
-package com.example.lottery_legend.entrant;
+package com.example.lottery_legend.organizer;
 
 import android.content.Context;
 import android.content.Intent;
@@ -46,9 +46,13 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-public class CommentThreadActivity extends AppCompatActivity implements ReplyAdapter.OnReplyInteractionListener {
+/**
+ * Organizer-side CommentThreadActivity.
+ * Behaves like entrant-side CommentThreadActivity but allows organizer to delete any comment.
+ */
+public class OrganizerCommentThreadActivity extends AppCompatActivity implements OrganizerReplyAdapter.OnReplyInteractionListener {
 
-    private static final String TAG = "CommentThreadActivity";
+    private static final String TAG = "OrganizerCommentThread";
 
     private String eventId;
     private String parentCommentId;
@@ -59,7 +63,7 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
     private FirebaseFirestore db;
     private Comment parentComment;
     private List<Comment> replies = new ArrayList<>();
-    private ReplyAdapter adapter;
+    private OrganizerReplyAdapter adapter;
 
     private RecyclerView recyclerViewReplies;
     private EditText editTextReply;
@@ -84,13 +88,16 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
-        setContentView(R.layout.activity_comment_thread);
+        setContentView(R.layout.activity_comment_thread_organizer);
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
+        View mainView = findViewById(R.id.main);
+        if (mainView != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(mainView, (v, insets) -> {
+                Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+                return insets;
+            });
+        }
 
         db = FirebaseFirestore.getInstance();
 
@@ -105,7 +112,7 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         setupRecyclerView();
         setupListeners();
 
-        NavbarEntrant.setup(this, deviceId, NavbarEntrant.Tab.HOME);
+        NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.HOME);
     }
 
     @Override
@@ -173,7 +180,7 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
     }
 
     private void setupRecyclerView() {
-        adapter = new ReplyAdapter(this, currentUserType, deviceId, this);
+        adapter = new OrganizerReplyAdapter(this, currentUserType, deviceId, this);
         recyclerViewReplies.setLayoutManager(new LinearLayoutManager(this));
         recyclerViewReplies.setAdapter(adapter);
     }
@@ -296,13 +303,6 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
                 });
     }
 
-    /**
-     * Keep a linear 3-level display:
-     * parent -> level1 -> level2
-     *
-     * Data can still chain deeper by parentCommentId,
-     * but UI display keeps all descendants after the first reply level visually as level 2.
-     */
     private List<Comment> sortRepliesNested(List<Comment> rawReplies) {
         Map<String, List<Comment>> byParent = new HashMap<>();
         List<Comment> level1 = new ArrayList<>();
@@ -412,9 +412,8 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
                 textParentHelpfulCount
         );
 
-        boolean canDelete = !TextUtils.isEmpty(deviceId)
-                && deviceId.equals(comment.getAuthorId());
-        buttonParentDelete.setVisibility(canDelete ? View.VISIBLE : View.GONE);
+        // Organizer can always delete any parent comment
+        buttonParentDelete.setVisibility(View.VISIBLE);
     }
 
     private void setCardSelected(MaterialCardView card, boolean selected, int color, TextView countText) {
@@ -465,8 +464,6 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         reply.setRootCommentId(parentCommentId);
 
         if (activeReplyTarget != null) {
-            // Reply any reply directly under that clicked reply.
-            // Visually all descendants stay in level 2.
             reply.setParentCommentId(activeReplyTarget.getCommentId());
             reply.setReplyToUserId(activeReplyTarget.getAuthorId());
             reply.setReplyToUserNameSnapshot(activeReplyTarget.getAuthorNameSnapshot());
@@ -510,14 +507,7 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
     private void deleteComment(Comment comment) {
         if (comment == null) return;
 
-        boolean canDelete = !TextUtils.isEmpty(deviceId)
-                && deviceId.equals(comment.getAuthorId());
-
-        if (!canDelete) {
-            Toast.makeText(this, "You can only delete your own comment", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
+        // Organizer can always delete
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_comment_delete, null);
         AlertDialog dialog = new AlertDialog.Builder(this, R.style.TransparentDialog)
                 .setView(dialogView)

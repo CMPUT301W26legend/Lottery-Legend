@@ -130,6 +130,7 @@ public class ProfileActivity extends AppCompatActivity {
         buttonEditProfile.setOnClickListener(v -> {
             Intent intent = new Intent(ProfileActivity.this, EditProfileActivity.class);
             intent.putExtra("deviceId", deviceId);
+            intent.putExtra("isOrganizerMode", isOrganizerMode);
             startActivity(intent);
         });
 
