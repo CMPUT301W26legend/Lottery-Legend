@@ -20,11 +20,40 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
+            <!-- Status -->
+            <TextView
+                android:id="@+id/status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:text="ACTIVE"
+                android:textColor="#22C55E"
+                android:textSize="12sp" />
+
+            <!-- Co-organizer badge -->
+            <TextView
+                android:id="@+id/tagCoOrganizer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@id/status"
+                android:layout_marginEnd="8dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:text="CO-ORGANIZER"
+                android:textAllCaps="true"
+                android:textColor="#2563EB"
+                android:textSize="10sp"
+                android:background="@drawable/bg_tag_co_organizer"
+                android:visibility="gone" />
+
+            <!-- Event name -->
             <TextView
                 android:id="@+id/eventName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_toStartOf="@id/status"
+                android:layout_toStartOf="@id/tagCoOrganizer"
                 android:layout_alignParentStart="true"
                 android:layout_marginEnd="8dp"
                 android:maxLines="1"
@@ -34,14 +63,6 @@
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
-            <TextView
-                android:id="@+id/status"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:text="Active"
-                android:textColor="#22C55E"
-                android:textSize="12sp" />
         </RelativeLayout>
 
         <TextView

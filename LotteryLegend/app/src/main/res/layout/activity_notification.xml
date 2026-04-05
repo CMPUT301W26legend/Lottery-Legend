@@ -127,7 +127,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_below="@id/filterScroll"
-        android:layout_above="@id/layout_navbar_entrant"
+        android:layout_above="@id/navbar"
         android:clipToPadding="false"
         android:paddingStart="14dp"
         android:paddingTop="6dp"
@@ -136,7 +136,7 @@
         tools:listitem="@layout/item_notification" />
 
     <include
-        android:id="@+id/layout_navbar_entrant"
+        android:id="@+id/navbar"
         layout="@layout/layout_navbar_entrant"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

@@ -10,12 +10,14 @@
     android:paddingEnd="12dp"
     android:paddingBottom="12dp">
 
-    <ImageView
+    <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/imageParentAvatar"
         android:layout_width="34dp"
         android:layout_height="34dp"
         android:layout_marginTop="2dp"
         android:contentDescription="Avatar"
+        android:scaleType="centerCrop"
+        app:shapeAppearanceOverlay="@style/CircleImage"
         android:src="@drawable/ic_profile_avatar" />
 
     <LinearLayout

@@ -25,6 +25,7 @@ import com.example.lottery_legend.model.Event;
 import com.example.lottery_legend.model.Notification;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
@@ -33,8 +34,10 @@ import com.google.firebase.firestore.WriteBatch;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class NotificationActivity extends AppCompatActivity {
 
@@ -223,7 +226,8 @@ public class NotificationActivity extends AppCompatActivity {
         String type = notification.getType();
         return "LOTTERY_WIN".equals(type)
                 || "SELECTED_MESSAGE".equals(type)
-                || "PRIVATE_EVENT_INVITE".equals(type);
+                || "PRIVATE_EVENT_INVITE".equals(type)
+                || "PRIVATE_INVITE".equals(type);
     }
 
     private void handleNotificationClick(Notification notification) {
@@ -232,6 +236,12 @@ public class NotificationActivity extends AppCompatActivity {
         markSingleNotificationAsRead(notification);
 
         if (notification.getEventId() != null && shouldUseSelectionStateOverride(notification)) {
+            // CASE C: Check if previously declined via actionStatus
+            if ("DECLINED".equals(notification.getActionStatus())) {
+                showDeclinedDialog(notification);
+                return;
+            }
+
             findParticipationStatus(notification.getEventId(), participationStatus -> {
                 if ("cancelled".equalsIgnoreCase(participationStatus)) {
                     showSelectionCancelDialog(notification);
@@ -240,6 +250,17 @@ public class NotificationActivity extends AppCompatActivity {
 
                 if ("declined".equalsIgnoreCase(participationStatus)) {
                     showDeclinedDialog(notification);
+                    return;
+                }
+
+                // CASE B: participationStatus == "waiting" (or accepted/enrolled)
+                if ("waiting".equalsIgnoreCase(participationStatus) ||
+                    "accepted".equalsIgnoreCase(participationStatus) ||
+                    "enrolled".equalsIgnoreCase(participationStatus)) {
+                    Intent intent = new Intent(this, EventDetailsActivity.class);
+                    intent.putExtra("eventId", notification.getEventId());
+                    intent.putExtra("deviceId", deviceId);
+                    startActivity(intent);
                     return;
                 }
 
@@ -338,9 +359,18 @@ public class NotificationActivity extends AppCompatActivity {
 
         switch (type) {
             case "LOTTERY_WIN":
-            case "PRIVATE_EVENT_INVITE":
             case "SELECTED_MESSAGE":
                 showInvitationDialog(notification);
+                break;
+
+            case "CO_ORGANIZER_INVITE":
+                showCoOrganizerInvitationDialog(notification);
+                break;
+
+            case "PRIVATE_EVENT_INVITE":
+            case "PRIVATE_INVITE":
+                // CASE A: participationStatus == "invited" (implied if we reached here)
+                showPrivateInvitationDialog(notification);
                 break;
 
             case "CANCELLED_MESSAGE":
@@ -349,7 +379,6 @@ public class NotificationActivity extends AppCompatActivity {
 
             case "LOTTERY_LOSE":
             case "WAITLIST_MESSAGE":
-            case "CO_ORGANIZER_INVITE":
             case "GENERAL":
             default:
                 if (notification.getEventId() != null) {
@@ -415,6 +444,104 @@ public class NotificationActivity extends AppCompatActivity {
 
         btnAccept.setOnClickListener(v -> {
             acceptInvitation(notification);
+            dialog.dismiss();
+        });
+
+        dialog.show();
+    }
+
+    private void showPrivateInvitationDialog(Notification notification) {
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_private_event_invite, null);
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setView(dialogView)
+                .create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        TextView tvEventName = dialogView.findViewById(R.id.tvEventName);
+        TextView tvMessage = dialogView.findViewById(R.id.tvMessage);
+        ImageView ivClose = dialogView.findViewById(R.id.btnClose);
+        Button btnDecline = dialogView.findViewById(R.id.btnDecline);
+        Button btnAccept = dialogView.findViewById(R.id.btnAccept);
+
+        tvMessage.setText(notification.getMessage() != null ? notification.getMessage() : "");
+
+        if (notification.getEventId() != null) {
+            db.collection("events").document(notification.getEventId()).get().addOnSuccessListener(doc -> {
+                if (doc.exists()) {
+                    Event event = doc.toObject(Event.class);
+                    if (event != null) {
+                        tvEventName.setText(event.getTitle() != null ? event.getTitle() : "Private Event");
+                    }
+                }
+            });
+        }
+
+        ivClose.setOnClickListener(v -> dialog.dismiss());
+
+        btnDecline.setOnClickListener(v -> {
+            declineInvitation(notification);
+            dialog.dismiss();
+        });
+
+        btnAccept.setOnClickListener(v -> {
+            acceptInvitation(notification);
+            dialog.dismiss();
+        });
+
+        dialog.show();
+    }
+
+    private void showCoOrganizerInvitationDialog(Notification notification) {
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_co_organizer_invitation, null);
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setView(dialogView)
+                .create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        TextView tvEventName = dialogView.findViewById(R.id.tvEventName);
+        TextView tvEventDate = dialogView.findViewById(R.id.tvEventDate);
+        TextView tvRespondBy = dialogView.findViewById(R.id.tvRespondBy);
+        TextView tvMessage = dialogView.findViewById(R.id.tvMessage);
+        ImageView ivClose = dialogView.findViewById(R.id.btnClose);
+        Button btnDecline = dialogView.findViewById(R.id.btnDecline);
+        Button btnAccept = dialogView.findViewById(R.id.btnAccept);
+
+        tvMessage.setText(notification.getMessage() != null ? notification.getMessage() : "");
+
+        if (notification.getEventId() != null) {
+            db.collection("events").document(notification.getEventId()).get().addOnSuccessListener(doc -> {
+                if (doc.exists()) {
+                    Event event = doc.toObject(Event.class);
+                    if (event != null) {
+                        tvEventName.setText(event.getTitle() != null ? event.getTitle() : "Event");
+                        SimpleDateFormat sdf = new SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault());
+
+                        if (event.getEventStartAt() != null) {
+                            tvEventDate.setText(String.format(Locale.getDefault(), "Event: %s", sdf.format(event.getEventStartAt().toDate())));
+                        } else {
+                            tvEventDate.setText("Event date unavailable");
+                        }
+                        tvRespondBy.setText("Action required promptly");
+                    }
+                }
+            });
+        }
+
+        ivClose.setOnClickListener(v -> dialog.dismiss());
+
+        btnDecline.setOnClickListener(v -> {
+            declineCoOrganizerInvitation(notification);
+            dialog.dismiss();
+        });
+
+        btnAccept.setOnClickListener(v -> {
+            acceptCoOrganizerInvitation(notification);
             dialog.dismiss();
         });
 
@@ -509,7 +636,9 @@ public class NotificationActivity extends AppCompatActivity {
 
             for (Event.WaitingListEntry entry : list) {
                 if (entry != null && deviceId != null && deviceId.equals(entry.getDeviceId())) {
-                    entry.setParticipationStatus("accepted");
+                    entry.setParticipationStatus("waiting");
+                    entry.setRespondedAt(Timestamp.now());
+                    entry.setUpdatedAt(Timestamp.now());
                     updated = true;
                     break;
                 }
@@ -524,8 +653,74 @@ public class NotificationActivity extends AppCompatActivity {
                         db.collection("notifications")
                                 .document(notification.getNotificationId())
                                 .update("actionStatus", "ACCEPTED");
+
+                        Intent intent = new Intent(this, EventDetailsActivity.class);
+                        intent.putExtra("eventId", notification.getEventId());
+                        intent.putExtra("deviceId", deviceId);
+                        startActivity(intent);
                     });
         });
+    }
+
+    private void acceptCoOrganizerInvitation(Notification notification) {
+        if (notification == null || notification.getEventId() == null) return;
+
+        db.collection("events").document(notification.getEventId()).get().addOnSuccessListener(doc -> {
+            if (!doc.exists()) return;
+
+            Event event = doc.toObject(Event.class);
+            if (event == null) return;
+
+            WriteBatch batch = db.batch();
+
+            // A. Remove from waiting list if present
+            if (event.getWaitingList() != null) {
+                List<Event.WaitingListEntry> list = event.getWaitingList();
+                Event.WaitingListEntry toRemove = null;
+                for (Event.WaitingListEntry entry : list) {
+                    if (entry != null && deviceId != null && deviceId.equals(entry.getDeviceId())) {
+                        toRemove = entry;
+                        break;
+                    }
+                }
+                if (toRemove != null) {
+                    list.remove(toRemove);
+                    batch.update(db.collection("events").document(notification.getEventId()), "waitingList", list);
+                }
+            }
+
+            // B. Create co-organizer document
+            Map<String, Object> coOrganizerData = new HashMap<>();
+            coOrganizerData.put("deviceId", deviceId);
+            coOrganizerData.put("organizerId", notification.getSenderId());
+            coOrganizerData.put("status", "ACCEPTED");
+            coOrganizerData.put("invitedAt", notification.getCreatedAt());
+            coOrganizerData.put("acceptedAt", Timestamp.now());
+            coOrganizerData.put("respondedAt", Timestamp.now());
+
+            batch.set(db.collection("events").document(notification.getEventId())
+                    .collection("coOrganizers").document(deviceId), coOrganizerData);
+
+            // C. Update notification
+            batch.update(db.collection("notifications").document(notification.getNotificationId()), "actionStatus", "ACCEPTED");
+
+            batch.commit().addOnSuccessListener(aVoid -> {
+                Toast.makeText(this, "You are now a co-organizer!", Toast.LENGTH_SHORT).show();
+            }).addOnFailureListener(e -> {
+                Toast.makeText(this, "Failed to accept invitation", Toast.LENGTH_SHORT).show();
+            });
+        });
+    }
+
+    private void declineCoOrganizerInvitation(Notification notification) {
+        if (notification == null) return;
+
+        db.collection("notifications")
+                .document(notification.getNotificationId())
+                .update("actionStatus", "DECLINED")
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, "Invitation declined", Toast.LENGTH_SHORT).show();
+                });
     }
 
     private void declineInvitation(Notification notification) {
@@ -538,26 +733,27 @@ public class NotificationActivity extends AppCompatActivity {
             if (event == null || event.getWaitingList() == null) return;
 
             List<Event.WaitingListEntry> list = event.getWaitingList();
-            boolean updated = false;
 
+            // Project Rule: If declined, remove from waiting list
+            Event.WaitingListEntry toRemove = null;
             for (Event.WaitingListEntry entry : list) {
                 if (entry != null && deviceId != null && deviceId.equals(entry.getDeviceId())) {
-                    entry.setParticipationStatus("declined");
-                    updated = true;
+                    toRemove = entry;
                     break;
                 }
             }
 
-            if (!updated) return;
-
-            db.collection("events").document(notification.getEventId())
-                    .update("waitingList", list)
-                    .addOnSuccessListener(aVoid -> {
-                        Toast.makeText(this, "Invitation declined", Toast.LENGTH_SHORT).show();
-                        db.collection("notifications")
-                                .document(notification.getNotificationId())
-                                .update("actionStatus", "DECLINED");
-                    });
+            if (toRemove != null) {
+                list.remove(toRemove);
+                db.collection("events").document(notification.getEventId())
+                        .update("waitingList", list)
+                        .addOnSuccessListener(aVoid -> {
+                            db.collection("notifications")
+                                    .document(notification.getNotificationId())
+                                    .update("actionStatus", "DECLINED");
+                            Toast.makeText(this, "Invitation declined", Toast.LENGTH_SHORT).show();
+                        });
+            }
         });
     }
 

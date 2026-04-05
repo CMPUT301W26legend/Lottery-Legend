@@ -15,14 +15,16 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.lottery_legend.R;
 import com.example.lottery_legend.model.Event;
+import com.google.android.material.tabs.TabLayout;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * OrganizerHistoryActivity displays a list of all events created by the current organizer.
+ * OrganizerHistoryActivity displays a list of all events created or co-organized by the current organizer.
  */
 public class OrganizerHistoryActivity extends AppCompatActivity {
 
@@ -30,80 +32,124 @@ public class OrganizerHistoryActivity extends AppCompatActivity {
     private String deviceId;
     private RecyclerView recyclerView;
     private OrganizerEventAdapter adapter;
-    private List<Event> organizerEvents = new ArrayList<>();
+    private final List<Event> eventList = new ArrayList<>();
+    private TabLayout tabLayout;
+    private ListenerRegistration currentListener;
 
-    /**
-     * Called when the activity is first created.
-     * Initializes the UI, configures Firestore integration, sets up the navigation bar,
-     * and prepares the RecyclerView for event display.
-     *
-     * @param savedInstanceState If the activity is being re-initialized after
-     *                           previously being shut down then this Bundle contains the data it most
-     *                           recently supplied in {@link #onSaveInstanceState}. Otherwise it is null.
-     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_organizer_history);
 
-        // System UI configuration
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
 
-        // Initialize Firestore instance and retrieve the device ID from the starting intent
         db = FirebaseFirestore.getInstance();
         deviceId = getIntent().getStringExtra("deviceId");
 
-        NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.HISTORY);
+        initViews();
+        setupTabs();
+        setupNavbar();
 
+        // Default: Load Organizer events
+        loadOrganizerEvents();
+    }
+
+    private void initViews() {
+        tabLayout = findViewById(R.id.tabLayoutOrganizerHistory);
         recyclerView = findViewById(R.id.recyclerOrganizerEvents);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-
-        adapter = new OrganizerEventAdapter(organizerEvents, deviceId);
+        adapter = new OrganizerEventAdapter(eventList, deviceId);
         recyclerView.setAdapter(adapter);
 
-        // Begin fetching events from the "events" collection
-        loadOrganizerEvents();
-
-        // Configure the "Create Event" button to navigate to the event creation screen
         Button btnCreateEvent = findViewById(R.id.createEventButton);
         btnCreateEvent.setOnClickListener(v -> {
-            Intent intent = new Intent(OrganizerHistoryActivity.this, CreateEventActivity.class);
+            Intent intent = new Intent(this, CreateEventActivity.class);
             intent.putExtra("deviceId", deviceId);
             startActivity(intent);
         });
     }
 
-    /**
-     * Queries the Firestore "events" collection for documents where "organizerId" matches the current device ID.
-     * Implements a real-time snapshot listener to ensure the UI updates immediately when event data
-     * is modified in the cloud.
-     */
+    private void setupTabs() {
+        tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                if (tab.getPosition() == 0) {
+                    loadOrganizerEvents();
+                } else {
+                    loadCoOrganizerEvents();
+                }
+            }
+            @Override
+            public void onTabUnselected(TabLayout.Tab tab) {}
+            @Override
+            public void onTabReselected(TabLayout.Tab tab) {}
+        });
+    }
+
+    private void setupNavbar() {
+        NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.HISTORY);
+    }
+
+    private void removeListener() {
+        if (currentListener != null) {
+            currentListener.remove();
+            currentListener = null;
+        }
+    }
+
     private void loadOrganizerEvents() {
         if (deviceId == null) return;
+        removeListener();
+        eventList.clear();
+        adapter.notifyDataSetChanged();
 
-        db.collection("events")
-                .whereEqualTo("organizerId", deviceId)
+        currentListener = db.collection("organizers")
+                .document(deviceId)
+                .collection("createdEvents")
                 .addSnapshotListener((value, error) -> {
-                    if (error != null) {
-                        Log.e("OrganizerHistory", "Error fetching events from Firestore", error);
-                        return;
-                    }
-
-                    // Clear the local cache to avoid duplicates before repopulating
-                    organizerEvents.clear();
+                    if (error != null) return;
+                    eventList.clear();
                     if (value != null) {
                         for (QueryDocumentSnapshot doc : value) {
-                            // Deserialize the Firestore document into an Event object
                             Event event = doc.toObject(Event.class);
-                            organizerEvents.add(event);
+                            eventList.add(event);
                         }
                     }
-                    // Notify the adapter that the data set has changed to trigger a UI refresh
+                    adapter.notifyDataSetChanged();
+                });
+    }
+
+    private void loadCoOrganizerEvents() {
+        if (deviceId == null) return;
+        removeListener();
+        eventList.clear();
+        adapter.notifyDataSetChanged();
+
+        currentListener = db.collection("events")
+                .addSnapshotListener((value, error) -> {
+                    if (error != null) return;
+                    eventList.clear();
+                    if (value != null) {
+                        for (QueryDocumentSnapshot doc : value) {
+                            Event event = doc.toObject(Event.class);
+                            if (event != null && !deviceId.equals(event.getOrganizerId())) {
+                                doc.getReference().collection("coOrganizers").document(deviceId).get()
+                                        .addOnSuccessListener(coDoc -> {
+                                            if (coDoc.exists() && tabLayout.getSelectedTabPosition() == 1) {
+                                                if (!eventList.contains(event)) {
+                                                    eventList.add(event);
+                                                    adapter.notifyDataSetChanged();
+                                                }
+                                            }
+                                        });
+                            }
+                        }
+                    }
                     adapter.notifyDataSetChanged();
                 });
     }

@@ -129,13 +129,13 @@
                     android:src="@drawable/img_poster" />
             </FrameLayout>
 
-            <!-- Main white content card area -->
+            <!-- Content -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@android:color/white"
                 android:orientation="vertical"
-                android:padding="14dp">
+                android:padding="16dp">
 
                 <!-- Stats -->
                 <LinearLayout
@@ -151,7 +151,7 @@
                         android:layout_marginEnd="8dp"
                         android:layout_weight="1"
                         app:cardBackgroundColor="@android:color/white"
-                        app:cardCornerRadius="8dp"
+                        app:cardCornerRadius="10dp"
                         app:cardElevation="0dp"
                         app:strokeColor="#E5E7EB"
                         app:strokeWidth="1dp">
@@ -187,7 +187,7 @@
                         android:layout_marginEnd="8dp"
                         android:layout_weight="1"
                         app:cardBackgroundColor="@android:color/white"
-                        app:cardCornerRadius="8dp"
+                        app:cardCornerRadius="10dp"
                         app:cardElevation="0dp"
                         app:strokeColor="#E5E7EB"
                         app:strokeWidth="1dp">
@@ -222,7 +222,7 @@
                         android:layout_height="72dp"
                         android:layout_weight="1"
                         app:cardBackgroundColor="@android:color/white"
-                        app:cardCornerRadius="8dp"
+                        app:cardCornerRadius="10dp"
                         app:cardElevation="0dp"
                         app:strokeColor="#E5E7EB"
                         app:strokeWidth="1dp">
@@ -253,28 +253,65 @@
                     </com.google.android.material.card.MaterialCardView>
                 </LinearLayout>
 
-                <!-- Title -->
-                <TextView
-                    android:id="@+id/textEventTitle"
-                    android:layout_width="wrap_content"
+                <!-- Title Row -->
+                <LinearLayout
+                    android:id="@+id/titleRow"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="Summer Music Festival"
-                    android:textColor="#111827"
-                    android:textSize="30sp"
-                    android:textStyle="bold" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/textEventTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Summer Music Festival"
+                        android:textColor="#111827"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/textEventVisibility"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:layout_marginTop="1dp"
+                        android:text="private"
+                        android:textColor="#DC2626"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+
+                    <!-- Co-organizer Tag -->
+                    <TextView
+                        android:id="@+id/tagCoOrganizer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:background="@drawable/bg_tag_co_organizer"
+                        android:paddingHorizontal="8dp"
+                        android:paddingVertical="4dp"
+                        android:text="CO-ORGANIZER"
+                        android:textAllCaps="true"
+                        android:textColor="#2563EB"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:visibility="gone"
+                        tools:visibility="visible" />
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/textEventStatus"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="ACTIVE"
-                    android:textColor="#388E3C"
+                    android:layout_marginTop="3dp"
+                    android:text="Waiting List Active"
+                    android:textColor="#16A34A"
                     android:textSize="13sp"
                     android:textStyle="bold" />
 
-                <!-- Info block -->
+                <!-- Info Block -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -426,8 +463,7 @@
                                 android:layout_height="wrap_content"
                                 android:text="Price"
                                 android:textColor="#111827"
-                                android:textSize="14sp"
-                                android:textStyle="bold" />
+                                android:textSize="14sp"                                 android:textStyle="bold" />
 
                             <TextView
                                 android:id="@+id/textPrice"
@@ -493,6 +529,65 @@
                     android:textColor="#6B7280"
                     android:textSize="14sp" />
 
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="18dp"
+                    android:background="#E5E7EB" />
+
+                <!-- Organizer -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:text="Organizer"
+                    android:textColor="#111827"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/organizerSection"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/imageOrganizerProfile"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:contentDescription="Organizer Profile"
+                        android:scaleType="centerCrop"
+                        app:shapeAppearanceOverlay="@style/CircleImage"
+                        android:src="@drawable/ic_profile_avatar" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/textOrganizerName"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Organizer"
+                            android:textColor="#111827"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/textViewOrganizerProfile"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="view profile"
+                            android:textColor="#6B7280"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
                 <!-- Buttons -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnViewWaitingList"
@@ -521,7 +616,7 @@
                     android:textAllCaps="false"
                     android:textColor="@android:color/white"
                     android:textSize="15sp"
-                    app:backgroundTint="#2563EB"
+                    app:backgroundTint="#1976D2"
                     app:cornerRadius="10dp"
                     app:icon="@drawable/ic_shuffle"
                     app:iconGravity="textStart"
@@ -553,7 +648,7 @@
                     android:layout_marginTop="12dp"
                     android:text="Invite Entrants"
                     android:textAllCaps="false"
-                    android:textColor="#374151"
+                    android:textColor="#2563EB"
                     android:textSize="15sp"
                     android:visibility="gone"
                     app:backgroundTint="@android:color/white"
@@ -561,8 +656,8 @@
                     app:icon="@drawable/ic_person_add"
                     app:iconGravity="textStart"
                     app:iconPadding="10dp"
-                    app:iconTint="#374151"
-                    app:strokeColor="#D1D5DB"
+                    app:iconTint="#2563EB"
+                    app:strokeColor="#2563EB"
                     app:strokeWidth="1dp" />
 
                 <com.google.android.material.button.MaterialButton

@@ -17,6 +17,7 @@ public class Organizer {
     private Timestamp updatedAt;
     private boolean isAdmin;
     private List<CreatedEvent> createdEvents;
+    private String profileImage;
 
     /**
      * Required no-argument constructor for Firestore serialization.
@@ -127,6 +128,14 @@ public class Organizer {
 
     public void setCreatedEvents(List<CreatedEvent> createdEvents) {
         this.createdEvents = createdEvents;
+    }
+
+    public String getProfileImage() {
+        return profileImage;
+    }
+
+    public void setProfileImage(String profileImage) {
+        this.profileImage = profileImage;
     }
 
     @Override

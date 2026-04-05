@@ -48,6 +48,9 @@
             android:name=".organizer.OrganizerCommentsActivity"
             android:exported="false" />
         <activity
+            android:name=".organizer.OrganizerCommentThreadActivity"
+            android:exported="false" />
+        <activity
             android:name=".entrant.CommentsActivity"
             android:exported="false" />
         <activity

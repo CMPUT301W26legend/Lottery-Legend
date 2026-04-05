@@ -61,11 +61,11 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
     private String eventId;
     private String deviceId;
 
-    private ImageView eventPoster;
+    private ImageView eventPoster, imageOrganizerProfile;
     private TextView textWaitingCount, textSelectedCount, textCapacity;
-    private TextView textEventTitle, textEventStatus;
+    private TextView textEventTitle, textEventStatus, tagCoOrganizer, textEventVisibility;
     private TextView textEventDate, textRegistrationDeadline, textLocation, textPrice;
-    private TextView textDescription, textLotteryGuidelines;
+    private TextView textDescription, textLotteryGuidelines, textOrganizerName;
     private Button btnViewWaitingList, btnRunLotteryDraw, btnSendNotification, btnDeleteEvent, btnInviteEntrants;
     private ImageButton editIcon, updatePoster, commentIcon, mapIcon, shareIcon;
 
@@ -107,17 +107,21 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         shareIcon = findViewById(R.id.shareIcon);
 
         eventPoster = findViewById(R.id.eventPoster);
+        imageOrganizerProfile = findViewById(R.id.imageOrganizerProfile);
         textWaitingCount = findViewById(R.id.textWaitingCount);
         textSelectedCount = findViewById(R.id.textSelectedCount);
         textCapacity = findViewById(R.id.textCapacity);
         textEventTitle = findViewById(R.id.textEventTitle);
+        tagCoOrganizer = findViewById(R.id.tagCoOrganizer);
         textEventStatus = findViewById(R.id.textEventStatus);
+        textEventVisibility = findViewById(R.id.textEventVisibility);
         textEventDate = findViewById(R.id.textEventDate);
         textRegistrationDeadline = findViewById(R.id.textRegistrationDeadline);
         textLocation = findViewById(R.id.textLocation);
         textPrice = findViewById(R.id.textPrice);
         textDescription = findViewById(R.id.textDescription);
         textLotteryGuidelines = findViewById(R.id.textLotteryGuidelines);
+        textOrganizerName = findViewById(R.id.textOrganizerName);
 
         btnViewWaitingList = findViewById(R.id.btnViewWaitingList);
         btnRunLotteryDraw = findViewById(R.id.btnRunLotteryDraw);
@@ -254,6 +258,28 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         textDescription.setText(event.getDescription());
         textCapacity.setText(String.valueOf(event.getCapacity()));
 
+        // Show Co-organizer tag if the current user is not the primary organizer
+        if (event.getOrganizerId() != null && !event.getOrganizerId().equals(deviceId)) {
+            tagCoOrganizer.setVisibility(View.VISIBLE);
+        } else {
+            tagCoOrganizer.setVisibility(View.GONE);
+        }
+
+        // Fetch organizer details (name and profile image)
+        if (event.getOrganizerId() != null) {
+            db.collection("organizers").document(event.getOrganizerId()).get().addOnSuccessListener(doc -> {
+                if (doc.exists()) {
+                    textOrganizerName.setText(doc.getString("name"));
+                    String profileImage = doc.getString("profileImage");
+                    if (profileImage != null && !profileImage.isEmpty()) {
+                        displayBase64Image(profileImage, imageOrganizerProfile);
+                    } else {
+                        imageOrganizerProfile.setImageResource(R.drawable.ic_profile_avatar);
+                    }
+                }
+            });
+        }
+
         int waitingListSize = (event.getWaitingList() != null) ? event.getWaitingList().size() : 0;
         if (event.getMaxWaitingList() != null) {
             textWaitingCount.setText(String.format(Locale.getDefault(), "%d/%d", waitingListSize, event.getMaxWaitingList()));
@@ -306,8 +332,10 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
 
         if (event.isIsPrivateEvent()) {
             btnInviteEntrants.setVisibility(View.VISIBLE);
+            textEventVisibility.setVisibility(View.VISIBLE);
         } else {
             btnInviteEntrants.setVisibility(View.GONE);
+            textEventVisibility.setVisibility(View.GONE);
         }
 
         currentPosterBase64 = event.getPosterImage();
@@ -323,6 +351,17 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
             }
         } else {
             eventPoster.setImageResource(R.drawable.img_poster);
+        }
+    }
+
+    private void displayBase64Image(String base64, ImageView imageView) {
+        try {
+            byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
+            Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+            if (bitmap != null && imageView != null) {
+                imageView.setImageBitmap(bitmap);
+            }
+        } catch (Exception ignored) {
         }
     }
 
@@ -631,6 +670,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
 
         WriteBatch batch = db.batch();
         Timestamp now = Timestamp.now();
+        boolean isPrivate = currentEvent.isIsPrivateEvent();
 
         for (String eid : entrantIds) {
             Event.WaitingListEntry entry = new Event.WaitingListEntry();
@@ -638,6 +678,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
             entry.setJoinedAt(now);
             entry.setUpdatedAt(now);
             entry.setInviteSentAt(now);
+            // Project Rule: set participationStatus = "invited" for private invites
             entry.setParticipationStatus("invited");
             waitingList.add(entry);
 
@@ -646,9 +687,11 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
             notification.put("senderId", deviceId);
             notification.put("recipientType", "ENTRANT");
             notification.put("eventId", eventId);
-            notification.put("type", "INVITATION");
-            notification.put("title", "Event Invitation");
-            notification.put("message", "You have been invited to join the waiting list for " + currentEvent.getTitle());
+            notification.put("type", isPrivate ? "PRIVATE_INVITE" : "INVITATION");
+            notification.put("title", isPrivate ? "Private Event Invitation" : "Event Invitation");
+            notification.put("message", isPrivate
+                    ? "You have been privately invited to join " + currentEvent.getTitle()
+                    : "You have been invited to join the waiting list for " + currentEvent.getTitle());
             notification.put("isRead", false);
             notification.put("createdAt", now);
             notification.put("actionStatus", "PENDING");

@@ -20,6 +20,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.lottery_legend.R;
+import com.example.lottery_legend.entrant.NavbarEntrant;
 import com.example.lottery_legend.entrant.NotificationAdapter;
 import com.example.lottery_legend.model.Event;
 import com.example.lottery_legend.model.Notification;
@@ -66,6 +67,8 @@ public class EventNotificationActivity extends AppCompatActivity {
         setupViews();
         setupListeners();
         fetchNotifications();
+
+        NavbarEntrant.setup(this, deviceId, NavbarEntrant.Tab.HOME);
     }
 
     private void setupViews() {

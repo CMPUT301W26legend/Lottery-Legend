@@ -79,6 +79,8 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
         setupRecyclerView();
         fetchWaitingList();
         setupSearch();
+
+        NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.HOME);
     }
 
     private void initViews() {

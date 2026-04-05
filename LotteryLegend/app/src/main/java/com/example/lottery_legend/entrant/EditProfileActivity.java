@@ -1,8 +1,13 @@
 package com.example.lottery_legend.entrant;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
+import android.util.Base64;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -10,29 +15,48 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.lottery_legend.R;
-import com.example.lottery_legend.model.Entrant;
+import com.example.lottery_legend.organizer.NavbarOrganizer;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+
 /**
- * Activity for entrants to edit their profile information.
- * This activity allows users to update their name, email, and phone number
+ * Activity for entrants and organizers to edit their profile information.
  */
 public class EditProfileActivity extends AppCompatActivity {
 
     private FirebaseFirestore db;
     private String deviceId;
+    private boolean isOrganizerMode = false;
 
     private EditText editTextName;
     private EditText editTextEmail;
     private EditText editTextPhone;
+    private ImageView imgAvatar;
+    private TextView tvUploadPhoto;
     private Button saveButton;
+    private TextView toolbarRoleText;
+
+    private String profileImageBase64;
+
+    private final ActivityResultLauncher<String> imagePickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.GetContent(),
+            uri -> {
+                if (uri != null) {
+                    processAndSetImage(uri);
+                }
+            }
+    );
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,35 +73,103 @@ public class EditProfileActivity extends AppCompatActivity {
             });
         }
 
-        // Initialize Firestore and retrieve deviceId from the starting intent
         db = FirebaseFirestore.getInstance();
-
         deviceId = getIntent().getStringExtra("deviceId");
+        isOrganizerMode = getIntent().getBooleanExtra("isOrganizerMode", false);
 
         editTextName = findViewById(R.id.etName);
         editTextEmail = findViewById(R.id.etEmail);
         editTextPhone = findViewById(R.id.etPhone);
+        imgAvatar = findViewById(R.id.imgAvatar);
+        tvUploadPhoto = findViewById(R.id.tvUploadPhoto);
         saveButton = findViewById(R.id.btnSave);
+        toolbarRoleText = findViewById(R.id.toolbarRoleText);
 
-        // Fetch current profile data from Firestore to pre-populate the input fields
-        db.collection("entrants").document(deviceId)
+        updateUIForMode();
+        fetchProfileData();
+
+        tvUploadPhoto.setOnClickListener(v -> imagePickerLauncher.launch("image/*"));
+        imgAvatar.setOnClickListener(v -> imagePickerLauncher.launch("image/*"));
+        
+        saveButton.setOnClickListener(v -> saveProfileData());
+    }
+
+    private void updateUIForMode() {
+        if (toolbarRoleText != null) {
+            toolbarRoleText.setText(isOrganizerMode ? "Organizer" : "Entrant");
+        }
+
+        // Setup Navbar
+        View navbarContainer = findViewById(R.id.navbarContainer);
+        if (navbarContainer instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) navbarContainer;
+            group.removeAllViews();
+            int layoutId = isOrganizerMode ? R.layout.layout_navbar_organizer : R.layout.layout_navbar_entrant;
+            getLayoutInflater().inflate(layoutId, group, true);
+        }
+
+        if (isOrganizerMode) {
+            NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.PROFILE);
+        } else {
+            NavbarEntrant.setup(this, deviceId, NavbarEntrant.Tab.PROFILE);
+        }
+    }
+
+    private void fetchProfileData() {
+        String collection = isOrganizerMode ? "organizers" : "entrants";
+        db.collection(collection).document(deviceId)
                 .get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
-                        Entrant entrant = documentSnapshot.toObject(Entrant.class);
-                        if (entrant != null) {
-                            editTextName.setText(entrant.getName());
-                            editTextEmail.setText(entrant.getEmail());
-                            editTextPhone.setText(entrant.getPhone());
+                        editTextName.setText(documentSnapshot.getString("name"));
+                        editTextEmail.setText(documentSnapshot.getString("email"));
+                        editTextPhone.setText(documentSnapshot.getString("phone"));
+                        
+                        profileImageBase64 = documentSnapshot.getString("profileImage");
+                        if (profileImageBase64 != null && !profileImageBase64.isEmpty()) {
+                            displayBase64Image(profileImageBase64);
                         }
                     }
                 })
                 .addOnFailureListener(e -> Toast.makeText(this, "Error loading data", Toast.LENGTH_SHORT).show());
+    }
 
-        saveButton.setOnClickListener(v -> saveProfileData());
+    private void processAndSetImage(Uri uri) {
+        try {
+            InputStream inputStream = getContentResolver().openInputStream(uri);
+            Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+            if (inputStream != null) inputStream.close();
 
-        // Initialize the bottom navigation bar
-        setupNavbar();
+            if (bitmap != null) {
+                // Resize if too large
+                int maxWidth = 500;
+                int maxHeight = 500;
+                if (bitmap.getWidth() > maxWidth || bitmap.getHeight() > maxHeight) {
+                    float ratio = Math.min((float) maxWidth / bitmap.getWidth(), (float) maxHeight / bitmap.getHeight());
+                    bitmap = Bitmap.createScaledBitmap(bitmap, Math.round(ratio * bitmap.getWidth()), Math.round(ratio * bitmap.getHeight()), true);
+                }
+
+                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 70, outputStream);
+                byte[] byteArray = outputStream.toByteArray();
+                profileImageBase64 = Base64.encodeToString(byteArray, Base64.DEFAULT);
+                
+                imgAvatar.setImageBitmap(bitmap);
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void displayBase64Image(String base64) {
+        try {
+            byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
+            Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+            if (bitmap != null) {
+                imgAvatar.setImageBitmap(bitmap);
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     /**
@@ -89,24 +181,24 @@ public class EditProfileActivity extends AppCompatActivity {
         String email = editTextEmail.getText().toString().trim();
         String phone = editTextPhone.getText().toString().trim();
 
-        // Mandatory field validation
         if (name.isEmpty() || email.isEmpty()) {
             Toast.makeText(this, "Please fill in Name and Email", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Update the entrant's document in the "entrants" collection
-        db.collection("entrants").document(deviceId)
+        String collection = isOrganizerMode ? "organizers" : "entrants";
+        db.collection(collection).document(deviceId)
                 .update("name", name,
                         "email", email,
                         "phone", phone,
+                        "profileImage", profileImageBase64,
                         "updatedAt", Timestamp.now())
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(this, "Profile updated successfully!", Toast.LENGTH_SHORT).show();
 
-                    // Navigate back to ProfileActivity and clear the activity stack
                     Intent intent = new Intent(this, ProfileActivity.class);
                     intent.putExtra("deviceId", deviceId);
+                    intent.putExtra("isOrganizerMode", isOrganizerMode);
                     intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                     startActivity(intent);
                     finish();
@@ -114,28 +206,5 @@ public class EditProfileActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> {
                     Toast.makeText(this, "Update failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
-    }
-
-    /**
-     * Configures the navigation bar, highlighting the profile section and setting up click listeners.
-     */
-    private void setupNavbar() {
-        View navbar = findViewById(R.id.navbar);
-        if (navbar != null) {
-            // Highlight the profile icon to indicate the current section
-            ImageView imageProfile = navbar.findViewById(R.id.imageNavProfile);
-            TextView textProfile = navbar.findViewById(R.id.textNavProfile);
-            imageProfile.setImageTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#2563EB")));
-            textProfile.setTextColor(android.graphics.Color.parseColor("#2563EB"));
-
-            // Set listener for the home item to navigate back to ProfileActivity
-            View homeItem = navbar.findViewById(R.id.navHome);
-            homeItem.setOnClickListener(v -> {
-                Intent intent = new Intent(this, ProfileActivity.class);
-                intent.putExtra("deviceId", deviceId);
-                startActivity(intent);
-                finish();
-            });
-        }
     }
 }

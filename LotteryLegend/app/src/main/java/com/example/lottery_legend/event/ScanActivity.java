@@ -16,6 +16,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.lottery_legend.R;
+import com.example.lottery_legend.entrant.NavbarEntrant;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.journeyapps.barcodescanner.BarcodeCallback;
 import com.journeyapps.barcodescanner.BarcodeResult;
@@ -57,8 +58,7 @@ public class ScanActivity extends AppCompatActivity implements BarcodeCallback {
         // Set up the close button to finish the activity and return to the previous screen
         closeButton.setOnClickListener(v -> finish());
 
-        // Initialize the navigation bar highlighting
-        setupNavbar();
+        NavbarEntrant.setup(this, deviceId, NavbarEntrant.Tab.SCAN);
     }
 
     /**
@@ -104,24 +104,6 @@ public class ScanActivity extends AppCompatActivity implements BarcodeCallback {
                     Toast.makeText(this, "Network error", Toast.LENGTH_SHORT).show();
                     barcodeView.resume();
                 });
-    }
-
-    /**
-     * Configures the navigation bar by highlighting the Scan section.
-     * In this activity, the home tab acts as a "back" button.
-     */
-    private void setupNavbar() {
-        View navbar = findViewById(R.id.navbar);
-        if (navbar == null) return;
-
-        // Highlight the Scan icon and text to show it as the current active mode
-        ImageView imgScan = navbar.findViewById(R.id.imageNavScan);
-        TextView txtScan = navbar.findViewById(R.id.textNavScan);
-        imgScan.setImageTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#2563EB")));
-        txtScan.setTextColor(Color.parseColor("#2563EB"));
-
-        // Use the home icon as a quick exit back to the main screen
-        navbar.findViewById(R.id.navHome).setOnClickListener(v -> finish());
     }
 
     /**

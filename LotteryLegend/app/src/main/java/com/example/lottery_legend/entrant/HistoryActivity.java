@@ -169,7 +169,14 @@ public class HistoryActivity extends AppCompatActivity {
                 for (QueryDocumentSnapshot doc : value) {
                     Event event = doc.toObject(Event.class);
                     if (event != null && isEntrantInEvent(event)) {
-                        allJoinedEvents.add(event);
+                        // Check if device is a co-organizer
+                        doc.getReference().collection("coOrganizers").document(deviceId).get()
+                                .addOnSuccessListener(coDoc -> {
+                                    if (!coDoc.exists()) {
+                                        allJoinedEvents.add(event);
+                                        applyTabFilter(currentSelectedTab);
+                                    }
+                                });
                     }
                 }
             }
