@@ -59,7 +59,12 @@ public class NotificationDetailFragment extends DialogFragment {
         if (log != null) {
             tvEventTitle.setText(log.getEventTitle() != null ? log.getEventTitle() : "Unknown Event");
             tvSenderName.setText(log.getSenderName() != null ? log.getSenderName() : "Unknown Sender");
-            tvReceiverGroup.setText(log.getReceiverGroup());
+            
+            String receiverDisplay = log.getReceiverGroup();
+            if (log.getRecipientName() != null) {
+                receiverDisplay = log.getRecipientName() + " (" + receiverDisplay + ")";
+            }
+            tvReceiverGroup.setText(receiverDisplay);
             
             if (log.getCreatedAt() != null) {
                 tvDateTime.setText(dateFormat.format(log.getCreatedAt().toDate()));

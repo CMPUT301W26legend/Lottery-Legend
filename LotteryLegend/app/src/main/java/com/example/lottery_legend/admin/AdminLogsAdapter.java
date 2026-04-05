@@ -43,16 +43,19 @@ public class AdminLogsAdapter extends RecyclerView.Adapter<AdminLogsAdapter.LogV
     public void onBindViewHolder(@NonNull LogViewHolder holder, int position) {
         Notification log = logList.get(position);
 
-        // Set placeholders
-        holder.tvEventTitle.setText(log.getEventTitle() != null ? log.getEventTitle() : "Loading");
+        holder.tvEventTitle.setText(log.getEventTitle() != null ? log.getEventTitle() : "Deleted Event");
         holder.tvSenderName.setText(log.getSenderName() != null ? log.getSenderName() : "Loading");
-        holder.tvReceiverGroup.setText(log.getReceiverGroup());
         
+        String receiverDisplay = log.getReceiverGroup();
+        if (log.getRecipientName() != null) {
+            receiverDisplay = log.getRecipientName() + " (" + receiverDisplay + ")";
+        }
+        holder.tvReceiverGroup.setText(receiverDisplay);
+
         if (log.getCreatedAt() != null) {
             holder.tvDate.setText(dateFormat.format(log.getCreatedAt().toDate()));
         }
 
-        // Fetch Event Title if not already resolved
         if (log.getEventTitle() == null && log.getEventId() != null) {
             db.collection("events").document(log.getEventId()).get().addOnSuccessListener(doc -> {
                 if (doc.exists()) {
@@ -62,11 +65,19 @@ public class AdminLogsAdapter extends RecyclerView.Adapter<AdminLogsAdapter.LogV
             });
         }
 
-        // Fetch Sender Name if not already resolved
         if (log.getSenderName() == null && log.getSenderId() != null) {
             db.collection("organizers").document(log.getSenderId()).get().addOnSuccessListener(doc -> {
                 if (doc.exists()) {
                     log.setSenderName(doc.getString("name"));
+                    notifyItemChanged(holder.getAdapterPosition());
+                }
+            });
+        }
+
+        if (log.getRecipientName() == null && log.getRecipientId() != null) {
+            db.collection("entrants").document(log.getRecipientId()).get().addOnSuccessListener(doc -> {
+                if (doc.exists()) {
+                    log.setRecipientName(doc.getString("name"));
                     notifyItemChanged(holder.getAdapterPosition());
                 }
             });
