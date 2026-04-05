@@ -20,6 +20,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.LotteryLegend">
         <activity
+            android:name=".event.EventNotificationActivity"
+            android:exported="false" />
+        <activity
+            android:name=".entrant.NotificationActivity"
+            android:exported="false" />
+        <activity
             android:name=".organizer.WaitingListActivity"
             android:exported="false" />
         <activity

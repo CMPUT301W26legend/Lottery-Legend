@@ -116,10 +116,45 @@
                 app:strokeWidth="2dp"/>
 
             <LinearLayout
-                android:id="@+id/layoutNotifications"
+                android:id="@+id/layoutGoToNotifications"
                 android:layout_width="match_parent"
                 android:layout_height="64dp"
                 android:layout_marginTop="24dp"
+                android:background="@drawable/bg_rounded_gray"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_notification_bell_entrant"
+                    app:tint="#2563EB" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="16dp"
+                    android:text="View Notifications"
+                    android:textColor="#1E293B"
+                    android:textSize="16sp" />
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_arrow"
+                    app:tint="#64748B" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/layoutNotifications"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_marginTop="12dp"
                 android:background="@drawable/bg_rounded_gray"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"

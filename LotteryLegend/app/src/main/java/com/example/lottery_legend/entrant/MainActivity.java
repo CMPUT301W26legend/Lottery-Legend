@@ -1,5 +1,6 @@
 package com.example.lottery_legend.entrant;
 
+import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.os.Bundle;
@@ -8,6 +9,8 @@ import android.text.TextWatcher;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -60,6 +63,8 @@ public class MainActivity extends AppCompatActivity {
 
     private MaterialButton btnDateFilter, btnTimeFilter, btnCapacityFilter;
     private EditText searchInput;
+    private FrameLayout layoutNotification;
+    private TextView tvNotificationBadge;
 
     private final SimpleDateFormat displayFormatShort = new SimpleDateFormat("MMM dd", Locale.getDefault());
 
@@ -78,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
         setupViews();
         setupListeners();
         fetchEvents();
+        setupNotificationBadge();
 
         NavbarEntrant.setup(this, deviceId, NavbarEntrant.Tab.HOME);
     }
@@ -94,6 +100,8 @@ public class MainActivity extends AppCompatActivity {
         btnTimeFilter = findViewById(R.id.btnTimeFilter);
         btnCapacityFilter = findViewById(R.id.btnCapacityFilter);
         searchInput = findViewById(R.id.searchInput);
+        layoutNotification = findViewById(R.id.layoutNotification);
+        tvNotificationBadge = findViewById(R.id.tvNotificationBadge);
 
         eventView = findViewById(R.id.eventView);
         eventView.setLayoutManager(new LinearLayoutManager(this));
@@ -119,6 +127,32 @@ public class MainActivity extends AppCompatActivity {
         btnDateFilter.setOnClickListener(v -> showDateFilterDialog());
         btnTimeFilter.setOnClickListener(v -> showTimeFilterDialog());
         btnCapacityFilter.setOnClickListener(v -> showCapacityFilterDialog());
+
+        layoutNotification.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, NotificationActivity.class);
+            intent.putExtra("deviceId", deviceId);
+            startActivity(intent);
+        });
+    }
+
+    private void setupNotificationBadge() {
+        if (deviceId == null) return;
+        db.collection("notifications")
+                .whereEqualTo("recipientId", deviceId)
+                .whereEqualTo("isRead", false)
+                .addSnapshotListener((value, error) -> {
+                    if (error != null || value == null) {
+                        tvNotificationBadge.setVisibility(View.GONE);
+                        return;
+                    }
+                    int count = value.size();
+                    if (count > 0) {
+                        tvNotificationBadge.setVisibility(View.VISIBLE);
+                        tvNotificationBadge.setText(String.valueOf(count));
+                    } else {
+                        tvNotificationBadge.setVisibility(View.GONE);
+                    }
+                });
     }
 
     private void showDateFilterDialog() {

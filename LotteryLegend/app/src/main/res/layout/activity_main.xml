@@ -22,14 +22,58 @@
         app:titleCentered="false"
         app:titleTextColor="@android:color/white">
 
-        <TextView
-            android:id="@+id/tvRole"
+        <LinearLayout
+            android:id="@+id/layoutToolbarRight"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_gravity="end|center_vertical"
-            android:text="Entrant"
-            android:textColor="@android:color/white"
-            android:textSize="12sp" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <FrameLayout
+                android:id="@+id/layoutNotification"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="center_vertical"
+                android:foreground="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:id="@+id/ivNotification"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="Notifications"
+                    android:src="@drawable/ic_notification_bell_entrant"
+                    app:tint="@android:color/white" />
+
+                <TextView
+                    android:id="@+id/tvNotificationBadge"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_gravity="end|top"
+                    android:layout_marginTop="5dp"
+                    android:layout_marginEnd="5dp"
+                    android:background="@drawable/bg_notification_badge"
+                    android:gravity="center"
+                    android:text="3"
+                    android:textColor="@android:color/white"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:visibility="visible" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/tvRole"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="Entrant"
+                android:textColor="@android:color/white"
+                android:textSize="12sp" />
+        </LinearLayout>
+
     </com.google.android.material.appbar.MaterialToolbar>
 
     <LinearLayout

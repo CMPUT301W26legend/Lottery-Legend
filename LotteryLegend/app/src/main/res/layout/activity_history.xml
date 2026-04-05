@@ -18,7 +18,44 @@
         android:elevation="2dp"
         app:title="History"
         app:titleCentered="true"
-        app:titleTextColor="@android:color/white" />
+        app:titleTextColor="@android:color/white">
+
+        <FrameLayout
+            android:id="@+id/layoutNotification"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="end"
+            android:layout_marginEnd="8dp"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:id="@+id/ivNotification"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:contentDescription="Notifications"
+                android:src="@drawable/ic_notification_bell_entrant"
+                app:tint="@android:color/white" />
+
+            <TextView
+                android:id="@+id/tvNotificationBadge"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="end|top"
+                android:layout_marginTop="5dp"
+                android:layout_marginEnd="5dp"
+                android:background="@drawable/bg_notification_badge"
+                android:gravity="center"
+                android:text="0"
+                android:textColor="@android:color/white"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+        </FrameLayout>
+
+    </com.google.android.material.appbar.MaterialToolbar>
 
     <!-- Tabs -->
     <com.google.android.material.tabs.TabLayout
