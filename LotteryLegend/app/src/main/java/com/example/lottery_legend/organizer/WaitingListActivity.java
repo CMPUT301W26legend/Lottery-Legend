@@ -1,5 +1,6 @@
 package com.example.lottery_legend.organizer;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -21,6 +22,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.lottery_legend.R;
+import com.example.lottery_legend.event.MapActivity;
 import com.example.lottery_legend.model.Entrant;
 import com.example.lottery_legend.model.Event;
 import com.example.lottery_legend.model.Notification;
@@ -95,8 +97,34 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
         mapIcon = findViewById(R.id.mapIcon);
         btnFilter = findViewById(R.id.buttonFilter);
         
-        mapIcon.setOnClickListener(v -> Toast.makeText(this, "Map view coming soon", Toast.LENGTH_SHORT).show());
+        mapIcon.setOnClickListener(v -> openEntrantMap());
         btnFilter.setOnClickListener(this::showFilterMenu);
+    }
+
+    private void openEntrantMap() {
+        ArrayList<Double> latitudes = new ArrayList<>();
+        ArrayList<Double> longitudes = new ArrayList<>();
+        ArrayList<String> names = new ArrayList<>();
+
+        for (WaitingListUser user : entrantList) {
+            if (user.entry != null && user.entry.getJoinLatitude() != null && user.entry.getJoinLongitude() != null) {
+                latitudes.add(user.entry.getJoinLatitude());
+                longitudes.add(user.entry.getJoinLongitude());
+                names.add(user.entrant.getName() + " (" + user.entry.getParticipationStatus() + ")");
+            }
+        }
+
+        if (latitudes.isEmpty()) {
+            Toast.makeText(this, "No geo-location data available for entrants", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Intent intent = new Intent(this, MapActivity.class);
+        intent.putExtra(MapActivity.EXTRA_TITLE, "Entrant Locations");
+        intent.putExtra(MapActivity.EXTRA_LATITUDES, latitudes);
+        intent.putExtra(MapActivity.EXTRA_LONGITUDES, longitudes);
+        intent.putExtra(MapActivity.EXTRA_NAMES, names);
+        startActivity(intent);
     }
 
     private void showFilterMenu(View v) {

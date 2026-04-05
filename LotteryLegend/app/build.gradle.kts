@@ -43,6 +43,10 @@ dependencies {
     implementation("com.google.zxing:core:3.5.3")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
     
+    // Google Maps & Places
+    implementation(libs.google.maps)
+    implementation(libs.google.places)
+    
     testImplementation(libs.junit)
     testImplementation("org.mockito:mockito-core:5.11.0")
     testImplementation("org.mockito:mockito-inline:5.2.0")
