@@ -9,6 +9,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Base64;
@@ -37,6 +38,7 @@ import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.WriteBatch;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.WriterException;
@@ -44,6 +46,7 @@ import com.google.zxing.common.BitMatrix;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -135,16 +138,45 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
     private void initPlaces() {
         if (!Places.isInitialized()) {
             try {
-                ApplicationInfo ai = getPackageManager().getApplicationInfo(getPackageName(), PackageManager.GET_META_DATA);
-                Bundle bundle = ai.metaData;
-                String apiKey = bundle.getString("com.google.android.geo.API_KEY");
-                if (apiKey != null) {
-                    Places.initialize(getApplicationContext(), apiKey);
+                ApplicationInfo applicationInfo = getApplicationInfoCompat();
+                Bundle bundle = applicationInfo.metaData;
+                if (bundle != null) {
+                    String apiKey = bundle.getString("com.google.android.geo.API_KEY");
+                    if (!TextUtils.isEmpty(apiKey)) {
+                        Places.initialize(getApplicationContext(), apiKey);
+                    }
                 }
             } catch (PackageManager.NameNotFoundException e) {
                 e.printStackTrace();
             }
         }
+    }
+
+    private ApplicationInfo getApplicationInfoCompat() throws PackageManager.NameNotFoundException {
+        PackageManager packageManager = getPackageManager();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return packageManager.getApplicationInfo(
+                    getPackageName(),
+                    PackageManager.ApplicationInfoFlags.of(PackageManager.GET_META_DATA)
+            );
+        }
+
+        try {
+            Method method = PackageManager.class.getMethod(
+                    "getApplicationInfo",
+                    String.class,
+                    int.class
+            );
+            Object result = method.invoke(packageManager, getPackageName(), PackageManager.GET_META_DATA);
+            if (result instanceof ApplicationInfo) {
+                return (ApplicationInfo) result;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get ApplicationInfo compat", e);
+        }
+
+        throw new PackageManager.NameNotFoundException(getPackageName());
     }
 
     private void initViews() {
@@ -166,7 +198,6 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         uploadButton = findViewById(R.id.uploadButton);
         locationButton = findViewById(R.id.locationButton);
 
-        // Make location edit text look like a search bar trigger
         editTextLocation.setFocusable(false);
         editTextLocation.setClickable(true);
     }
@@ -180,8 +211,8 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
             Intent intent = new Intent(this, MapActivity.class);
             intent.putExtra(MapActivity.EXTRA_PICK_MODE, true);
             if (selectedLat != null && selectedLng != null) {
-                intent.putExtra(MapActivity.EXTRA_LATITUDE, (double) selectedLat);
-                intent.putExtra(MapActivity.EXTRA_LONGITUDE, (double) selectedLng);
+                intent.putExtra(MapActivity.EXTRA_LATITUDE, selectedLat);
+                intent.putExtra(MapActivity.EXTRA_LONGITUDE, selectedLng);
             }
             mapPickerLauncher.launch(intent);
         });
@@ -197,7 +228,12 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
     }
 
     private void startAutocompleteIntent() {
-        List<Place.Field> fields = Arrays.asList(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS, Place.Field.LAT_LNG);
+        List<Place.Field> fields = Arrays.asList(
+                Place.Field.ID,
+                Place.Field.NAME,
+                Place.Field.ADDRESS,
+                Place.Field.LAT_LNG
+        );
         Intent intent = new Autocomplete.IntentBuilder(AutocompleteActivityMode.OVERLAY, fields)
                 .build(this);
         placesLauncher.launch(intent);
@@ -216,7 +252,14 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
     }
 
     private void setupDateTimePickers() {
-        EditText[] dateFields = {eventStartDateTime, eventEndDateTime, registrationStartDateTime, registrationEndDateTime, drawDateTime};
+        EditText[] dateFields = {
+                eventStartDateTime,
+                eventEndDateTime,
+                registrationStartDateTime,
+                registrationEndDateTime,
+                drawDateTime
+        };
+
         for (EditText et : dateFields) {
             et.setOnClickListener(v -> showDateTimePicker(et));
         }
@@ -239,6 +282,7 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
             }, hour, minute, true);
             timePickerDialog.show();
         }, year, month, day);
+
         datePickerDialog.show();
     }
 
@@ -255,19 +299,33 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         String capacityStr = editTextCapacity.getText().toString().trim();
         String waitingListStr = editTextWaitingList.getText().toString().trim();
 
-        if (TextUtils.isEmpty(title) || TextUtils.isEmpty(description) ||
-                TextUtils.isEmpty(locationName) || TextUtils.isEmpty(priceStr) ||
-                TextUtils.isEmpty(startDateStr) || TextUtils.isEmpty(endDateStr) || TextUtils.isEmpty(regStartStr) ||
-                TextUtils.isEmpty(regEndStr) || TextUtils.isEmpty(drawDateStr) || TextUtils.isEmpty(capacityStr)) {
+        if (TextUtils.isEmpty(title)
+                || TextUtils.isEmpty(description)
+                || TextUtils.isEmpty(locationName)
+                || TextUtils.isEmpty(priceStr)
+                || TextUtils.isEmpty(startDateStr)
+                || TextUtils.isEmpty(endDateStr)
+                || TextUtils.isEmpty(regStartStr)
+                || TextUtils.isEmpty(regEndStr)
+                || TextUtils.isEmpty(drawDateStr)
+                || TextUtils.isEmpty(capacityStr)) {
             Toast.makeText(this, "Please fill in all required fields", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        double price = Double.parseDouble(priceStr);
-        int capacity = Integer.parseInt(capacityStr);
+        double price;
+        int capacity;
         Integer maxWaitingList = null;
-        if (!TextUtils.isEmpty(waitingListStr)) {
-            maxWaitingList = Integer.parseInt(waitingListStr);
+
+        try {
+            price = Double.parseDouble(priceStr);
+            capacity = Integer.parseInt(capacityStr);
+            if (!TextUtils.isEmpty(waitingListStr)) {
+                maxWaitingList = Integer.parseInt(waitingListStr);
+            }
+        } catch (NumberFormatException e) {
+            Toast.makeText(this, "Invalid numeric input", Toast.LENGTH_SHORT).show();
+            return;
         }
 
         Event newEvent = new Event();
@@ -277,10 +335,7 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         newEvent.setPrice(price);
         newEvent.setIsPrivateEvent(switchPrivateEvent.isChecked());
         newEvent.setGeoEnabled(switchGeo.isChecked());
-        
-        // Save both Name and Coordinates
         newEvent.setEventLocation(new Event.EventLocation(locationName, locationName, selectedLat, selectedLng));
-        
         newEvent.setCapacity(capacity);
         newEvent.setMaxWaitingList(maxWaitingList);
         newEvent.setStatus("open");
@@ -289,11 +344,11 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
 
         SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy HH:mm", Locale.getDefault());
         try {
-            newEvent.setRegistrationStartAt(new Timestamp(sdf.parse(regStartStr)));
-            newEvent.setRegistrationEndAt(new Timestamp(sdf.parse(regEndStr)));
-            newEvent.setDrawAt(new Timestamp(sdf.parse(drawDateStr)));
-            newEvent.setEventStartAt(new Timestamp(sdf.parse(startDateStr)));
-            newEvent.setEventEndAt(new Timestamp(sdf.parse(endDateStr)));
+            newEvent.setRegistrationStartAt(parseToTimestamp(sdf, regStartStr));
+            newEvent.setRegistrationEndAt(parseToTimestamp(sdf, regEndStr));
+            newEvent.setDrawAt(parseToTimestamp(sdf, drawDateStr));
+            newEvent.setEventStartAt(parseToTimestamp(sdf, startDateStr));
+            newEvent.setEventEndAt(parseToTimestamp(sdf, endDateStr));
         } catch (Exception e) {
             Toast.makeText(this, "Error parsing dates", Toast.LENGTH_SHORT).show();
             return;
@@ -303,21 +358,46 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
 
         if (imageUri != null) {
             String base64Image = uriToBase64(imageUri);
-            if (base64Image != null) newEvent.setPosterImage(base64Image);
+            if (base64Image != null) {
+                newEvent.setPosterImage(base64Image);
+            }
         }
-        
+
         if (!newEvent.isIsPrivateEvent()) {
             newEvent.setQrCodeValue(newEvent.getEventId());
             newEvent.setQrCodeImage(generateQRCodeBase64(newEvent.getEventId()));
         }
 
-        db.collection("events").document(newEvent.getEventId())
-                .set(newEvent)
+        WriteBatch batch = db.batch();
+        batch.set(db.collection("events").document(newEvent.getEventId()), newEvent);
+        batch.set(
+                db.collection("organizers")
+                        .document(deviceId)
+                        .collection("createdEvents")
+                        .document(newEvent.getEventId()),
+                newEvent
+        );
+
+        batch.commit()
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(this, "Event Created!", Toast.LENGTH_SHORT).show();
                     finish();
                 })
-                .addOnFailureListener(e -> Toast.makeText(this, "Failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "Failed: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                );
+    }
+
+    private Timestamp parseToTimestamp(SimpleDateFormat sdf, String dateTimeText) throws Exception {
+        Date parsedDate = sdf.parse(dateTimeText);
+        if (parsedDate == null) {
+            throw new IllegalArgumentException("Parsed date is null");
+        }
+
+        long millis = parsedDate.getTime();
+        long seconds = millis / 1000L;
+        int nanos = (int) ((millis % 1000L) * 1_000_000L);
+        return new Timestamp(seconds, nanos);
     }
 
     private String generateQRCodeBase64(String text) {
@@ -327,11 +407,13 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
             int width = bitMatrix.getWidth();
             int height = bitMatrix.getHeight();
             Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
+
             for (int x = 0; x < width; x++) {
                 for (int y = 0; y < height; y++) {
                     bmp.setPixel(x, y, bitMatrix.get(x, y) ? Color.BLACK : Color.WHITE);
                 }
             }
+
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             bmp.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
             return Base64.encodeToString(outputStream.toByteArray(), Base64.DEFAULT);
@@ -344,13 +426,31 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         try {
             InputStream inputStream = getContentResolver().openInputStream(uri);
             Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-            if (inputStream != null) inputStream.close();
+
+            if (inputStream != null) {
+                inputStream.close();
+            }
+
+            if (bitmap == null) {
+                return null;
+            }
+
             int maxWidth = 800;
             int maxHeight = 800;
+
             if (bitmap.getWidth() > maxWidth || bitmap.getHeight() > maxHeight) {
-                float ratio = Math.min((float) maxWidth / bitmap.getWidth(), (float) maxHeight / bitmap.getHeight());
-                bitmap = Bitmap.createScaledBitmap(bitmap, Math.round(ratio * bitmap.getWidth()), Math.round(ratio * bitmap.getHeight()), true);
+                float ratio = Math.min(
+                        (float) maxWidth / bitmap.getWidth(),
+                        (float) maxHeight / bitmap.getHeight()
+                );
+                bitmap = Bitmap.createScaledBitmap(
+                        bitmap,
+                        Math.round(ratio * bitmap.getWidth()),
+                        Math.round(ratio * bitmap.getHeight()),
+                        true
+                );
             }
+
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             bitmap.compress(Bitmap.CompressFormat.JPEG, 50, outputStream);
             return Base64.encodeToString(outputStream.toByteArray(), Base64.DEFAULT);

@@ -35,6 +35,7 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
         TextView eventInfo;
         TextView waiting;
         TextView selected;
+        TextView tagCoOrganizer;
 
         /**
          * Initializes the UI components from the inflated layout.
@@ -47,6 +48,7 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
             eventInfo = itemView.findViewById(R.id.eventInfo);
             waiting = itemView.findViewById(R.id.waiting);
             selected = itemView.findViewById(R.id.selected);
+            tagCoOrganizer = itemView.findViewById(R.id.tagCoOrganizer);
         }
     }
 
@@ -86,6 +88,13 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
         holder.eventName.setText(event.getTitle());
         
         updateStatusUI(holder.status, event);
+
+        // Show Co-organizer tag if the current user is not the primary organizer
+        if (event.getOrganizerId() != null && !event.getOrganizerId().equals(deviceId)) {
+            holder.tagCoOrganizer.setVisibility(View.VISIBLE);
+        } else {
+            holder.tagCoOrganizer.setVisibility(View.GONE);
+        }
         
         String deadlineStr = "";
         Timestamp registrationEndAt = event.getRegistrationEndAt();

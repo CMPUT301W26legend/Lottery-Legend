@@ -63,7 +63,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
 
     private ImageView eventPoster;
     private TextView textWaitingCount, textSelectedCount, textCapacity;
-    private TextView textEventTitle, textEventStatus, textEventVisibility;
+    private TextView textEventTitle, textEventStatus, tagCoOrganizer, textEventVisibility;
     private TextView textEventDate, textRegistrationDeadline, textLocation, textPrice;
     private TextView textDescription, textLotteryGuidelines;
     private Button btnViewWaitingList, btnRunLotteryDraw, btnSendNotification, btnDeleteEvent, btnInviteEntrants;
@@ -111,6 +111,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         textSelectedCount = findViewById(R.id.textSelectedCount);
         textCapacity = findViewById(R.id.textCapacity);
         textEventTitle = findViewById(R.id.textEventTitle);
+        tagCoOrganizer = findViewById(R.id.tagCoOrganizer);
         textEventStatus = findViewById(R.id.textEventStatus);
         textEventVisibility = findViewById(R.id.textEventVisibility);
         textEventDate = findViewById(R.id.textEventDate);
@@ -254,6 +255,13 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         textEventTitle.setText(event.getTitle());
         textDescription.setText(event.getDescription());
         textCapacity.setText(String.valueOf(event.getCapacity()));
+
+        // Show Co-organizer tag if the current user is not the primary organizer
+        if (event.getOrganizerId() != null && !event.getOrganizerId().equals(deviceId)) {
+            tagCoOrganizer.setVisibility(View.VISIBLE);
+        } else {
+            tagCoOrganizer.setVisibility(View.GONE);
+        }
 
         int waitingListSize = (event.getWaitingList() != null) ? event.getWaitingList().size() : 0;
         if (event.getMaxWaitingList() != null) {
