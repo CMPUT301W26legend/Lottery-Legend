@@ -115,6 +115,11 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     public void onMapReady(@NonNull GoogleMap googleMap) {
         mMap = googleMap;
 
+        // Enable zoom controls and gestures
+        mMap.getUiSettings().setZoomControlsEnabled(true);
+        mMap.getUiSettings().setZoomGesturesEnabled(true);
+        mMap.getUiSettings().setCompassEnabled(true);
+
         if (isPickMode) {
             setupPickMode();
         } else {
