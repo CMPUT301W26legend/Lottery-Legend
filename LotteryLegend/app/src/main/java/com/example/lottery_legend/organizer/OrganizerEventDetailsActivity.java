@@ -26,6 +26,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.lottery_legend.R;
+import com.example.lottery_legend.event.MapActivity;
 import com.example.lottery_legend.model.Entrant;
 import com.example.lottery_legend.model.Event;
 import com.google.android.gms.tasks.Task;
@@ -163,9 +164,17 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
             }
         });
 
-        mapIcon.setOnClickListener(v ->
-                Toast.makeText(this, "Map coming soon", Toast.LENGTH_SHORT).show()
-        );
+        mapIcon.setOnClickListener(v -> {
+            if (currentEvent != null && currentEvent.getEventLocation() != null) {
+                Intent intent = new Intent(this, MapActivity.class);
+                intent.putExtra(MapActivity.EXTRA_LATITUDE, currentEvent.getEventLocation().getLatitude());
+                intent.putExtra(MapActivity.EXTRA_LONGITUDE, currentEvent.getEventLocation().getLongitude());
+                intent.putExtra(MapActivity.EXTRA_MARKER_NAME, currentEvent.getTitle());
+                startActivity(intent);
+            } else {
+                Toast.makeText(this, "Event location not available", Toast.LENGTH_SHORT).show();
+            }
+        });
 
         btnViewWaitingList.setOnClickListener(v -> {
             if (eventId != null) {

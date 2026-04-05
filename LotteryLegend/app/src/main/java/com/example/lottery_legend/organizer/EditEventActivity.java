@@ -2,6 +2,7 @@ package com.example.lottery_legend.organizer;
 
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -9,11 +10,14 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Base64;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.graphics.Insets;
@@ -21,7 +25,13 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.lottery_legend.R;
+import com.example.lottery_legend.event.MapActivity;
 import com.example.lottery_legend.model.Event;
+import com.google.android.gms.common.api.Status;
+import com.google.android.libraries.places.api.Places;
+import com.google.android.libraries.places.api.model.Place;
+import com.google.android.libraries.places.widget.Autocomplete;
+import com.google.android.libraries.places.widget.model.AutocompleteActivityMode;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -33,13 +43,14 @@ import com.google.zxing.common.BitMatrix;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 /**
  * Activity for organizers to edit an existing event.
- * Inherits the layout and logic of CreateEventActivity but handles data updating.
  */
 public class EditEventActivity extends AppCompatActivity implements PosterUploadDialogFragment.OnPosterEventListener {
 
@@ -60,10 +71,44 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
     private SwitchCompat switchGeo;
     private SwitchCompat switchPrivateEvent;
     private Button saveButton, uploadButton;
+    private View locationButton;
     private MaterialToolbar toolbar;
 
     private Uri imageUri;
     private String currentPosterBase64;
+    private Double selectedLat = null;
+    private Double selectedLng = null;
+
+    private final ActivityResultLauncher<Intent> mapPickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    selectedLat = result.getData().getDoubleExtra(MapActivity.RESULT_LATITUDE, 0);
+                    selectedLng = result.getData().getDoubleExtra(MapActivity.RESULT_LONGITUDE, 0);
+                    String address = result.getData().getStringExtra(MapActivity.RESULT_ADDRESS);
+                    if (address != null) {
+                        editTextLocation.setText(address);
+                    }
+                }
+            }
+    );
+
+    private final ActivityResultLauncher<Intent> placesLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    Place place = Autocomplete.getPlaceFromIntent(result.getData());
+                    editTextLocation.setText(place.getAddress());
+                    if (place.getLatLng() != null) {
+                        selectedLat = place.getLatLng().latitude;
+                        selectedLng = place.getLatLng().longitude;
+                    }
+                } else if (result.getResultCode() == 2 /* AutocompleteActivity.RESULT_ERROR */) {
+                    Status status = Autocomplete.getStatusFromIntent(result.getData());
+                    Toast.makeText(this, "Error: " + status.getStatusMessage(), Toast.LENGTH_SHORT).show();
+                }
+            }
+    );
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,7 +125,19 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
         eventId = getIntent().getStringExtra("eventId");
         deviceId = getIntent().getStringExtra("deviceId");
 
-        // Initialize UI components
+        // Initialize Places SDK
+        if (!Places.isInitialized()) {
+            String apiKey = "AIzaSyAGM4mRqzD07usvdcKhFyXzbu9UhYu9LpE"; // From your manifest
+            Places.initialize(getApplicationContext(), apiKey);
+        }
+
+        initViews();
+        setupDateTimePickers();
+        setupListeners();
+        loadEventData();
+    }
+
+    private void initViews() {
         toolbar = findViewById(R.id.toolbarCreateEvent);
         toolbar.setTitle("Edit Event");
         
@@ -100,14 +157,28 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
         saveButton = findViewById(R.id.createButton);
         saveButton.setText("Save Changes");
         uploadButton = findViewById(R.id.uploadButton);
+        locationButton = findViewById(R.id.locationButton);
 
-        // Setup UI logic
-        setupDateTimePickers();
+        // Make location edit text look like a search bar trigger
+        editTextLocation.setFocusable(false);
+        editTextLocation.setClickable(true);
+    }
 
-        // Toolbar back navigation
+    private void setupListeners() {
         toolbar.setNavigationOnClickListener(v -> finish());
 
-        // Handle poster image upload button
+        editTextLocation.setOnClickListener(v -> startAutocompleteIntent());
+
+        locationButton.setOnClickListener(v -> {
+            Intent intent = new Intent(this, MapActivity.class);
+            intent.putExtra(MapActivity.EXTRA_PICK_MODE, true);
+            if (selectedLat != null && selectedLng != null) {
+                intent.putExtra(MapActivity.EXTRA_LATITUDE, selectedLat);
+                intent.putExtra(MapActivity.EXTRA_LONGITUDE, selectedLng);
+            }
+            mapPickerLauncher.launch(intent);
+        });
+
         uploadButton.setOnClickListener(v -> {
             PosterUploadDialogFragment dialog = new PosterUploadDialogFragment();
             if (imageUri != null) {
@@ -119,11 +190,14 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
             dialog.show(getSupportFragmentManager(), "PosterUploadDialog");
         });
 
-        // Handle event creation button
         saveButton.setOnClickListener(v -> updateEvent());
+    }
 
-        // Load existing data
-        loadEventData();
+    private void startAutocompleteIntent() {
+        List<Place.Field> fields = Arrays.asList(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS, Place.Field.LAT_LNG);
+        Intent intent = new Autocomplete.IntentBuilder(AutocompleteActivityMode.OVERLAY, fields)
+                .build(this);
+        placesLauncher.launch(intent);
     }
 
     private void loadEventData() {
@@ -136,6 +210,8 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
                 editTextDescription.setText(event.getDescription());
                 if (event.getEventLocation() != null) {
                     editTextLocation.setText(event.getEventLocation().getName());
+                    selectedLat = event.getEventLocation().getLatitude();
+                    selectedLng = event.getEventLocation().getLongitude();
                 }
                 editTextPrice.setText(String.valueOf(event.getPrice()));
                 editTextCapacity.setText(String.valueOf(event.getCapacity()));
@@ -164,7 +240,7 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
     @Override
     public void onPosterSelected(Uri uri) {
         this.imageUri = uri;
-        this.currentPosterBase64 = null; // New URI selected, clear old Base64 reference
+        this.currentPosterBase64 = null;
         uploadButton.setText("Image Selected");
     }
 
@@ -238,23 +314,6 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
             Date eventStart = sdf.parse(startDateStr);
             Date eventEnd = sdf.parse(endDateStr);
 
-            if (regStart.after(regEnd)) {
-                Toast.makeText(this, "Registration start must be before end", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (regEnd.after(drawDate)) {
-                Toast.makeText(this, "Registration end must be before draw date", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (drawDate.after(eventStart)) {
-                Toast.makeText(this, "Draw date must be before event start", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (eventStart.after(eventEnd)) {
-                Toast.makeText(this, "Event start must be before end", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
             String finalPosterBase64 = currentPosterBase64;
             if (imageUri != null) {
                 finalPosterBase64 = uriToBase64(imageUri);
@@ -273,6 +332,9 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
                             "title", title,
                             "description", description,
                             "eventLocation.name", locationName,
+                            "eventLocation.address", locationName,
+                            "eventLocation.latitude", selectedLat,
+                            "eventLocation.longitude", selectedLng,
                             "price", price,
                             "capacity", capacity,
                             "maxWaitingList", maxWaitingList,
@@ -297,7 +359,6 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
                     });
 
         } catch (Exception e) {
-            e.printStackTrace();
             Toast.makeText(this, "Error parsing dates", Toast.LENGTH_SHORT).show();
         }
     }
@@ -318,7 +379,6 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
             bmp.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
             return Base64.encodeToString(outputStream.toByteArray(), Base64.DEFAULT);
         } catch (WriterException e) {
-            e.printStackTrace();
             return null;
         }
     }
@@ -333,9 +393,7 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
             int maxHeight = 800;
             if (bitmap.getWidth() > maxWidth || bitmap.getHeight() > maxHeight) {
                 float ratio = Math.min((float) maxWidth / bitmap.getWidth(), (float) maxHeight / bitmap.getHeight());
-                int width = Math.round(ratio * bitmap.getWidth());
-                int height = Math.round(ratio * bitmap.getHeight());
-                bitmap = Bitmap.createScaledBitmap(bitmap, width, height, true);
+                bitmap = Bitmap.createScaledBitmap(bitmap, Math.round(ratio * bitmap.getWidth()), Math.round(ratio * bitmap.getHeight()), true);
             }
 
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -343,7 +401,6 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
             byte[] byteArray = outputStream.toByteArray();
             return Base64.encodeToString(byteArray, Base64.DEFAULT);
         } catch (Exception e) {
-            e.printStackTrace();
             return null;
         }
     }

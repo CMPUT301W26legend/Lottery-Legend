@@ -2,6 +2,9 @@ package com.example.lottery_legend.organizer;
 
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
+import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -9,11 +12,14 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Base64;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.graphics.Insets;
@@ -21,7 +27,13 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.lottery_legend.R;
+import com.example.lottery_legend.event.MapActivity;
 import com.example.lottery_legend.model.Event;
+import com.google.android.gms.common.api.Status;
+import com.google.android.libraries.places.api.Places;
+import com.google.android.libraries.places.api.model.Place;
+import com.google.android.libraries.places.widget.Autocomplete;
+import com.google.android.libraries.places.widget.model.AutocompleteActivityMode;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -33,14 +45,14 @@ import com.google.zxing.common.BitMatrix;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 /**
  * Activity for organizers to create a new event.
- * This activity handles input validation, poster image selection,
- * QR code generation, and saving event data to Firebase Firestore.
  */
 public class CreateEventActivity extends AppCompatActivity implements PosterUploadDialogFragment.OnPosterEventListener {
 
@@ -60,9 +72,43 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
     private SwitchCompat switchGeo;
     private SwitchCompat switchPrivateEvent;
     private Button createButton, uploadButton;
+    private View locationButton;
     private MaterialToolbar toolbar;
 
     private Uri imageUri;
+    private Double selectedLat = null;
+    private Double selectedLng = null;
+
+    private final ActivityResultLauncher<Intent> mapPickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    selectedLat = result.getData().getDoubleExtra(MapActivity.RESULT_LATITUDE, 0);
+                    selectedLng = result.getData().getDoubleExtra(MapActivity.RESULT_LONGITUDE, 0);
+                    String address = result.getData().getStringExtra(MapActivity.RESULT_ADDRESS);
+                    if (address != null) {
+                        editTextLocation.setText(address);
+                    }
+                }
+            }
+    );
+
+    private final ActivityResultLauncher<Intent> placesLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    Place place = Autocomplete.getPlaceFromIntent(result.getData());
+                    editTextLocation.setText(place.getAddress());
+                    if (place.getLatLng() != null) {
+                        selectedLat = place.getLatLng().latitude;
+                        selectedLng = place.getLatLng().longitude;
+                    }
+                } else if (result.getResultCode() == 2 /* AutocompleteActivity.RESULT_ERROR */) {
+                    Status status = Autocomplete.getStatusFromIntent(result.getData());
+                    Toast.makeText(this, "Error: " + status.getStatusMessage(), Toast.LENGTH_SHORT).show();
+                }
+            }
+    );
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,7 +124,28 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         db = FirebaseFirestore.getInstance();
         deviceId = getIntent().getStringExtra("deviceId");
 
-        // Initialize UI components
+        initPlaces();
+        initViews();
+        setupDateTimePickers();
+        setupListeners();
+    }
+
+    private void initPlaces() {
+        if (!Places.isInitialized()) {
+            try {
+                ApplicationInfo ai = getPackageManager().getApplicationInfo(getPackageName(), PackageManager.GET_META_DATA);
+                Bundle bundle = ai.metaData;
+                String apiKey = bundle.getString("com.google.android.geo.API_KEY");
+                if (apiKey != null) {
+                    Places.initialize(getApplicationContext(), apiKey);
+                }
+            } catch (PackageManager.NameNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void initViews() {
         toolbar = findViewById(R.id.toolbarCreateEvent);
         editTextEventTitle = findViewById(R.id.editTextEventTitle);
         editTextDescription = findViewById(R.id.editTextDescription);
@@ -95,14 +162,28 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         switchPrivateEvent = findViewById(R.id.switchPrivateEvent);
         createButton = findViewById(R.id.createButton);
         uploadButton = findViewById(R.id.uploadButton);
+        locationButton = findViewById(R.id.locationButton);
 
-        // Setup UI logic
-        setupDateTimePickers();
+        // Make location edit text look like a search bar trigger
+        editTextLocation.setFocusable(false);
+        editTextLocation.setClickable(true);
+    }
 
-        // Toolbar back navigation
+    private void setupListeners() {
         toolbar.setNavigationOnClickListener(v -> finish());
 
-        // Handle poster image upload button
+        editTextLocation.setOnClickListener(v -> startAutocompleteIntent());
+
+        locationButton.setOnClickListener(v -> {
+            Intent intent = new Intent(this, MapActivity.class);
+            intent.putExtra(MapActivity.EXTRA_PICK_MODE, true);
+            if (selectedLat != null && selectedLng != null) {
+                intent.putExtra(MapActivity.EXTRA_LATITUDE, (double) selectedLat);
+                intent.putExtra(MapActivity.EXTRA_LONGITUDE, (double) selectedLng);
+            }
+            mapPickerLauncher.launch(intent);
+        });
+
         uploadButton.setOnClickListener(v -> {
             PosterUploadDialogFragment dialog = new PosterUploadDialogFragment();
             dialog.setCurrentUri(imageUri);
@@ -110,32 +191,28 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
             dialog.show(getSupportFragmentManager(), "PosterUploadDialog");
         });
 
-        // Handle event creation button
         createButton.setOnClickListener(v -> createEvent());
     }
 
-    /**
-     * Callback from PosterUploadDialogFragment when a poster is selected.
-     * @param uri The Uri of the selected image.
-     */
+    private void startAutocompleteIntent() {
+        List<Place.Field> fields = Arrays.asList(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS, Place.Field.LAT_LNG);
+        Intent intent = new Autocomplete.IntentBuilder(AutocompleteActivityMode.OVERLAY, fields)
+                .build(this);
+        placesLauncher.launch(intent);
+    }
+
     @Override
     public void onPosterSelected(Uri uri) {
         this.imageUri = uri;
         uploadButton.setText("Image Selected");
     }
 
-    /**
-     * Callback from PosterUploadDialogFragment when the poster is removed.
-     */
     @Override
     public void onPosterRemoved() {
         this.imageUri = null;
         uploadButton.setText("Upload Poster Image");
     }
 
-    /**
-     * Configures DateTimePickerDialogs for all date/time input fields.
-     */
     private void setupDateTimePickers() {
         EditText[] dateFields = {eventStartDateTime, eventEndDateTime, registrationStartDateTime, registrationEndDateTime, drawDateTime};
         for (EditText et : dateFields) {
@@ -163,9 +240,6 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         datePickerDialog.show();
     }
 
-    /**
-     * Validates input fields, generates a QR code, and saves the new event to Firestore.
-     */
     private void createEvent() {
         String title = editTextEventTitle.getText().toString().trim();
         String description = editTextDescription.getText().toString().trim();
@@ -187,7 +261,6 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
             return;
         }
 
-        // Parse numerical fields
         double price = Double.parseDouble(priceStr);
         int capacity = Integer.parseInt(capacityStr);
         Integer maxWaitingList = null;
@@ -195,97 +268,56 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
             maxWaitingList = Integer.parseInt(waitingListStr);
         }
 
-        // Create the event object
         Event newEvent = new Event();
         newEvent.setOrganizerId(deviceId);
         newEvent.setTitle(title);
         newEvent.setDescription(description);
         newEvent.setPrice(price);
-        boolean isPrivate = switchPrivateEvent.isChecked();
-        newEvent.setIsPrivateEvent(isPrivate);
-        newEvent.setGeoEnabled(switchGeo.isChecked()); // Controls recording entrant's geo
-        newEvent.setEventLocation(new Event.EventLocation(locationName, null, null, null));
+        newEvent.setIsPrivateEvent(switchPrivateEvent.isChecked());
+        newEvent.setGeoEnabled(switchGeo.isChecked());
+        
+        // Save both Name and Coordinates
+        newEvent.setEventLocation(new Event.EventLocation(locationName, locationName, selectedLat, selectedLng));
+        
         newEvent.setCapacity(capacity);
         newEvent.setMaxWaitingList(maxWaitingList);
         newEvent.setStatus("open");
         newEvent.setCreatedAt(Timestamp.now());
         newEvent.setUpdatedAt(Timestamp.now());
 
-        // Parse date strings and validate chronological order
         SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy HH:mm", Locale.getDefault());
         try {
-            Date regStart = sdf.parse(regStartStr);
-            Date regEnd = sdf.parse(regEndStr);
-            Date drawDate = sdf.parse(drawDateStr);
-            Date eventStart = sdf.parse(startDateStr);
-            Date eventEnd = sdf.parse(endDateStr);
-
-            if (regStart.after(regEnd)) {
-                Toast.makeText(this, "Registration start must be before end", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (regEnd.after(drawDate)) {
-                Toast.makeText(this, "Registration end must be before draw date", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (drawDate.after(eventStart)) {
-                Toast.makeText(this, "Draw date must be before event start", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (eventStart.after(eventEnd)) {
-                Toast.makeText(this, "Event start must be before end", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            newEvent.setRegistrationStartAt(new Timestamp(regStart));
-            newEvent.setRegistrationEndAt(new Timestamp(regEnd));
-            newEvent.setDrawAt(new Timestamp(drawDate));
-            newEvent.setEventStartAt(new Timestamp(eventStart));
-            newEvent.setEventEndAt(new Timestamp(eventEnd));
+            newEvent.setRegistrationStartAt(new Timestamp(sdf.parse(regStartStr)));
+            newEvent.setRegistrationEndAt(new Timestamp(sdf.parse(regEndStr)));
+            newEvent.setDrawAt(new Timestamp(sdf.parse(drawDateStr)));
+            newEvent.setEventStartAt(new Timestamp(sdf.parse(startDateStr)));
+            newEvent.setEventEndAt(new Timestamp(sdf.parse(endDateStr)));
         } catch (Exception e) {
-            e.printStackTrace();
             Toast.makeText(this, "Error parsing dates", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Generate a random eventId
         newEvent.setEventId(java.util.UUID.randomUUID().toString());
 
-        // Process poster image if available
         if (imageUri != null) {
             String base64Image = uriToBase64(imageUri);
-            if (base64Image != null) {
-                newEvent.setPosterImage(base64Image);
-            }
+            if (base64Image != null) newEvent.setPosterImage(base64Image);
         }
         
-        // Generate and set QR code for the event if not private
-        if (!isPrivate) {
-            String qrCodeBase64 = generateQRCodeBase64(newEvent.getEventId());
-            newEvent.setQrCodeImage(qrCodeBase64);
+        if (!newEvent.isIsPrivateEvent()) {
             newEvent.setQrCodeValue(newEvent.getEventId());
-        } else {
-            newEvent.setQrCodeImage(null);
-            newEvent.setQrCodeValue(null);
+            newEvent.setQrCodeImage(generateQRCodeBase64(newEvent.getEventId()));
         }
 
-        // Save to Firestore
         db.collection("events").document(newEvent.getEventId())
                 .set(newEvent)
                 .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(CreateEventActivity.this, "Event Created Successfully!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Event Created!", Toast.LENGTH_SHORT).show();
                     finish();
                 })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(CreateEventActivity.this, "Failed to create event: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+                .addOnFailureListener(e -> Toast.makeText(this, "Failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 
-    /**
-     * Generates a QR Code for the given text and returns it as a Base64 string.
-     * @param text The text to encode in the QR code (usually eventId).
-     * @return Base64 encoded PNG string of the QR code, or null if generation fails.
-     */
     private String generateQRCodeBase64(String text) {
         MultiFormatWriter writer = new MultiFormatWriter();
         try {
@@ -302,40 +334,25 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
             bmp.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
             return Base64.encodeToString(outputStream.toByteArray(), Base64.DEFAULT);
         } catch (WriterException e) {
-            e.printStackTrace();
             return null;
         }
     }
 
-    /**
-     * Converts an image Uri to a Base64 encoded JPEG string.
-     * Resizes the image to fit within 800x800 for efficient storage.
-     * @param uri The Uri of the image to convert.
-     * @return Base64 encoded string of the image, or null on error.
-     */
     private String uriToBase64(Uri uri) {
         try {
             InputStream inputStream = getContentResolver().openInputStream(uri);
             Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
             if (inputStream != null) inputStream.close();
-
-            // Downscale image if it's too large for Firestore
             int maxWidth = 800;
             int maxHeight = 800;
             if (bitmap.getWidth() > maxWidth || bitmap.getHeight() > maxHeight) {
                 float ratio = Math.min((float) maxWidth / bitmap.getWidth(), (float) maxHeight / bitmap.getHeight());
-                int width = Math.round(ratio * bitmap.getWidth());
-                int height = Math.round(ratio * bitmap.getHeight());
-                bitmap = Bitmap.createScaledBitmap(bitmap, width, height, true);
+                bitmap = Bitmap.createScaledBitmap(bitmap, Math.round(ratio * bitmap.getWidth()), Math.round(ratio * bitmap.getHeight()), true);
             }
-
-            // Compress to JPEG with 50% quality to further reduce size
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             bitmap.compress(Bitmap.CompressFormat.JPEG, 50, outputStream);
-            byte[] byteArray = outputStream.toByteArray();
-            return Base64.encodeToString(byteArray, Base64.DEFAULT);
+            return Base64.encodeToString(outputStream.toByteArray(), Base64.DEFAULT);
         } catch (Exception e) {
-            e.printStackTrace();
             return null;
         }
     }
