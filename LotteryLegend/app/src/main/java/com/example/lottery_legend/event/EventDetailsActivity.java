@@ -441,38 +441,15 @@ public class EventDetailsActivity extends AppCompatActivity {
             textRegistrationStatus.setText("Closed");
             textRegistrationStatus.setTextColor(Color.parseColor("#9CA3AF"));
 
-            if (isJoined) {
-                btnJoinWaitingList.setVisibility(View.VISIBLE);
-                btnJoinWaitingList.setText("Leave Waiting List");
-                btnJoinWaitingList.setBackgroundTintList(
-                        ColorStateList.valueOf(Color.parseColor("#EF4444"))
-                );
-                btnJoinWaitingList.setOnClickListener(v ->
-                        WaitingListDialogFragment.newInstance(event, deviceId)
-                                .show(getSupportFragmentManager(), "Leave Waiting List")
-                );
-            }
-
             if (isPastStartDate && !"closed".equals(eventStatus) && event.getEventId() != null) {
                 db.collection("events").document(event.getEventId()).update("status", "closed");
             }
 
-        } else if ("drawed".equals(eventStatus) || "drawn".equals(eventStatus)) {
+        } else if ("drawn".equals(eventStatus)) {
             textRegistrationStatus.setText("Drawn");
             textRegistrationStatus.setTextColor(Color.parseColor("#F57C00"));
-            if (isJoined) {
-                btnJoinWaitingList.setVisibility(View.VISIBLE);
-                btnJoinWaitingList.setText("Leave Waiting List");
-                btnJoinWaitingList.setBackgroundTintList(
-                        ColorStateList.valueOf(Color.parseColor("#EF4444"))
-                );
-                btnJoinWaitingList.setOnClickListener(v ->
-                        WaitingListDialogFragment.newInstance(event, deviceId)
-                                .show(getSupportFragmentManager(), "Leave Waiting List")
-                );
-            }
 
-        } else {
+        } else if ("open".equals(eventStatus)) {
             btnJoinWaitingList.setVisibility(View.VISIBLE);
 
             if (isJoined) {
@@ -498,6 +475,9 @@ public class EventDetailsActivity extends AppCompatActivity {
                                 .show(getSupportFragmentManager(), "Join Waiting List")
                 );
             }
+        } else {
+             textRegistrationStatus.setText(eventStatus.toUpperCase());
+             textRegistrationStatus.setTextColor(Color.parseColor("#9CA3AF"));
         }
     }
 

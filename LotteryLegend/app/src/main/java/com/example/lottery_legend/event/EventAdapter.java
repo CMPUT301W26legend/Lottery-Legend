@@ -200,29 +200,11 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
         if (event.getEventStartAt() != null && event.getEventStartAt().compareTo(now) < 0) {
             holder.status.setText("Closed");
             holder.status.setTextColor(Color.parseColor("#9CA3AF"));
-            if (isJoined) {
-                holder.joinButton.setVisibility(View.VISIBLE);
-                holder.joinButton.setText("Leave Waiting List");
-                holder.joinButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#EF4444")));
-                holder.joinButton.setOnClickListener(v -> {
-                    WaitingListDialogFragment.newInstance(event, currentDeviceId)
-                            .show(((AppCompatActivity) v.getContext()).getSupportFragmentManager(), "Leave Waiting List");
-                });
-            }
             setAlpha(holder, 0.5f);
-        } else if ("drawed".equals(status)) {
-            holder.status.setText("Drawed");
+        } else if ("drawn".equals(status)) {
+            holder.status.setText("Drawn");
             holder.status.setTextColor(Color.parseColor("#F57C00"));
-            if (isJoined) {
-                holder.joinButton.setVisibility(View.VISIBLE);
-                holder.joinButton.setText("Leave Waiting List");
-                holder.joinButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#EF4444")));
-                holder.joinButton.setOnClickListener(v -> {
-                    WaitingListDialogFragment.newInstance(event, currentDeviceId)
-                            .show(((AppCompatActivity) v.getContext()).getSupportFragmentManager(), "Leave Waiting List");
-                });
-            }
-        } else {
+        } else if ("open".equals(status)) {
             // "Open" or "Active"
             if (isJoined) {
                 holder.status.setText("Joined");
@@ -247,6 +229,10 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
                             .show(((AppCompatActivity) v.getContext()).getSupportFragmentManager(), "Join Waiting List");
                 });
             }
+        } else {
+            // Generic fallback for other statuses (like "finalized" or "closed")
+            holder.status.setText(status.toUpperCase());
+            holder.status.setTextColor(Color.parseColor("#9CA3AF"));
         }
     }
 

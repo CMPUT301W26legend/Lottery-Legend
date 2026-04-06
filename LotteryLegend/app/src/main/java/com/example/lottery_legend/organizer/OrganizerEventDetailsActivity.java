@@ -423,6 +423,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
             List<Event.WaitingListEntry> candidates = getWaitingEntrants();
             if (!candidates.isEmpty()) {
                 executeLottery(candidates, event.getCapacity(), true);
+            } else if (!"closed".equalsIgnoreCase(event.getStatus())) {
+                // If no candidates but deadline passed, mark as drawn or closed
+                db.collection("events").document(eventId).update("status", "drawn");
             }
         }
 
@@ -811,9 +814,13 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
 
                     Map<String, Object> eventUpdates = new HashMap<>();
                     eventUpdates.put("waitingList", currentEvent.getWaitingList());
-                    if (isFirstDraw) {
+                    
+                    // Trigger "drawn" status if capacity is reached or no more waiting list entries
+                    int totalOccupiedAfterDraw = getOccupiedCount() + selected.size();
+                    if (totalOccupiedAfterDraw >= currentEvent.getCapacity()) {
                         eventUpdates.put("status", "drawn");
                     }
+                    
                     eventUpdates.put("updatedAt", now);
 
                     batch.update(db.collection("events").document(eventId), eventUpdates);

@@ -141,7 +141,7 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
         if (event.getEventStartAt() != null && event.getEventStartAt().compareTo(now) < 0) {
             statusView.setText("CLOSED");
             statusView.setTextColor(Color.parseColor("#9CA3AF"));
-        } else if ("drawed".equals(status) || "drawn".equals(status)) {
+        } else if ("drawn".equals(status)) {
             statusView.setText("DRAWN");
             statusView.setTextColor(Color.parseColor("#F57C00"));
         } else {

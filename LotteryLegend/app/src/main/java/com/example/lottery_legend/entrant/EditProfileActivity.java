@@ -101,13 +101,15 @@ public class EditProfileActivity extends AppCompatActivity {
             toolbarRoleText.setText(isOrganizerMode ? "Organizer" : "Entrant");
         }
 
-        // Setup Navbar
-        View navbarContainer = findViewById(R.id.navbarContainer);
-        if (navbarContainer instanceof ViewGroup) {
-            ViewGroup group = (ViewGroup) navbarContainer;
-            group.removeAllViews();
+        // Setup Navbar dynamically based on mode
+        ViewGroup navbarContainer = findViewById(R.id.navbarContainer);
+        if (navbarContainer != null) {
+            navbarContainer.removeAllViews();
             int layoutId = isOrganizerMode ? R.layout.layout_navbar_organizer : R.layout.layout_navbar_entrant;
-            getLayoutInflater().inflate(layoutId, group, true);
+            View navbarView = getLayoutInflater().inflate(layoutId, navbarContainer, false);
+            // Crucial: Set the ID to R.id.navbar so NavbarEntrant/NavbarOrganizer.setup can find it.
+            navbarView.setId(R.id.navbar);
+            navbarContainer.addView(navbarView);
         }
 
         if (isOrganizerMode) {
@@ -195,18 +197,19 @@ public class EditProfileActivity extends AppCompatActivity {
 
         String phoneFormatted = phoneRaw;
         if (!phoneRaw.isEmpty()) {
-            // Remove all non-digit characters to check count
+            // Remove all non-digit characters
             String digits = phoneRaw.replaceAll("\\D", "");
+            
+            // Standardize to 10 digits
             if (digits.length() == 10) {
-                // Auto-apply CA format: XXX-XXX-XXXX
                 phoneFormatted = digits.substring(0, 3) + "-" + digits.substring(3, 6) + "-" + digits.substring(6);
-                editTextPhone.setText(phoneFormatted);
-            }
-
-            if (!isValidCAPhone(phoneFormatted)) {
-                editTextPhone.setError("Invalid Canadian phone format (e.g., 123-456-7890)");
+            } else if (digits.length() == 11 && digits.startsWith("1")) {
+                phoneFormatted = "1-" + digits.substring(1, 4) + "-" + digits.substring(4, 7) + "-" + digits.substring(7);
+            } else {
+                editTextPhone.setError("Invalid phone number. Please enter a 10-digit phone number.");
                 return;
             }
+            editTextPhone.setText(phoneFormatted);
         }
 
         String collection = isOrganizerMode ? "organizers" : "entrants";
@@ -229,12 +232,5 @@ public class EditProfileActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> {
                     Toast.makeText(this, "Update failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
-    }
-
-    private boolean isValidCAPhone(String phone) {
-        // Regex for Canadian phone formats: 1234567890, 123-456-7890, (123) 456-7890, etc.
-        String regex = "^(\\+?1)?[2-9]\\d{2}[2-9]\\d{2}\\d{4}$" +
-                "|^(\\+?1)?\\s*\\(?([2-9]\\d{2})\\)?[-.\\s]?([2-9]\\d{2})[-.\\s]?(\\d{4})$";
-        return Pattern.compile(regex).matcher(phone).matches();
     }
 }
