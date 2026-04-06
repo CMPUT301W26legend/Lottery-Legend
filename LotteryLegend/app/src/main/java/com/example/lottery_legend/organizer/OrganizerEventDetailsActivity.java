@@ -1,6 +1,7 @@
 package com.example.lottery_legend.organizer;
 
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -19,6 +20,7 @@ import android.widget.Toast;
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -41,6 +43,8 @@ import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.WriteBatch;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -54,6 +58,7 @@ import java.util.Set;
 
 /**
  * Activity for organizers to view the details of a specific event they have created.
+ * Includes the state machine for Lottery and Replacement draws.
  */
 public class OrganizerEventDetailsActivity extends AppCompatActivity implements PosterUploadDialogFragment.OnPosterEventListener {
 
@@ -189,11 +194,16 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
             }
         });
 
-        btnRunLotteryDraw.setOnClickListener(v -> showRunLotteryDrawDialog());
+        btnRunLotteryDraw.setOnClickListener(v -> handleLotteryClick());
 
-        btnSendNotification.setOnClickListener(v ->
-                Toast.makeText(this, "Send Notification coming soon", Toast.LENGTH_SHORT).show()
-        );
+        btnSendNotification.setOnClickListener(v -> {
+            if (eventId != null) {
+                Intent intent = new Intent(OrganizerEventDetailsActivity.this, SendNotificationActivity.class);
+                intent.putExtra("eventId", eventId);
+                intent.putExtra("deviceId", deviceId);
+                startActivity(intent);
+            }
+        });
 
         btnDeleteEvent.setOnClickListener(v -> showDeleteConfirmationDialog());
 
@@ -287,21 +297,8 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
             textWaitingCount.setText(String.valueOf(waitingListSize));
         }
 
-        // Count already sampled entrants: selected + accepted only
-        int selected = 0;
-        if (event.getWaitingList() != null) {
-            for (Event.WaitingListEntry entry : event.getWaitingList()) {
-                if (entry == null) continue;
-
-                String status = entry.getParticipationStatus();
-                if (status != null &&
-                        ("selected".equalsIgnoreCase(status) ||
-                                "accepted".equalsIgnoreCase(status))) {
-                    selected++;
-                }
-            }
-        }
-        textSelectedCount.setText(String.valueOf(selected));
+        // Display current selected count (Occupied spots)
+        textSelectedCount.setText(String.valueOf(getOccupiedCount()));
 
         Event.EventLocation loc = event.getEventLocation();
         textLocation.setText(loc != null ? loc.getName() : "No location provided");
@@ -329,6 +326,15 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         }
 
         updateStatusUI(event);
+        updateLotteryButtonState();
+
+        // Business Logic: Trigger First Draw if current time >= drawAt and status is not DRAWN
+        if (event.getDrawAt() != null && event.getDrawAt().compareTo(Timestamp.now()) <= 0 && !"drawn".equalsIgnoreCase(event.getStatus())) {
+            List<Event.WaitingListEntry> candidates = getWaitingEntrants();
+            if (!candidates.isEmpty()) {
+                executeLottery(candidates, event.getCapacity(), true);
+            }
+        }
 
         if (event.isIsPrivateEvent()) {
             btnInviteEntrants.setVisibility(View.VISIBLE);
@@ -375,6 +381,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
             if (!"closed".equals(status)) {
                 db.collection("events").document(eventId).update("status", "closed");
             }
+        } else if ("finalized".equals(status)) {
+            textEventStatus.setText("FINALIZED");
+            textEventStatus.setTextColor(Color.parseColor("#16A34A"));
         } else if ("drawn".equals(status)) {
             textEventStatus.setText("DRAWN");
             textEventStatus.setTextColor(Color.parseColor("#F57C00"));
@@ -387,48 +396,145 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         }
     }
 
-    private void showRunLotteryDrawDialog() {
+    /**
+     * Updates the "Draw Lottery" button text and enabled state based on the current event state.
+     */
+    private void updateLotteryButtonState() {
         if (currentEvent == null) return;
 
+        String status = currentEvent.getStatus() != null ? currentEvent.getStatus().toLowerCase() : "";
+        int slots = getAvailableSlots();
+        boolean hasWaiting = !getWaitingEntrants().isEmpty();
+
+        if ("finalized".equals(status)) {
+            btnRunLotteryDraw.setText("Export Attendee List");
+            btnRunLotteryDraw.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#16A34A")));
+            btnRunLotteryDraw.setEnabled(true);
+            btnRunLotteryDraw.setAlpha(1.0f);
+        } else if (!"drawn".equals(status)) {
+            // State: INITIAL
+            btnRunLotteryDraw.setText("Draw Lottery");
+            btnRunLotteryDraw.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#1976D2")));
+            btnRunLotteryDraw.setEnabled(true);
+            btnRunLotteryDraw.setAlpha(1.0f);
+        } else {
+            if (slots > 0) {
+                // State: REPLACEMENT AVAILABLE or EXHAUSTED
+                btnRunLotteryDraw.setText("Replacement Draw");
+                btnRunLotteryDraw.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#1976D2")));
+                if (hasWaiting) {
+                    btnRunLotteryDraw.setEnabled(true);
+                    btnRunLotteryDraw.setAlpha(1.0f);
+                } else {
+                    btnRunLotteryDraw.setEnabled(false);
+                    btnRunLotteryDraw.setAlpha(0.5f);
+                }
+            } else {
+                // State: LOCKED (DRAWN, but no vacancies)
+                btnRunLotteryDraw.setText("Draw Lottery");
+                btnRunLotteryDraw.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#1976D2")));
+                btnRunLotteryDraw.setEnabled(false);
+                btnRunLotteryDraw.setAlpha(0.5f);
+            }
+        }
+    }
+
+    /**
+     * Logic for the Draw button click.
+     */
+    private void handleLotteryClick() {
+        if (currentEvent == null) return;
+
+        String status = currentEvent.getStatus() != null ? currentEvent.getStatus().toLowerCase() : "";
+        
+        if ("finalized".equals(status)) {
+            exportFinalAttendeeListToCsv();
+            return;
+        }
+
+        List<Event.WaitingListEntry> candidates = getWaitingEntrants();
+
+        if (candidates.isEmpty()) {
+            Toast.makeText(this, "No entrants in waiting list", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (!"drawn".equals(status)) {
+            // First Draw
+            showDrawDialog(candidates, currentEvent.getCapacity(), true);
+        } else {
+            // Replacement Draw
+            int slots = getAvailableSlots();
+            if (slots > 0) {
+                showDrawDialog(candidates, slots, false);
+            } else {
+                Toast.makeText(this, "No available slots for replacement", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private void exportFinalAttendeeListToCsv() {
+        if (currentEvent == null || currentEvent.getWaitingList() == null) return;
+
+        List<String> winnerIds = new ArrayList<>();
+        for (Event.WaitingListEntry entry : currentEvent.getWaitingList()) {
+            if ("WIN".equals(entry.getFinalResult())) {
+                winnerIds.add(entry.getDeviceId());
+            }
+        }
+
+        if (winnerIds.isEmpty()) {
+            Toast.makeText(this, "No finalized winners to export", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        List<Task<DocumentSnapshot>> tasks = new ArrayList<>();
+        for (String wid : winnerIds) {
+            tasks.add(db.collection("entrants").document(wid).get());
+        }
+
+        Tasks.whenAllSuccess(tasks).addOnSuccessListener(results -> {
+            StringBuilder csv = new StringBuilder("Name,Email\n");
+            for (Object obj : results) {
+                DocumentSnapshot doc = (DocumentSnapshot) obj;
+                if (doc.exists()) {
+                    String name = doc.getString("name");
+                    String email = doc.getString("email");
+                    csv.append(name != null ? name : "N/A").append(",")
+                       .append(email != null ? email : "N/A").append("\n");
+                }
+            }
+            saveAndShareCsv(csv.toString());
+        }).addOnFailureListener(e -> Toast.makeText(this, "Export failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+    }
+
+    private void saveAndShareCsv(String content) {
+        try {
+            File file = new File(getExternalCacheDir(), "AttendeeList_" + eventId + ".csv");
+            FileOutputStream fos = new FileOutputStream(file);
+            fos.write(content.getBytes());
+            fos.close();
+
+            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", file);
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("text/csv");
+            intent.putExtra(Intent.EXTRA_STREAM, uri);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(intent, "Share Attendee List"));
+        } catch (Exception e) {
+            Toast.makeText(this, "Failed to save CSV: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showDrawDialog(List<Event.WaitingListEntry> candidates, int maxAllowed, boolean isFirstDraw) {
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_run_lottery, null);
         EditText editSampleCount = view.findViewById(R.id.editSampleCount);
         TextView textSampleHint = view.findViewById(R.id.textSampleHint);
         Button btnCancel = view.findViewById(R.id.buttonCancelRunLottery);
         Button btnConfirm = view.findViewById(R.id.buttonConfirmRunLottery);
 
-        List<Event.WaitingListEntry> waitingList = currentEvent.getWaitingList();
-        if (waitingList == null) {
-            waitingList = new ArrayList<>();
-        }
-
-        int capacity = currentEvent.getCapacity();
-        int alreadySampled = 0;
-        List<Event.WaitingListEntry> eligibleEntrants = new ArrayList<>();
-
-        for (Event.WaitingListEntry entry : waitingList) {
-            if (entry == null) continue;
-
-            String status = entry.getParticipationStatus();
-            if (status == null) status = "";
-
-            // alreadySampled = selected + accepted only
-            if ("selected".equalsIgnoreCase(status) || "accepted".equalsIgnoreCase(status)) {
-                alreadySampled++;
-            } else {
-                // All others are still eligible to be drawn
-                eligibleEntrants.add(entry);
-            }
-        }
-
-        int remainingSlots = Math.max(0, capacity - alreadySampled);
-        int waitingListCount = eligibleEntrants.size();
-        int maxSampleAllowed = Math.min(remainingSlots, waitingListCount);
-
-        textSampleHint.setText(String.format(
-                Locale.getDefault(),
-                "Maximum allowed: %d",
-                maxSampleAllowed
-        ));
+        int countToPick = Math.min(maxAllowed, candidates.size());
+        textSampleHint.setText(String.format(Locale.getDefault(), "Picking from %d waiting entrants. Max allowed: %d", candidates.size(), maxAllowed));
 
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setView(view)
@@ -440,104 +546,118 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
 
         btnCancel.setOnClickListener(v -> dialog.dismiss());
 
-        if (maxSampleAllowed <= 0) {
-            btnConfirm.setEnabled(false);
-            textSampleHint.setText("No available slots left");
-            textSampleHint.setTextColor(Color.RED);
-        }
-
         btnConfirm.setOnClickListener(v -> {
-            String input = editSampleCount.getText() == null
-                    ? ""
-                    : editSampleCount.getText().toString().trim();
+            String input = editSampleCount.getText().toString().trim();
+            int pickCount = input.isEmpty() ? countToPick : Integer.parseInt(input);
 
-            int sampleCount;
-
-            if (input.isEmpty()) {
-                sampleCount = maxSampleAllowed;
-            } else {
-                try {
-                    sampleCount = Integer.parseInt(input);
-                } catch (NumberFormatException e) {
-                    editSampleCount.setError("Invalid number");
-                    return;
-                }
-
-                if (sampleCount <= 0) {
-                    editSampleCount.setError("Must be greater than 0");
-                    return;
-                }
-
-                if (sampleCount > maxSampleAllowed) {
-                    editSampleCount.setError("Cannot exceed maximum allowed (" + maxSampleAllowed + ")");
-                    return;
-                }
-            }
-
-            if (sampleCount <= 0) {
-                Toast.makeText(this, "No available entrants to sample", Toast.LENGTH_SHORT).show();
+            if (pickCount <= 0 || pickCount > countToPick) {
+                editSampleCount.setError("Invalid number");
                 return;
             }
 
-            executeLottery(eligibleEntrants, sampleCount);
+            executeLottery(candidates, pickCount, isFirstDraw);
             dialog.dismiss();
         });
 
         dialog.show();
     }
 
-    private void executeLottery(List<Event.WaitingListEntry> eligibleEntrants, int sampleCount) {
-        if (sampleCount <= 0 || eligibleEntrants == null || eligibleEntrants.isEmpty()) {
-            return;
-        }
+    private void executeLottery(List<Event.WaitingListEntry> candidates, int sampleCount, boolean isFirstDraw) {
+        if (sampleCount <= 0 || candidates.isEmpty()) return;
 
-        Collections.shuffle(eligibleEntrants);
-
-        int actualSampleCount = Math.min(sampleCount, eligibleEntrants.size());
-        List<Event.WaitingListEntry> selected = eligibleEntrants.subList(0, actualSampleCount);
-
-        WriteBatch batch = db.batch();
-
+        Collections.shuffle(candidates);
+        List<Event.WaitingListEntry> selected = candidates.subList(0, Math.min(sampleCount, candidates.size()));
+        List<String> selectedDeviceIds = new ArrayList<>();
         for (Event.WaitingListEntry entry : selected) {
-            entry.setParticipationStatus("selected");
-            entry.setSelectedAt(Timestamp.now());
-
-            Map<String, Object> notification = new HashMap<>();
-            notification.put("recipientId", entry.getDeviceId());
-            notification.put("senderId", deviceId);
-            notification.put("recipientType", "ENTRANT");
-            notification.put("eventId", eventId);
-            notification.put("type", "LOTTERY_WIN");
-            notification.put("title", "Lottery Selection");
-            notification.put("message", "You have been selected for " + currentEvent.getTitle());
-            notification.put("isRead", false);
-            notification.put("createdAt", Timestamp.now());
-            notification.put("actionStatus", "PENDING");
-
-            batch.set(db.collection("notifications").document(), notification);
+            selectedDeviceIds.add(entry.getDeviceId());
         }
 
-        batch.update(
-                db.collection("events").document(eventId),
-                "waitingList", currentEvent.getWaitingList(),
-                "status", "drawn"
-        );
+        // Rule 13: Check notification preference
+        db.collection("entrants")
+                .whereIn("deviceId", selectedDeviceIds)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    Map<String, Boolean> notificationMap = new HashMap<>();
+                    for (var doc : queryDocumentSnapshots.getDocuments()) {
+                        Entrant entrant = doc.toObject(Entrant.class);
+                        if (entrant != null) {
+                            notificationMap.put(entrant.getDeviceId(), entrant.isNotificationsEnabled());
+                        }
+                    }
 
-        batch.commit()
-                .addOnSuccessListener(aVoid ->
-                        Toast.makeText(
-                                this,
-                                "Successfully sampled " + selected.size() + " entrants",
-                                Toast.LENGTH_SHORT
-                        ).show()
-                )
-                .addOnFailureListener(e ->
-                        Toast.makeText(
-                                this,
-                                "Failed to run lottery: " + e.getMessage(),
-                                Toast.LENGTH_SHORT
-                        ).show()
-                );
+                    WriteBatch batch = db.batch();
+                    Timestamp now = Timestamp.now();
+
+                    for (Event.WaitingListEntry entry : selected) {
+                        entry.setParticipationStatus("selected");
+                        entry.setSelectedAt(now);
+                        entry.setUpdatedAt(now);
+
+                        // Rule 6: Respect notificationsEnabled (Only skip notification, still update entry)
+                        boolean canNotify = notificationMap.getOrDefault(entry.getDeviceId(), true);
+                        if (canNotify) {
+                            Map<String, Object> notification = new HashMap<>();
+                            notification.put("notificationId", db.collection("notifications").document().getId());
+                            notification.put("recipientId", entry.getDeviceId());
+                            notification.put("senderId", deviceId);
+                            notification.put("recipientType", "ENTRANT");
+                            notification.put("eventId", eventId);
+                            notification.put("type", "LOTTERY_WIN"); // Rule 2
+                            notification.put("title", "Lottery Selection");
+                            notification.put("message", "You have been selected for " + currentEvent.getTitle());
+                            notification.put("isRead", false);
+                            notification.put("createdAt", now);
+                            notification.put("actionStatus", "PENDING"); // Rule 3
+
+                            batch.set(db.collection("notifications").document((String)notification.get("notificationId")), notification);
+                        }
+                    }
+
+                    Map<String, Object> eventUpdates = new HashMap<>();
+                    eventUpdates.put("waitingList", currentEvent.getWaitingList());
+                    if (isFirstDraw) {
+                        eventUpdates.put("status", "drawn");
+                    }
+                    eventUpdates.put("updatedAt", now);
+
+                    batch.update(db.collection("events").document(eventId), eventUpdates);
+
+                    batch.commit().addOnSuccessListener(aVoid -> {
+                        String msg = isFirstDraw ? "First draw completed" : "Replacement draw completed";
+                        Toast.makeText(this, msg + ": " + selected.size() + " entrants picked", Toast.LENGTH_SHORT).show();
+                    });
+                });
+    }
+
+    /**
+     * Calculates occupied count: SELECTED, INVITED, ACCEPTED, ENROLLED, CONFIRMED.
+     */
+    private int getOccupiedCount() {
+        if (currentEvent == null || currentEvent.getWaitingList() == null) return 0;
+        int count = 0;
+        for (Event.WaitingListEntry entry : currentEvent.getWaitingList()) {
+            String status = entry.getParticipationStatus() != null ? entry.getParticipationStatus().toLowerCase() : "";
+            if (status.equals("selected") || status.equals("invited") || status.equals("accepted") || status.equals("enrolled") || status.equals("confirmed")) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int getAvailableSlots() {
+        if (currentEvent == null) return 0;
+        return Math.max(0, currentEvent.getCapacity() - getOccupiedCount());
+    }
+
+    private List<Event.WaitingListEntry> getWaitingEntrants() {
+        List<Event.WaitingListEntry> candidates = new ArrayList<>();
+        if (currentEvent == null || currentEvent.getWaitingList() == null) return candidates;
+        for (Event.WaitingListEntry entry : currentEvent.getWaitingList()) {
+            if ("waiting".equalsIgnoreCase(entry.getParticipationStatus())) {
+                candidates.add(entry);
+            }
+        }
+        return candidates;
     }
 
     private void showInviteSearchDialog() {
@@ -665,47 +785,64 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
     private void inviteSelectedEntrants(List<String> entrantIds) {
         if (currentEvent == null || eventId == null) return;
 
-        List<Event.WaitingListEntry> waitingList = currentEvent.getWaitingList();
-        if (waitingList == null) waitingList = new ArrayList<>();
+        db.collection("entrants")
+                .whereIn("deviceId", entrantIds)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    Map<String, Boolean> notificationMap = new HashMap<>();
+                    for (var doc : queryDocumentSnapshots.getDocuments()) {
+                        Entrant entrant = doc.toObject(Entrant.class);
+                        if (entrant != null) {
+                            notificationMap.put(entrant.getDeviceId(), entrant.isNotificationsEnabled());
+                        }
+                    }
 
-        WriteBatch batch = db.batch();
-        Timestamp now = Timestamp.now();
-        boolean isPrivate = currentEvent.isIsPrivateEvent();
+                    List<Event.WaitingListEntry> waitingList = currentEvent.getWaitingList();
+                    if (waitingList == null) waitingList = new ArrayList<>();
 
-        for (String eid : entrantIds) {
-            Event.WaitingListEntry entry = new Event.WaitingListEntry();
-            entry.setDeviceId(eid);
-            entry.setJoinedAt(now);
-            entry.setUpdatedAt(now);
-            entry.setInviteSentAt(now);
-            // Project Rule: set participationStatus = "invited" for private invites
-            entry.setParticipationStatus("invited");
-            waitingList.add(entry);
+                    WriteBatch batch = db.batch();
+                    Timestamp now = Timestamp.now();
+                    boolean isPrivate = currentEvent.isIsPrivateEvent();
 
-            Map<String, Object> notification = new HashMap<>();
-            notification.put("recipientId", eid);
-            notification.put("senderId", deviceId);
-            notification.put("recipientType", "ENTRANT");
-            notification.put("eventId", eventId);
-            notification.put("type", isPrivate ? "PRIVATE_INVITE" : "INVITATION");
-            notification.put("title", isPrivate ? "Private Event Invitation" : "Event Invitation");
-            notification.put("message", isPrivate
-                    ? "You have been privately invited to join " + currentEvent.getTitle()
-                    : "You have been invited to join the waiting list for " + currentEvent.getTitle());
-            notification.put("isRead", false);
-            notification.put("createdAt", now);
-            notification.put("actionStatus", "PENDING");
+                    for (String eid : entrantIds) {
+                        Event.WaitingListEntry entry = new Event.WaitingListEntry();
+                        entry.setDeviceId(eid);
+                        entry.setJoinedAt(now);
+                        entry.setUpdatedAt(now);
+                        entry.setInviteSentAt(now);
+                        // Project Rule: set participationStatus = "invited" for private invites
+                        entry.setParticipationStatus("invited");
+                        waitingList.add(entry);
 
-            batch.set(db.collection("notifications").document(), notification);
-        }
+                        // Rule 6: Respect notificationsEnabled
+                        boolean canNotify = notificationMap.getOrDefault(eid, true);
+                        if (canNotify) {
+                            Map<String, Object> notification = new HashMap<>();
+                            notification.put("recipientId", eid);
+                            notification.put("senderId", deviceId);
+                            notification.put("recipientType", "ENTRANT");
+                            notification.put("eventId", eventId);
+                            notification.put("type", isPrivate ? "PRIVATE_EVENT_INVITE" : "INVITATION");
+                            notification.put("title", isPrivate ? "Private Event Invitation" : "Event Invitation");
+                            notification.put("message", isPrivate
+                                    ? "You have been privately invited to join " + currentEvent.getTitle()
+                                    : "You have been invited to join the waiting list for " + currentEvent.getTitle());
+                            notification.put("isRead", false);
+                            notification.put("createdAt", now);
+                            notification.put("actionStatus", "PENDING");
 
-        batch.update(db.collection("events").document(eventId), "waitingList", waitingList);
+                            batch.set(db.collection("notifications").document(), notification);
+                        }
+                    }
 
-        batch.commit().addOnSuccessListener(aVoid -> {
-            Toast.makeText(this, "Invites sent successfully", Toast.LENGTH_SHORT).show();
-        }).addOnFailureListener(e -> {
-            Toast.makeText(this, "Failed to send invites: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        });
+                    batch.update(db.collection("events").document(eventId), "waitingList", waitingList);
+
+                    batch.commit().addOnSuccessListener(aVoid -> {
+                        Toast.makeText(this, "Invites sent successfully", Toast.LENGTH_SHORT).show();
+                    }).addOnFailureListener(e -> {
+                        Toast.makeText(this, "Failed to send invites: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    });
+                });
     }
 
     @Override

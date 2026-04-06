@@ -67,7 +67,7 @@ public class Event {
 
     /** Guidelines for the lottery process. */
     private String lotteryGuidelines;
-    /** Current status of the event (e.g., open, closed, drawn). */
+    /** Current status of the event (e.g., open, closed, drawn, finalized). */
     private String status;
 
     /** Timestamp when the event document was created. */
@@ -237,9 +237,9 @@ public class Event {
     /** @param lotteryGuidelines Guidelines for the lottery process. */
     public void setLotteryGuidelines(String lotteryGuidelines) { this.lotteryGuidelines = lotteryGuidelines; }
 
-    /** @return Current status of the event (e.g., open, closed, drawn). */
+    /** @return Current status of the event (e.g., open, closed, drawn, finalized). */
     public String getStatus() { return status; }
-    /** @param status Current status of the event (e.g., open, closed, drawn). */
+    /** @param status Current status of the event (e.g., open, closed, drawn, finalized). */
     public void setStatus(String status) { this.status = status; }
 
     /** @return Timestamp when the event document was created. */
@@ -350,6 +350,7 @@ public class Event {
         private Double joinLatitude;
         private Double joinLongitude;
         private String note;
+        private String finalResult; // "WIN" or "LOSS" or null
 
         /** Default constructor for Firestore. */
         public WaitingListEntry() {}
@@ -429,6 +430,9 @@ public class Event {
 
         public String getNote() { return note; }
         public void setNote(String note) { this.note = note; }
+
+        public String getFinalResult() { return finalResult; }
+        public void setFinalResult(String finalResult) { this.finalResult = finalResult; }
 
         @Override
         public String toString() {

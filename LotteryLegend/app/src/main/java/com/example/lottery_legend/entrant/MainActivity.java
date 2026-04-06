@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.EditText;
@@ -31,6 +32,7 @@ import com.google.android.material.datepicker.MaterialDatePicker;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.text.SimpleDateFormat;
@@ -51,8 +53,8 @@ public class MainActivity extends AppCompatActivity {
     private String deviceId;
     private RecyclerView eventView;
     private EventAdapter adapter;
-    private List<Event> allEvents = new ArrayList<>();
-    private List<Event> filteredEvents = new ArrayList<>();
+    private final List<Event> allEvents = new ArrayList<>();
+    private final List<Event> filteredEvents = new ArrayList<>();
 
     // Filter states
     private String searchQuery = "";
@@ -67,6 +69,10 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvNotificationBadge;
 
     private final SimpleDateFormat displayFormatShort = new SimpleDateFormat("MMM dd", Locale.getDefault());
+    
+    private boolean notificationsEnabled = true;
+    private ListenerRegistration profileListener;
+    private ListenerRegistration badgeListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,7 +89,7 @@ public class MainActivity extends AppCompatActivity {
         setupViews();
         setupListeners();
         fetchEvents();
-        setupNotificationBadge();
+        observeNotificationPreference();
 
         NavbarEntrant.setup(this, deviceId, NavbarEntrant.Tab.HOME);
     }
@@ -135,9 +141,36 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void observeNotificationPreference() {
+        if (deviceId == null) return;
+
+        profileListener = db.collection("entrants").document(deviceId)
+                .addSnapshotListener((doc, error) -> {
+                    if (error != null) return;
+                    if (doc != null && doc.exists()) {
+                        Boolean enabled = doc.getBoolean("notificationsEnabled");
+                        notificationsEnabled = enabled != null ? enabled : true;
+                        
+                        // Restart badge listener when preference changes
+                        setupNotificationBadge();
+                    }
+                });
+    }
+
     private void setupNotificationBadge() {
         if (deviceId == null) return;
-        db.collection("notifications")
+
+        if (badgeListener != null) {
+            badgeListener.remove();
+        }
+
+        // If notifications are disabled, hide the badge immediately and don't listen
+        if (!notificationsEnabled) {
+            tvNotificationBadge.setVisibility(View.GONE);
+            return;
+        }
+
+        badgeListener = db.collection("notifications")
                 .whereEqualTo("recipientId", deviceId)
                 .whereEqualTo("isRead", false)
                 .addSnapshotListener((value, error) -> {
@@ -145,6 +178,13 @@ public class MainActivity extends AppCompatActivity {
                         tvNotificationBadge.setVisibility(View.GONE);
                         return;
                     }
+                    
+                    // Double check preference inside listener
+                    if (!notificationsEnabled) {
+                        tvNotificationBadge.setVisibility(View.GONE);
+                        return;
+                    }
+
                     int count = value.size();
                     if (count > 0) {
                         tvNotificationBadge.setVisibility(View.VISIBLE);
@@ -153,6 +193,13 @@ public class MainActivity extends AppCompatActivity {
                         tvNotificationBadge.setVisibility(View.GONE);
                     }
                 });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (profileListener != null) profileListener.remove();
+        if (badgeListener != null) badgeListener.remove();
     }
 
     private void showDateFilterDialog() {
@@ -188,8 +235,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showTimeFilterDialog() {
-        // Disabled until time is added to database
-        Toast.makeText(this, "Time filtering is currently unavailable.", Toast.LENGTH_SHORT).show();
+        String[] options = {"Any Time", "Morning (06:00 - 12:00)", "Afternoon (12:01 - 18:00)", "Night (18:01 - 00:00)", "Midnight (00:00 - 06:00)"};
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Select Time of Day")
+                .setItems(options, (dialog, which) -> {
+                    timeFilter = options[which];
+                    updateFiltersUI();
+                })
+                .show();
     }
 
     private void showCapacityFilterDialog() {
@@ -304,7 +357,29 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
-            boolean matchesTime = true; // Disabled until time is added to database
+            boolean matchesTime = true;
+            if (!timeFilter.equals("Any Time")) {
+                Timestamp eventStartAt = event.getEventStartAt();
+                if (eventStartAt == null) {
+                    matchesTime = false;
+                } else {
+                    Calendar cal = Calendar.getInstance();
+                    cal.setTime(eventStartAt.toDate());
+                    int hour = cal.get(Calendar.HOUR_OF_DAY);
+                    int minute = cal.get(Calendar.MINUTE);
+                    double timeValue = hour + (minute / 60.0);
+
+                    if (timeFilter.startsWith("Morning")) {
+                        matchesTime = (timeValue >= 6.0 && timeValue <= 12.0);
+                    } else if (timeFilter.startsWith("Afternoon")) {
+                        matchesTime = (timeValue > 12.0 && timeValue <= 18.0);
+                    } else if (timeFilter.startsWith("Night")) {
+                        matchesTime = (timeValue > 18.0 || (hour == 0 && minute == 0));
+                    } else if (timeFilter.startsWith("Midnight")) {
+                        matchesTime = (timeValue >= 0.0 && timeValue <= 6.0);
+                    }
+                }
+            }
 
             boolean matchesCapacity = true;
             if (!capacityFilter.equals("Capacity")) {

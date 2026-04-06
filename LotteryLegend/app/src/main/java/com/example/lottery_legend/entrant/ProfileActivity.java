@@ -164,6 +164,33 @@ public class ProfileActivity extends AppCompatActivity {
                 checkAndCreateOrganizerAccount();
             }
         });
+
+        // Setup listener for notification preference toggle
+        switchNotifications.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            // Only update if the change was triggered by user interaction (touch)
+            if (buttonView.isPressed()) {
+                updateNotificationPreference(isChecked);
+            }
+        });
+    }
+
+    private void updateNotificationPreference(boolean isEnabled) {
+        if (deviceId == null) return;
+
+        db.collection("entrants").document(deviceId)
+                .update("notificationsEnabled", isEnabled)
+                .addOnSuccessListener(aVoid -> {
+                    if (currentEntrant != null) {
+                        currentEntrant.setNotificationsEnabled(isEnabled);
+                    }
+                    String status = isEnabled ? "enabled" : "disabled";
+                    Toast.makeText(ProfileActivity.this, "Notifications " + status, Toast.LENGTH_SHORT).show();
+                })
+                .addOnFailureListener(e -> {
+                    // Revert UI switch on failure
+                    switchNotifications.setChecked(!isEnabled);
+                    Toast.makeText(ProfileActivity.this, "Failed to update preference", Toast.LENGTH_SHORT).show();
+                });
     }
 
     private void refreshProfile() {
@@ -230,6 +257,8 @@ public class ProfileActivity extends AppCompatActivity {
                                 viewPhone.setText("No phone number provided");
                             }
 
+                            // Programmatically setting checked status won't trigger updateNotificationPreference 
+                            // because we check buttonView.isPressed() in the listener
                             switchNotifications.setChecked(currentEntrant.isNotificationsEnabled());
                             
                             String profileImage = currentEntrant.getProfileImage();

@@ -64,7 +64,6 @@
             android:id="@+id/commentIcon"
             android:layout_width="40dp"
             android:layout_height="match_parent"
-            android:layout_marginEnd="8dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Comments"
             android:src="@drawable/ic_comment"
@@ -74,6 +73,7 @@
               android:id="@+id/shareIcon"
               android:layout_width="40dp"
               android:layout_height="match_parent"
+              android:layout_marginEnd="8dp"
               android:background="?attr/selectableItemBackgroundBorderless"
               android:contentDescription="QR Code"
               android:src="@drawable/ic_share"
@@ -506,7 +506,45 @@
           </LinearLayout>
         </LinearLayout>
 
-        <!-- Join Button -->
+        <!-- Response Action Layout (Accept/Decline) -->
+        <LinearLayout
+            android:id="@+id/layoutResponseActions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:orientation="horizontal"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDeclineEvent"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:text="Decline"
+                android:textAllCaps="false"
+                android:textColor="#EF4444"
+                android:textSize="16sp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                app:strokeColor="#EF4444"
+                app:cornerRadius="8dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAcceptEvent"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="Accept"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"
+                app:backgroundTint="#16A34A"
+                app:cornerRadius="8dp" />
+        </LinearLayout>
+
+        <!-- Join/Leave Button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnJoinWaitingList"
             android:layout_width="match_parent"

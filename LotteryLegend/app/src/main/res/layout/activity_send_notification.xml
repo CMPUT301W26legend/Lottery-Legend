@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F8FAFC"
+    tools:context=".organizer.SendNotificationActivity">
+
+    <!-- Top blue header area -->
+    <LinearLayout
+        android:id="@+id/headerContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:orientation="vertical"
+        android:background="#2563EB"
+        android:paddingStart="16dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="14dp">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbarSendNotification"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            app:navigationIcon="@drawable/ic_arrow_left"
+            app:navigationIconTint="@android:color/white"
+            app:title="Send Notification"
+            app:titleTextColor="@android:color/white"
+            app:titleCentered="false" />
+
+        <TextView
+            android:id="@+id/textSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="-4dp"
+            android:text="Compose message"
+            android:textColor="#DBEAFE"
+            android:textSize="12sp" />
+
+        <!-- Recipient filter tabs -->
+        <LinearLayout
+            android:id="@+id/tabRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnWaitingList"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="Waiting List"
+                android:textAllCaps="false"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#2563EB"
+                app:backgroundTint="@android:color/white"
+                app:cornerRadius="10dp"
+                app:elevation="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp" />
+
+            <Space
+                android:layout_width="8dp"
+                android:layout_height="wrap_content" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSelected"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="Selected"
+                android:textAllCaps="false"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/white"
+                app:backgroundTint="#4F7DF0"
+                app:cornerRadius="10dp"
+                app:elevation="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp" />
+
+            <Space
+                android:layout_width="8dp"
+                android:layout_height="wrap_content" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCancelled"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="Cancelled"
+                android:textAllCaps="false"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/white"
+                app:backgroundTint="#4F7DF0"
+                app:cornerRadius="10dp"
+                app:elevation="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Scrollable content -->
+    <ScrollView
+        android:id="@+id/scrollContent"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/headerContainer"
+        android:layout_above="@id/navbar"
+        android:fillViewport="true"
+        android:clipToPadding="false"
+        android:paddingStart="16dp"
+        android:paddingTop="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardMessageComposer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="#E5E7EB"
+                app:cardBackgroundColor="@android:color/white">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+
+                    <TextView
+                        android:id="@+id/textMessageTitleLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Message Title"
+                        android:textColor="#374151"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layoutMessageTitle"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        app:boxBackgroundMode="outline"
+                        app:boxCornerRadiusTopStart="10dp"
+                        app:boxCornerRadiusTopEnd="10dp"
+                        app:boxCornerRadiusBottomStart="10dp"
+                        app:boxCornerRadiusBottomEnd="10dp"
+                        app:boxStrokeColor="#D1D5DB"
+                        app:hintEnabled="false">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/editMessageTitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
+                            android:background="@android:color/transparent"
+                            android:hint="e.g., You've been selected!"
+                            android:paddingStart="12dp"
+                            android:paddingTop="12dp"
+                            android:paddingEnd="12dp"
+                            android:paddingBottom="12dp"
+                            android:textColor="#111827"
+                            android:textColorHint="#9CA3AF"
+                            android:textSize="14sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <TextView
+                        android:id="@+id/textMessageBodyLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="Message Body"
+                        android:textColor="#374151"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layoutMessageBody"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        app:boxBackgroundMode="outline"
+                        app:boxCornerRadiusTopStart="10dp"
+                        app:boxCornerRadiusTopEnd="10dp"
+                        app:boxCornerRadiusBottomStart="10dp"
+                        app:boxCornerRadiusBottomEnd="10dp"
+                        app:boxStrokeColor="#D1D5DB"
+                        app:hintEnabled="false">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/editMessageBody"
+                            android:layout_width="match_parent"
+                            android:layout_height="120dp"
+                            android:background="@android:color/transparent"
+                            android:gravity="top|start"
+                            android:hint="Compose your message here..."
+                            android:inputType="textMultiLine"
+                            android:paddingStart="12dp"
+                            android:paddingTop="12dp"
+                            android:paddingEnd="12dp"
+                            android:paddingBottom="12dp"
+                            android:textColor="#111827"
+                            android:textColorHint="#9CA3AF"
+                            android:textSize="14sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <LinearLayout
+                        android:id="@+id/infoRow"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:id="@+id/iconInfo"
+                            android:layout_width="14dp"
+                            android:layout_height="14dp"
+                            android:contentDescription="Info"
+                            android:src="@drawable/ic_info_small"
+                            app:tint="#6B7280" />
+
+                        <TextView
+                            android:id="@+id/textPushInfo"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="Recipients will receive this via push notification"
+                            android:textColor="#6B7280"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSendToRecipients"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="18dp"
+                android:text="Send to Recipients"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                app:backgroundTint="#2563EB"
+                app:cornerRadius="10dp"
+                app:elevation="2dp"
+                app:icon="@drawable/ic_send_filled"
+                app:iconGravity="textStart"
+                app:iconPadding="10dp"
+                app:iconTint="@android:color/white" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnNotifyWinLoss"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="16dp"
+                android:text="Notify Win &amp; Loss"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                app:backgroundTint="#16A34A"
+                app:cornerRadius="10dp"
+                app:elevation="2dp"
+                app:icon="@drawable/ic_shuffle"
+                app:iconGravity="textStart"
+                app:iconPadding="10dp"
+                app:iconTint="@android:color/white" />
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Bottom organizer navbar -->
+    <FrameLayout
+        android:id="@+id/navbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true">
+
+        <include layout="@layout/layout_navbar_organizer" />
+    </FrameLayout>
+
+</RelativeLayout>

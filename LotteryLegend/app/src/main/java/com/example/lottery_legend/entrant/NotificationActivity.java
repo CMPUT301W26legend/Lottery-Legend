@@ -2,6 +2,7 @@ package com.example.lottery_legend.entrant;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -28,6 +29,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.WriteBatch;
@@ -51,6 +53,9 @@ public class NotificationActivity extends AppCompatActivity {
     private TextView tabAll, tabUnread, tabRead;
 
     private String currentFilter = "ALL";
+    private boolean notificationsEnabled = true;
+    private ListenerRegistration profileListener;
+    private ListenerRegistration notificationsListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,7 +68,7 @@ public class NotificationActivity extends AppCompatActivity {
 
         setupViews();
         setupListeners();
-        fetchNotifications();
+        observeNotificationPreference();
 
         NavbarEntrant.setup(this, deviceId, NavbarEntrant.Tab.HOME);
     }
@@ -111,15 +116,35 @@ public class NotificationActivity extends AppCompatActivity {
         });
     }
 
-    private void fetchNotifications() {
+    private void observeNotificationPreference() {
         if (deviceId == null) return;
 
-        db.collection("notifications")
+        profileListener = db.collection("entrants").document(deviceId)
+                .addSnapshotListener((doc, error) -> {
+                    if (error != null) return;
+                    if (doc != null && doc.exists()) {
+                        Boolean enabled = doc.getBoolean("notificationsEnabled");
+                        notificationsEnabled = enabled != null ? enabled : true;
+                        
+                        // Restart notifications listener when preference changes
+                        startListeningForNotifications();
+                    }
+                });
+    }
+
+    private void startListeningForNotifications() {
+        if (deviceId == null) return;
+
+        if (notificationsListener != null) {
+            notificationsListener.remove();
+        }
+
+        notificationsListener = db.collection("notifications")
                 .whereEqualTo("recipientId", deviceId)
                 .orderBy("createdAt", Query.Direction.DESCENDING)
                 .addSnapshotListener((value, error) -> {
                     if (error != null) {
-                        Toast.makeText(this, "Error loading notifications", Toast.LENGTH_SHORT).show();
+                        Log.e("NotificationActivity", "Error loading notifications", error);
                         return;
                     }
 
@@ -131,9 +156,17 @@ public class NotificationActivity extends AppCompatActivity {
                             Notification notification = doc.toObject(Notification.class);
                             if (notification != null) {
                                 notification.setNotificationId(doc.getId());
-                                allNotifications.add(notification);
-                                if (!notification.getIsRead()) {
-                                    unreadCount++;
+                                
+                                // NEW REQUIREMENT: Filter based on entrant's current preference
+                                // Note: Requirement says "there should not be any new notification shows"
+                                // If notificationsEnabled is false, we filter out notifications created 
+                                // AFTER notifications were disabled? 
+                                // Actually, your instruction implies a total hide when disabled.
+                                if (notificationsEnabled) {
+                                    allNotifications.add(notification);
+                                    if (!notification.getIsRead()) {
+                                        unreadCount++;
+                                    }
                                 }
                             }
                         }
@@ -147,6 +180,13 @@ public class NotificationActivity extends AppCompatActivity {
 
                     applyFilter();
                 });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (profileListener != null) profileListener.remove();
+        if (notificationsListener != null) notificationsListener.remove();
     }
 
     private void applyFilter() {

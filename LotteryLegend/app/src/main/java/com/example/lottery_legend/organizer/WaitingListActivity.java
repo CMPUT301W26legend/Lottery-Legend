@@ -258,6 +258,13 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
     }
 
     private void promoteUser(WaitingListUser user) {
+        if (user.entrant == null) return;
+
+        if (!user.entrant.isNotificationsEnabled()) {
+            Toast.makeText(this, "Notification denied: user has disabled notifications", Toast.LENGTH_LONG).show();
+            return;
+        }
+
         String notificationId = db.collection("notifications").document().getId();
         Notification notif = new Notification(
             notificationId, deviceId, user.entrant.getDeviceId(), "ENTRANT",
@@ -294,7 +301,11 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
                     }
                     db.collection("events").document(eventId).update("waitingList", waitingList)
                         .addOnSuccessListener(aVoid -> {
-                            sendCancellationNotification(user);
+                            if (user.entrant.isNotificationsEnabled()) {
+                                sendCancellationNotification(user);
+                            } else {
+                                Toast.makeText(this, "Notification denied: user has disabled notifications", Toast.LENGTH_LONG).show();
+                            }
                             Toast.makeText(this, "Selection cancelled", Toast.LENGTH_SHORT).show();
                         });
                 }
