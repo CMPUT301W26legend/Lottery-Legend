@@ -1,6 +1,10 @@
 package com.example.lottery_legend.organizer;
 
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,6 +15,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.lottery_legend.R;
+import com.example.lottery_legend.entrant.ProfileActivity;
 import com.example.lottery_legend.model.Entrant;
 import com.example.lottery_legend.model.Event;
 
@@ -63,6 +68,22 @@ public class WaitingListAdapter extends RecyclerView.Adapter<WaitingListAdapter.
             holder.textJoinedTime.setText("Joined: Unknown");
         }
 
+        // Load profile image
+        if (entrant.getProfileImage() != null && !entrant.getProfileImage().isEmpty()) {
+            displayBase64Image(entrant.getProfileImage(), holder.imageProfile);
+        } else {
+            holder.imageProfile.setImageResource(R.drawable.ic_profile_avatar);
+        }
+
+        // Add click listener to view profile (read-only)
+        holder.imageProfile.setOnClickListener(v -> {
+            Intent intent = new Intent(v.getContext(), ProfileActivity.class);
+            intent.putExtra("deviceId", entrant.getDeviceId());
+            intent.putExtra("isReadOnly", true);
+            intent.putExtra("isOrganizerMode", false);
+            v.getContext().startActivity(intent);
+        });
+
         holder.textPromote.setOnClickListener(v -> {
             if ("waiting".equals(rawStatus)) {
                 listener.onPromote(user);
@@ -70,6 +91,22 @@ public class WaitingListAdapter extends RecyclerView.Adapter<WaitingListAdapter.
                 listener.onCancelSelection(user);
             }
         });
+    }
+
+    private void displayBase64Image(String base64, ImageView imageView) {
+        try {
+            byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
+            Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+            if (bitmap != null && imageView != null) {
+                imageView.setImageBitmap(bitmap);
+            } else if (imageView != null) {
+                imageView.setImageResource(R.drawable.ic_profile_avatar);
+            }
+        } catch (Exception ignored) {
+            if (imageView != null) {
+                imageView.setImageResource(R.drawable.ic_profile_avatar);
+            }
+        }
     }
 
     private void updateStatusUI(ViewHolder holder, String status) {

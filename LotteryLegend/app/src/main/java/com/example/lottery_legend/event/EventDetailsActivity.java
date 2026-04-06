@@ -52,6 +52,7 @@ public class EventDetailsActivity extends AppCompatActivity {
     private String deviceId;
 
     private ImageView posterImage;
+    private ImageView imageOrganizerAvatar;
     private TextView textEventTitle;
     private TextView textRegistrationStatus;
     private TextView textEventDate;
@@ -115,6 +116,7 @@ public class EventDetailsActivity extends AppCompatActivity {
         toolbar.setNavigationOnClickListener(v -> finish());
 
         posterImage = findViewById(R.id.posterImage);
+        imageOrganizerAvatar = findViewById(R.id.imageOrganizerAvatar);
         textEventTitle = findViewById(R.id.textEventTitle);
         textRegistrationStatus = findViewById(R.id.textRegistrationStatus);
         textEventDate = findViewById(R.id.textEventDate);
@@ -246,7 +248,7 @@ public class EventDetailsActivity extends AppCompatActivity {
         textAboutEvent.setText(event.getDescription());
         organizerId = event.getOrganizerId();
 
-        fetchOrganizerName(organizerId);
+        fetchOrganizerData(organizerId);
         setupNotificationBadge();
 
         Event.EventLocation loc = event.getEventLocation();
@@ -528,7 +530,7 @@ public class EventDetailsActivity extends AppCompatActivity {
                 });
     }
 
-    private void fetchOrganizerName(String id) {
+    private void fetchOrganizerData(String id) {
         if (id == null) return;
 
         db.collection("organizers").document(id).get().addOnSuccessListener(doc -> {
@@ -539,9 +541,31 @@ public class EventDetailsActivity extends AppCompatActivity {
                                 ? organizerName
                                 : "Organizer"
                 );
+                
+                String profileImage = doc.getString("profileImage");
+                if (profileImage != null && !profileImage.isEmpty()) {
+                    displayBase64Image(profileImage, imageOrganizerAvatar);
+                } else {
+                    imageOrganizerAvatar.setImageResource(R.drawable.ic_profile_avatar);
+                }
             } else {
                 textOrganizerName.setText("Organizer");
+                imageOrganizerAvatar.setImageResource(R.drawable.ic_profile_avatar);
             }
-        }).addOnFailureListener(e -> textOrganizerName.setText("Organizer"));
+        }).addOnFailureListener(e -> {
+            textOrganizerName.setText("Organizer");
+            imageOrganizerAvatar.setImageResource(R.drawable.ic_profile_avatar);
+        });
+    }
+
+    private void displayBase64Image(String base64, ImageView imageView) {
+        try {
+            byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
+            Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+            if (bitmap != null && imageView != null) {
+                imageView.setImageBitmap(bitmap);
+            }
+        } catch (Exception ignored) {
+        }
     }
 }

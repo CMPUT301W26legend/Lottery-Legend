@@ -1,9 +1,13 @@
 package com.example.lottery_legend.organizer;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -59,6 +63,13 @@ public class InviteSearchAdapter extends RecyclerView.Adapter<InviteSearchAdapte
         holder.textEmail.setText(entrant.getEmail());
         holder.textPhone.setText(entrant.getPhone());
 
+        // Load profile image
+        if (entrant.getProfileImage() != null && !entrant.getProfileImage().isEmpty()) {
+            displayBase64Image(entrant.getProfileImage(), holder.imageProfile);
+        } else {
+            holder.imageProfile.setImageResource(R.drawable.ic_profile_avatar);
+        }
+
         String status = entrantStatuses.get(entrant.getDeviceId());
 
         // Determine if the user is in a "fixed" state (already in the event)
@@ -109,6 +120,22 @@ public class InviteSearchAdapter extends RecyclerView.Adapter<InviteSearchAdapte
         }
     }
 
+    private void displayBase64Image(String base64, ImageView imageView) {
+        try {
+            byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
+            Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+            if (bitmap != null && imageView != null) {
+                imageView.setImageBitmap(bitmap);
+            } else if (imageView != null) {
+                imageView.setImageResource(R.drawable.ic_profile_avatar);
+            }
+        } catch (Exception ignored) {
+            if (imageView != null) {
+                imageView.setImageResource(R.drawable.ic_profile_avatar);
+            }
+        }
+    }
+
     /**
      * Returns the total number of items in the data set held by the adapter.
      * @return The total number of items in this adapter.
@@ -125,6 +152,7 @@ public class InviteSearchAdapter extends RecyclerView.Adapter<InviteSearchAdapte
     public static class ViewHolder extends RecyclerView.ViewHolder {
         TextView textName, textEmail, textPhone, textStatusLabel;
         CheckBox checkInvite;
+        ImageView imageProfile;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -133,6 +161,7 @@ public class InviteSearchAdapter extends RecyclerView.Adapter<InviteSearchAdapte
             textPhone = itemView.findViewById(R.id.textPhone);
             textStatusLabel = itemView.findViewById(R.id.textStatusLabel);
             checkInvite = itemView.findViewById(R.id.checkInvite);
+            imageProfile = itemView.findViewById(R.id.imageProfile);
         }
     }
 }

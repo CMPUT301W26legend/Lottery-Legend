@@ -1,12 +1,16 @@
 package com.example.lottery_legend.entrant;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.text.TextUtils;
+import android.util.Base64;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -14,6 +18,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.lottery_legend.R;
 import com.example.lottery_legend.model.Comment;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -32,6 +37,7 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
     private final String deviceId;
     private final boolean isAdmin;
     private final OnReplyInteractionListener listener;
+    private final FirebaseFirestore db;
 
     private final List<Comment> replies = new ArrayList<>();
 
@@ -45,6 +51,7 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
         this.deviceId = deviceId;
         this.isAdmin = isAdmin;
         this.listener = listener;
+        this.db = FirebaseFirestore.getInstance();
     }
 
     public void setReplies(List<Comment> newReplies) {
@@ -77,6 +84,7 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
 
         private final View layoutReplyRoot;
         private final View viewThreadLine;
+        private final ImageView imageReplyAvatar;
         private final TextView textReplyAuthorName;
         private final TextView textReplyTime;
         private final TextView textReplyContent;
@@ -88,6 +96,7 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
             super(itemView);
             layoutReplyRoot = itemView.findViewById(R.id.layoutReplyRoot);
             viewThreadLine = itemView.findViewById(R.id.viewThreadLine);
+            imageReplyAvatar = itemView.findViewById(R.id.imageReplyAvatar);
             textReplyAuthorName = itemView.findViewById(R.id.textReplyAuthorName);
             textReplyTime = itemView.findViewById(R.id.textReplyTime);
             textReplyContent = itemView.findViewById(R.id.textReplyContent);
@@ -109,6 +118,9 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
             }
 
             textReplyContent.setText(comment.getContent());
+
+            // Load avatar
+            loadAuthorAvatar(comment, imageReplyAvatar);
 
             // 二级回复显示 @target
             if (comment.getThreadLevel() >= 2 && !TextUtils.isEmpty(comment.getReplyToUserNameSnapshot())) {
@@ -138,6 +150,33 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
                         listener.onDeleteClicked(comment);
                     }
                 });
+            }
+        }
+
+        private void loadAuthorAvatar(Comment comment, ImageView imageView) {
+            String collection = "ORGANIZER".equalsIgnoreCase(comment.getAuthorType()) ? "organizers" : "entrants";
+            db.collection(collection).document(comment.getAuthorId()).get().addOnSuccessListener(doc -> {
+                if (doc.exists()) {
+                    String profileImage = doc.getString("profileImage");
+                    if (profileImage != null && !profileImage.isEmpty()) {
+                        displayBase64Image(profileImage, imageView);
+                    } else {
+                        imageView.setImageResource(R.drawable.ic_profile_avatar);
+                    }
+                } else {
+                    imageView.setImageResource(R.drawable.ic_profile_avatar);
+                }
+            }).addOnFailureListener(e -> imageView.setImageResource(R.drawable.ic_profile_avatar));
+        }
+
+        private void displayBase64Image(String base64, ImageView imageView) {
+            try {
+                byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
+                Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                if (bitmap != null && imageView != null) {
+                    imageView.setImageBitmap(bitmap);
+                }
+            } catch (Exception ignored) {
             }
         }
 

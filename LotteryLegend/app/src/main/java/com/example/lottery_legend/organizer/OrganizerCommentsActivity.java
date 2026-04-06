@@ -2,13 +2,17 @@ package com.example.lottery_legend.organizer;
 
 import android.content.Intent;
 import android.content.res.ColorStateList;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
@@ -406,6 +410,7 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
 
     private class CommentViewHolder extends RecyclerView.ViewHolder {
 
+        ImageView imageAvatar;
         TextView authorName;
         TextView time;
         TextView content;
@@ -424,6 +429,7 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
         public CommentViewHolder(@NonNull View itemView) {
             super(itemView);
 
+            imageAvatar = itemView.findViewById(R.id.imageAvatar);
             authorName = itemView.findViewById(R.id.textCommentUserName);
             time = itemView.findViewById(R.id.textCommentTime);
             content = itemView.findViewById(R.id.textCommentContent);
@@ -451,6 +457,9 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
             } else {
                 time.setText("");
             }
+
+            // Load author avatar
+            loadAuthorAvatar(comment);
 
             updateReactionUI(comment);
 
@@ -498,6 +507,22 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
             if (cardLove != null) cardLove.setOnClickListener(v -> toggleReaction(comment, "LOVE"));
         }
 
+        private void loadAuthorAvatar(Comment comment) {
+            String collection = "ORGANIZER".equalsIgnoreCase(comment.getAuthorType()) ? "organizers" : "entrants";
+            db.collection(collection).document(comment.getAuthorId()).get().addOnSuccessListener(doc -> {
+                if (doc.exists()) {
+                    String profileImage = doc.getString("profileImage");
+                    if (profileImage != null && !profileImage.isEmpty()) {
+                        displayBase64Image(profileImage, imageAvatar);
+                    } else {
+                        imageAvatar.setImageResource(R.drawable.ic_profile_avatar);
+                    }
+                } else {
+                    imageAvatar.setImageResource(R.drawable.ic_profile_avatar);
+                }
+            }).addOnFailureListener(e -> imageAvatar.setImageResource(R.drawable.ic_profile_avatar));
+        }
+
         private void updateReactionUI(Comment comment) {
             reactionSummary.setVisibility(comment.getReactionCount() > 0 ? View.VISIBLE : View.GONE);
 
@@ -521,6 +546,17 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
                 card.setCardBackgroundColor(ColorStateList.valueOf(Color.parseColor("#F3F4F6")));
                 if (countText != null) countText.setTextColor(Color.parseColor("#6B7280"));
             }
+        }
+    }
+
+    private void displayBase64Image(String base64, ImageView imageView) {
+        try {
+            byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
+            Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+            if (bitmap != null && imageView != null) {
+                imageView.setImageBitmap(bitmap);
+            }
+        } catch (Exception ignored) {
         }
     }
 }

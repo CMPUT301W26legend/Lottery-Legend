@@ -3,15 +3,19 @@ package com.example.lottery_legend.entrant;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Base64;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -67,6 +71,7 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
     private ImageButton buttonSendReply;
     private TextView textToolbarTitle;
 
+    private ImageView imageParentAvatar;
     private TextView textParentAuthorName, textParentTime, textParentContent;
     private TextView textParentLikeCount, textParentLoveCount, textParentHelpfulCount;
     private MaterialCardView cardParentLike, cardParentLove, cardParentHelpful;
@@ -146,6 +151,7 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         textToolbarTitle = findViewById(R.id.textToolbarTitle);
 
         View parentHeader = findViewById(R.id.layoutParentComment);
+        imageParentAvatar = parentHeader.findViewById(R.id.imageParentAvatar);
         textParentAuthorName = parentHeader.findViewById(R.id.textParentAuthorName);
         textParentTime = parentHeader.findViewById(R.id.textParentTime);
         textParentContent = parentHeader.findViewById(R.id.textParentContent);
@@ -385,6 +391,9 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
             textParentTime.setText("");
         }
 
+        // Load parent author avatar
+        loadAuthorAvatar(comment, imageParentAvatar);
+
         reactionSummary.setVisibility(comment.getReactionCount() > 0 ? View.VISIBLE : View.GONE);
 
         textParentLikeCount.setText(String.valueOf(comment.getLikeCount()));
@@ -417,6 +426,33 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         boolean canDelete = isAdmin || (!TextUtils.isEmpty(deviceId)
                 && deviceId.equals(comment.getAuthorId()));
         buttonParentDelete.setVisibility(canDelete ? View.VISIBLE : View.GONE);
+    }
+
+    private void loadAuthorAvatar(Comment comment, ImageView imageView) {
+        String collection = "ORGANIZER".equalsIgnoreCase(comment.getAuthorType()) ? "organizers" : "entrants";
+        db.collection(collection).document(comment.getAuthorId()).get().addOnSuccessListener(doc -> {
+            if (doc.exists()) {
+                String profileImage = doc.getString("profileImage");
+                if (profileImage != null && !profileImage.isEmpty()) {
+                    displayBase64Image(profileImage, imageView);
+                } else {
+                    imageView.setImageResource(R.drawable.ic_profile_avatar);
+                }
+            } else {
+                imageView.setImageResource(R.drawable.ic_profile_avatar);
+            }
+        }).addOnFailureListener(e -> imageView.setImageResource(R.drawable.ic_profile_avatar));
+    }
+
+    private void displayBase64Image(String base64, ImageView imageView) {
+        try {
+            byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
+            Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+            if (bitmap != null && imageView != null) {
+                imageView.setImageBitmap(bitmap);
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     private void setCardSelected(MaterialCardView card, boolean selected, int color, TextView countText) {

@@ -14,6 +14,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -71,6 +72,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
     private TextView textEventTitle, textEventStatus, tagCoOrganizer, textEventVisibility;
     private TextView textEventDate, textRegistrationDeadline, textLocation, textPrice;
     private TextView textDescription, textLotteryGuidelines, textOrganizerName;
+    private LinearLayout organizerSection;
     private Button btnViewWaitingList, btnRunLotteryDraw, btnSendNotification, btnDeleteEvent, btnInviteEntrants;
     private ImageButton editIcon, updatePoster, commentIcon, mapIcon, shareIcon;
 
@@ -127,6 +129,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         textDescription = findViewById(R.id.textDescription);
         textLotteryGuidelines = findViewById(R.id.textLotteryGuidelines);
         textOrganizerName = findViewById(R.id.textOrganizerName);
+        organizerSection = findViewById(R.id.organizerSection);
 
         btnViewWaitingList = findViewById(R.id.btnViewWaitingList);
         btnRunLotteryDraw = findViewById(R.id.btnRunLotteryDraw);
@@ -208,6 +211,16 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         btnDeleteEvent.setOnClickListener(v -> showDeleteConfirmationDialog());
 
         btnInviteEntrants.setOnClickListener(v -> showInviteSearchDialog());
+
+        organizerSection.setOnClickListener(v -> {
+            if (currentEvent != null && currentEvent.getOrganizerId() != null) {
+                Intent intent = new Intent(OrganizerEventDetailsActivity.this, com.example.lottery_legend.entrant.ProfileActivity.class);
+                intent.putExtra("deviceId", currentEvent.getOrganizerId());
+                intent.putExtra("isReadOnly", true);
+                intent.putExtra("isOrganizerMode", true);
+                startActivity(intent);
+            }
+        });
     }
 
     private void fetchCurrentUserName() {
@@ -337,11 +350,11 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         }
 
         if (event.isIsPrivateEvent()) {
-            btnInviteEntrants.setVisibility(View.VISIBLE);
             textEventVisibility.setVisibility(View.VISIBLE);
+            btnInviteEntrants.setVisibility(View.VISIBLE);
         } else {
-            btnInviteEntrants.setVisibility(View.GONE);
             textEventVisibility.setVisibility(View.GONE);
+            btnInviteEntrants.setVisibility(View.GONE);
         }
 
         currentPosterBase64 = event.getPosterImage();
