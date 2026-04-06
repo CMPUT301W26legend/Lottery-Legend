@@ -1,8 +1,11 @@
 package com.example.lottery_legend.admin;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.util.Base64;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -136,7 +139,31 @@ public class AdminProfileFragment extends Fragment {
         viewName.setText(admin.getName());
         viewEmail.setText(admin.getEmail());
         viewPhone.setText(admin.getPhone() != null && !admin.getPhone().isEmpty() ? admin.getPhone() : "No phone provided");
-        // Profile image decoding logic is skipped per user instructions; keeping default avatar.
+        
+        String profileImage = admin.getProfileImage();
+        if (profileImage != null && !profileImage.isEmpty()) {
+            displayBase64Image(profileImage);
+        } else {
+            profileAvatar.setImageResource(R.drawable.ic_profile_avatar);
+        }
+    }
+
+    /**
+     * Helper method to decode Base64 string into a Bitmap and set it to the ImageView.
+     * @param base64 The Base64 encoded image string.
+     */
+    private void displayBase64Image(String base64) {
+        try {
+            byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
+            Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+            if (bitmap != null) {
+                profileAvatar.setImageBitmap(bitmap);
+            } else {
+                profileAvatar.setImageResource(R.drawable.ic_profile_avatar);
+            }
+        } catch (Exception e) {
+            profileAvatar.setImageResource(R.drawable.ic_profile_avatar);
+        }
     }
 
     /**

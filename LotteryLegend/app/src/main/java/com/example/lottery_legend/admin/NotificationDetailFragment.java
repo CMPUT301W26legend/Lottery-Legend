@@ -32,6 +32,9 @@ public class NotificationDetailFragment extends DialogFragment {
         return fragment;
     }
 
+    /**
+     * Sets the dialog window layout and background color.
+     */
     @Override
     public void onStart() {
         super.onStart();

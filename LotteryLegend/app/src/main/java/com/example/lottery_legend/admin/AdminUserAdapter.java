@@ -2,6 +2,9 @@ package com.example.lottery_legend.admin;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +20,7 @@ import com.example.lottery_legend.R;
 import com.example.lottery_legend.model.Entrant;
 import com.example.lottery_legend.model.Organizer;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.imageview.ShapeableImageView;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -87,6 +91,7 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
         String phone = "";
         Timestamp joinDate = null;
         String userId = "";
+        String profileImage = "";
 
         if (userObj instanceof Entrant) {
             Entrant user = (Entrant) userObj;
@@ -95,6 +100,7 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
             phone = user.getPhone();
             joinDate = user.getJoinDate();
             userId = user.getDeviceId();
+            profileImage = user.getProfileImage();
         } else if (userObj instanceof Organizer) {
             Organizer user = (Organizer) userObj;
             name = user.getName();
@@ -102,9 +108,11 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
             phone = user.getPhone();
             joinDate = user.getJoinDate();
             userId = user.getUserId();
+            profileImage = user.getProfileImage();
         }
 
         holder.userName.setText(name);
+        displayBase64Image(holder.profileImage, profileImage);
         
         if (joinDate != null) {
             SimpleDateFormat sdf = new SimpleDateFormat("MMM d, yyyy 'at' h:mm a", Locale.getDefault());
@@ -118,6 +126,7 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
         final String finalName = name;
         final String finalEmail = email;
         final String finalPhone = phone;
+        final String finalProfileImage = profileImage;
 
         // Transition to Full View
         holder.itemView.setOnClickListener(v -> {
@@ -127,10 +136,32 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
             intent.putExtra("email", finalEmail);
             intent.putExtra("phone", finalPhone);
             intent.putExtra("collectionName", currentCollection);
+            intent.putExtra("profileImage", finalProfileImage);
             context.startActivity(intent);
         });
 
         holder.removeButton.setOnClickListener(v -> showDeleteDialog(finalUserId));
+    }
+
+    /**
+     * Helper method to decode Base64 string into a Bitmap and set it to the ImageView.
+     * @param imageView The ImageView to display the image.
+     * @param base64 The Base64 encoded image string.
+     */
+    private void displayBase64Image(ShapeableImageView imageView, String base64) {
+        try {
+            if (base64 != null && !base64.isEmpty()) {
+                byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
+                Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                if (bitmap != null) {
+                    imageView.setImageBitmap(bitmap);
+                    return;
+                }
+            }
+            imageView.setImageResource(R.drawable.ic_profile_avatar);
+        } catch (Exception e) {
+            imageView.setImageResource(R.drawable.ic_profile_avatar);
+        }
     }
 
     /**
@@ -191,6 +222,7 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
      */
     public static class UserViewHolder extends RecyclerView.ViewHolder {
         TextView userName, joinDate, removeButton;
+        ShapeableImageView profileImage;
 
         /**
          * Constructor for UserViewHolder.
@@ -201,6 +233,7 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
             userName = itemView.findViewById(R.id.user_name_text);
             joinDate = itemView.findViewById(R.id.user_join_date_text);
             removeButton = itemView.findViewById(R.id.remove_user_button);
+            profileImage = itemView.findViewById(R.id.user_profile_image);
         }
     }
 }
