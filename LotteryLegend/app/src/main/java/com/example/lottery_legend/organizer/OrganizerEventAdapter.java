@@ -18,24 +18,34 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Adapter for displaying events in the Organizer History.
- * Directly handles navigation to event details.
+ * Adapter for displaying events in the Organizer's event list or history.
+ * Handles the display of event summary information such as title, status, 
+ * capacity, and entrant counts.
  */
 public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAdapter.ViewHolder> {
 
+    /** List of events to be displayed. */
     private final List<Event> eventList;
+    /** The device ID of the current organizer. */
     private final String deviceId;
 
     /**
-     * ViewHolder class that holds references to the UI components for an individual event item.
+     * ViewHolder class that holds references to the UI components for an individual event card.
      */
     public static class ViewHolder extends RecyclerView.ViewHolder {
+        /** TextView for the event title. */
         TextView eventName;
+        /** TextView for the event's current status (e.g., ACTIVE, DRAWN, CLOSED). */
         TextView status;
+        /** TextView for general event info like date and capacity. */
         TextView eventInfo;
+        /** TextView for the number of entrants currently on the waiting list. */
         TextView waiting;
+        /** TextView for the number of entrants who have been selected. */
         TextView selected;
+        /** Tag displayed if the current user is a co-organizer rather than the owner. */
         TextView tagCoOrganizer;
+        /** Tag displayed if the event is marked as private. */
         TextView tagPrivate;
 
         /**
@@ -55,9 +65,9 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
     }
 
     /**
-     * Constructs an OrganizerEventAdapter.
+     * Constructs a new OrganizerEventAdapter.
      * @param eventList List of events to display.
-     * @param deviceId  The organizer's device ID.
+     * @param deviceId  The unique identifier for the current organizer.
      */
     public OrganizerEventAdapter(List<Event> eventList, String deviceId) {
         this.eventList = eventList;
@@ -65,10 +75,7 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
     }
 
     /**
-     * Inflates the layout for a single event card in the organizer's history.
-     * @param parent   The parent view group.
-     * @param viewType The type of view (unused).
-     * @return A new ViewHolder instance.
+     * Inflates the layout for an event card.
      */
     @NonNull
     @Override
@@ -78,10 +85,11 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
     }
 
     /**
-     * Binds the event data to the views in the ViewHolder.
-     * Configures status formatting, summary strings, and click listeners for navigation.
+     * Binds event data to the view holder.
+     * Configures status labels, co-organizer tags, and click listeners for details navigation.
+     *
      * @param holder   The ViewHolder to update.
-     * @param position The index of the item in the list.
+     * @param position The position of the event in the data set.
      */
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
@@ -91,14 +99,14 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
         
         updateStatusUI(holder.status, event);
 
-        // Show Co-organizer tag if the current user is not the primary organizer
+        // Display a special tag if the user is a co-organizer for this event
         if (event.getOrganizerId() != null && !event.getOrganizerId().equals(deviceId)) {
             holder.tagCoOrganizer.setVisibility(View.VISIBLE);
         } else {
             holder.tagCoOrganizer.setVisibility(View.GONE);
         }
 
-        // Show private tag if the event is private
+        // Display a tag if the event is private
         if (event.isIsPrivateEvent()) {
             holder.tagPrivate.setVisibility(View.VISIBLE);
         } else {
@@ -124,7 +132,7 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
         
         holder.selected.setText(event.getSelectedCount() + " selected");
 
-        // Handle item click directly by starting the details activity
+        // Navigate to the event details activity on click
         holder.itemView.setOnClickListener(v -> {
             Intent intent = new Intent(v.getContext(), OrganizerEventDetailsActivity.class);
             intent.putExtra("eventId", event.getEventId());
@@ -134,6 +142,11 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
         });
     }
 
+    /**
+     * Updates the status TextView with a human-readable label and color based on the event's state.
+     * @param statusView The TextView to update.
+     * @param event      The event model.
+     */
     private void updateStatusUI(TextView statusView, Event event) {
         Timestamp now = Timestamp.now();
         String status = event.getStatus() != null ? event.getStatus().toLowerCase() : "open";
@@ -150,10 +163,6 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
         }
     }
 
-    /**
-     * Returns the total number of events in the list.
-     * @return The size of the event list.
-     */
     @Override
     public int getItemCount() {
         return eventList.size();

@@ -11,29 +11,41 @@ import com.example.lottery_legend.entrant.ProfileActivity;
 import com.example.lottery_legend.R;
 
 /**
- * Utility class to manage the Organizer Navbar across different activities.
+ * Utility class to manage the navigation bar for the Organizer interface.
+ * Handles tab highlighting and navigation logic between different organizer screens.
  */
 public class NavbarOrganizer {
 
+    /**
+     * Enum representing the different tabs available in the organizer navigation bar.
+     */
     public enum Tab {
-        HOME, HISTORY, PROFILE
+        /** The home tab, usually showing the list of active events. */
+        HOME, 
+        /** The history tab, showing past events. */
+        HISTORY, 
+        /** The profile tab for viewing and editing organizer information. */
+        PROFILE
     }
 
     /**
-     * Set up the navigation bar for an Organizer activity.
+     * Sets up the navigation bar for an Organizer activity.
+     * Configures click listeners for each tab and highlights the currently active tab.
      *
-     * @param activity   The current activity.
-     * @param deviceId   The device ID of the user.
-     * @param activeTab  The tab that should be highlighted.
+     * @param activity   The current activity where the navbar is being initialized.
+     * @param deviceId   The unique device identifier for the current user.
+     * @param activeTab  The tab that should be visually highlighted as active.
      */
     public static void setup(Activity activity, String deviceId, Tab activeTab) {
         View navbar = activity.findViewById(R.id.navbar);
         if (navbar == null) return;
 
+        // Find navigation containers
         View navHome = navbar.findViewById(R.id.navHome);
         View navHistory = navbar.findViewById(R.id.navHistory);
         View navProfile = navbar.findViewById(R.id.navProfile);
 
+        // Find navigation icons and text labels
         ImageView imgHome = navbar.findViewById(R.id.imageNavHome);
         TextView txtHome = navbar.findViewById(R.id.textNavHome);
         ImageView imgHistory = navbar.findViewById(R.id.imageNavHistory);
@@ -41,10 +53,11 @@ public class NavbarOrganizer {
         ImageView imgProfile = navbar.findViewById(R.id.imageNavProfile);
         TextView txtProfile = navbar.findViewById(R.id.textNavProfile);
 
-        // Reset colors
+        // Define colors for active and inactive states
         int gray = Color.parseColor("#A7AAB3");
         int blue = Color.parseColor("#2563EB");
 
+        // Reset all tabs to the inactive (gray) state
         imgHome.setImageTintList(android.content.res.ColorStateList.valueOf(gray));
         txtHome.setTextColor(gray);
         imgHistory.setImageTintList(android.content.res.ColorStateList.valueOf(gray));
@@ -52,7 +65,7 @@ public class NavbarOrganizer {
         imgProfile.setImageTintList(android.content.res.ColorStateList.valueOf(gray));
         txtProfile.setTextColor(gray);
 
-        // Highlight active tab
+        // Highlight the specified active tab in blue
         switch (activeTab) {
             case HOME:
                 imgHome.setImageTintList(android.content.res.ColorStateList.valueOf(blue));
@@ -68,7 +81,7 @@ public class NavbarOrganizer {
                 break;
         }
 
-        // Set Click Listeners
+        // Set up click listeners to navigate between activities
         navHome.setOnClickListener(v -> {
             if (activeTab != Tab.HOME) {
                 Intent intent = new Intent(activity, OrganizerMainActivity.class);

@@ -57,8 +57,9 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Activity for organizers to view the details of a specific event they have created.
- * Includes the state machine for Lottery and Replacement draws.
+ * Activity for organizers to view the details of a specific event they have created or are co-organizing.
+ * Provides access to event management features like editing, running the lottery,
+ * sending notifications, and viewing the waiting list.
  */
 public class OrganizerEventDetailsActivity extends AppCompatActivity
         implements PosterUploadDialogFragment.OnPosterEventListener {
@@ -112,6 +113,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.HISTORY);
     }
 
+    /**
+     * Checks if the current user is an accepted co-organizer for the event.
+     */
     private void checkCoOrganizerStatus() {
         if (eventId == null || deviceId == null) return;
 
@@ -128,6 +132,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
                 });
     }
 
+    /**
+     * Updates the UI to show or hide management buttons based on the user's role (Primary vs Co-organizer).
+     */
     private void updatePermissionsUI() {
         if (currentEvent == null) return;
 
@@ -144,6 +151,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * Initializes UI references and sets default visibility states.
+     */
     private void initViews() {
         MaterialToolbar toolbar = findViewById(R.id.toolbarOrganizerDetails);
         toolbar.setNavigationOnClickListener(v -> finish());
@@ -186,6 +196,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         btnDeleteEvent.setVisibility(View.GONE);
     }
 
+    /**
+     * Sets up click listeners for all interactive elements in the activity.
+     */
     private void setupListeners() {
         shareIcon.setOnClickListener(v -> {
             if (eventId != null) {
@@ -273,6 +286,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         });
     }
 
+    /**
+     * Fetches the current organizer's name for comment snapshots.
+     */
     private void fetchCurrentUserName() {
         if (deviceId == null) return;
 
@@ -286,6 +302,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
                 });
     }
 
+    /**
+     * Displays a dialog to confirm event deletion.
+     */
     private void showDeleteConfirmationDialog() {
         new AlertDialog.Builder(this)
                 .setTitle("Delete Event")
@@ -295,6 +314,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
                 .show();
     }
 
+    /**
+     * Deletes the event and its associated sub-collections from Firestore.
+     */
     private void deleteEvent() {
         if (eventId == null) return;
 
@@ -329,6 +351,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         });
     }
 
+    /**
+     * Fetches and listens for real-time updates to the event document.
+     */
     private void fetchEventDetails() {
         if (eventId == null) return;
 
@@ -349,6 +374,10 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
                 });
     }
 
+    /**
+     * Populates the UI views with the provided event data.
+     * @param event The event model.
+     */
     private void populateViews(Event event) {
         this.currentEvent = event;
 
@@ -359,12 +388,14 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         textDescription.setText(event.getDescription());
         textCapacity.setText(String.valueOf(event.getCapacity()));
 
+        // Check if current user is co-organizer
         if (event.getOrganizerId() != null && !event.getOrganizerId().equals(deviceId)) {
             tagCoOrganizer.setVisibility(View.VISIBLE);
         } else {
             tagCoOrganizer.setVisibility(View.GONE);
         }
 
+        // Fetch primary organizer info
         if (event.getOrganizerId() != null) {
             db.collection("organizers")
                     .document(event.getOrganizerId())
@@ -385,6 +416,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         fetchCoOrganizers();
         updatePermissionsUI();
 
+        // Update counts and statistics
         int waitingListSize = event.getWaitingList() != null ? event.getWaitingList().size() : 0;
         if (event.getMaxWaitingList() != null) {
             textWaitingCount.setText(String.format(
@@ -414,6 +446,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
             textRegistrationDeadline.setText(sdf.format(event.getRegistrationEndAt().toDate()));
         }
 
+        // Generate guidelines summary
         if (event.getDrawAt() != null) {
             String drawDateStr = sdf.format(event.getDrawAt().toDate());
             String guidelines =
@@ -427,6 +460,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         updateStatusUI(event);
         updateLotteryButtonState();
 
+        // Automatic lottery execution if scheduled time has passed
         if (event.getDrawAt() != null
                 && event.getDrawAt().compareTo(Timestamp.now()) <= 0
                 && !"drawn".equalsIgnoreCase(event.getStatus())) {
@@ -434,7 +468,6 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
             if (!candidates.isEmpty()) {
                 executeLottery(candidates, event.getCapacity(), true);
             } else if (!"closed".equalsIgnoreCase(event.getStatus())) {
-                // If no candidates but deadline passed, mark as drawn or closed
                 db.collection("events").document(eventId).update("status", "drawn");
             }
         }
@@ -447,6 +480,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
             btnInviteEntrants.setVisibility(View.GONE);
         }
 
+        // Load poster image
         currentPosterBase64 = event.getPosterImage();
         if (currentPosterBase64 != null && !currentPosterBase64.isEmpty()) {
             try {
@@ -463,6 +497,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * Fetches and displays the list of co-organizers for the event.
+     */
     private void fetchCoOrganizers() {
         if (eventId == null) return;
 
@@ -487,6 +524,10 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
                 });
     }
 
+    /**
+     * Adds an individual co-organizer item to the scrollable layout.
+     * @param coOrgId The co-organizer's unique ID.
+     */
     private void addCoOrganizerToView(String coOrgId) {
         db.collection("organizers")
                 .document(coOrgId)
@@ -510,6 +551,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
                             avatar.setImageResource(R.drawable.ic_profile_avatar);
                         }
 
+                        // Only the primary organizer can remove co-organizers
                         if (currentEvent != null && deviceId.equals(currentEvent.getOrganizerId())) {
                             btnRemove.setVisibility(View.VISIBLE);
                             btnRemove.setOnClickListener(v -> showRemoveCoOrganizerConfirmation(coOrgId, name));
@@ -530,6 +572,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
                 });
     }
 
+    /**
+     * Displays confirmation dialog before removing a co-organizer.
+     */
     private void showRemoveCoOrganizerConfirmation(String coOrgId, String name) {
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_remove_co_organizer, null);
         AlertDialog dialog = new AlertDialog.Builder(this, R.style.CustomAlertDialog)
@@ -553,6 +598,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         dialog.show();
     }
 
+    /**
+     * Removes a co-organizer record from the event sub-collection.
+     */
     private void removeCoOrganizer(String coOrgId) {
         if (eventId == null) return;
 
@@ -569,6 +617,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
                         Toast.makeText(this, "Error removing co-organizer", Toast.LENGTH_SHORT).show());
     }
 
+    /**
+     * Helper to decode and display a Base64 image.
+     */
     private void displayBase64Image(String base64, ImageView imageView) {
         try {
             byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
@@ -580,6 +631,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * Updates the status TextView based on current time and event state.
+     */
     private void updateStatusUI(Event event) {
         Timestamp now = Timestamp.now();
         String status = event.getStatus() != null ? event.getStatus().toLowerCase() : "open";
@@ -605,6 +659,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * Updates the text and behavior of the lottery/draw button based on event status and occupancy.
+     */
     private void updateLotteryButtonState() {
         if (currentEvent == null) return;
 
@@ -642,6 +699,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * Handles clicks on the primary action button (Lottery or Export).
+     */
     private void handleLotteryClick() {
         if (currentEvent == null) return;
 
@@ -671,6 +731,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * Exports the list of final winners to a CSV file and shares it.
+     */
     private void exportFinalAttendeeListToCsv() {
         if (currentEvent == null || currentEvent.getWaitingList() == null) return;
 
@@ -711,6 +774,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
                         Toast.makeText(this, "Export failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 
+    /**
+     * Saves the CSV string to a temporary file and triggers a share intent.
+     */
     private void saveAndShareCsv(String content) {
         try {
             File file = new File(getExternalCacheDir(), "AttendeeList_" + eventId + ".csv");
@@ -729,6 +795,12 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * Shows a dialog to configure and start a lottery draw.
+     * @param candidates   Eligible entrants.
+     * @param maxAllowed   Max number of entrants that can be picked.
+     * @param isFirstDraw  Whether this is the initial draw for the event.
+     */
     private void showDrawDialog(List<Event.WaitingListEntry> candidates, int maxAllowed, boolean isFirstDraw) {
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_run_lottery, null);
         EditText editSampleCount = view.findViewById(R.id.editSampleCount);
@@ -770,6 +842,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         dialog.show();
     }
 
+    /**
+     * Executes the random selection of entrants and sends notifications.
+     */
     private void executeLottery(List<Event.WaitingListEntry> candidates, int sampleCount, boolean isFirstDraw) {
         if (sampleCount <= 0 || candidates.isEmpty()) return;
 
@@ -825,7 +900,6 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
                     Map<String, Object> eventUpdates = new HashMap<>();
                     eventUpdates.put("waitingList", currentEvent.getWaitingList());
                     
-                    // Trigger "drawn" status if capacity is reached or no more waiting list entries
                     int totalOccupiedAfterDraw = getOccupiedCount() + selected.size();
                     if (totalOccupiedAfterDraw >= currentEvent.getCapacity()) {
                         eventUpdates.put("status", "drawn");
@@ -847,7 +921,8 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
     }
 
     /**
-     * Calculates occupied count: SELECTED, INVITED, ACCEPTED, ENROLLED, CONFIRMED.
+     * Calculates the total number of occupied slots (selected, accepted, enrolled, etc.).
+     * @return Occupied slot count.
      */
     private int getOccupiedCount() {
         if (currentEvent == null || currentEvent.getWaitingList() == null) return 0;
@@ -868,11 +943,17 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         return count;
     }
 
+    /**
+     * Calculates number of remaining available slots based on event capacity.
+     */
     private int getAvailableSlots() {
         if (currentEvent == null) return 0;
         return Math.max(0, currentEvent.getCapacity() - getOccupiedCount());
     }
 
+    /**
+     * Returns a list of all entrants currently with 'waiting' status.
+     */
     private List<Event.WaitingListEntry> getWaitingEntrants() {
         List<Event.WaitingListEntry> candidates = new ArrayList<>();
         if (currentEvent == null || currentEvent.getWaitingList() == null) return candidates;
@@ -885,6 +966,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         return candidates;
     }
 
+    /**
+     * Displays dialog for searching and inviting entrants manually (Private Events).
+     */
     private void showInviteSearchDialog() {
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_invite_entrants_search, null);
         EditText editName = view.findViewById(R.id.editSearchName);
@@ -920,6 +1004,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         dialog.show();
     }
 
+    /**
+     * Performs a text-based search for entrants in Firestore based on various criteria.
+     */
     private void performEntrantSearch(String name, String email, String phone) {
         List<Task<QuerySnapshot>> tasks = new ArrayList<>();
 
@@ -972,6 +1059,10 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
                         Toast.makeText(this, "Search failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 
+    /**
+     * Displays the results of an entrant search in a selectable list.
+     * @param results List of found entrant profiles.
+     */
     private void showSearchResultsDialog(List<Entrant> results) {
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_invite_search_results, null);
         RecyclerView recycler = view.findViewById(R.id.recyclerSearchResults);
@@ -1020,6 +1111,10 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         dialog.show();
     }
 
+    /**
+     * Adds selected entrants to the private event's waiting list and sends invitations.
+     * @param entrantIds List of entrant device IDs to invite.
+     */
     private void inviteSelectedEntrants(List<String> entrantIds) {
         if (currentEvent == null || eventId == null) return;
 
@@ -1082,6 +1177,11 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
                 });
     }
 
+    /**
+     * Callback from PosterUploadDialogFragment when a new poster image is selected.
+     * Updates the event document in Firestore with the Base64 image string.
+     * @param uri The URI of the selected image.
+     */
     @Override
     public void onPosterSelected(Uri uri) {
         String base64Image = uriToBase64(uri);
@@ -1098,6 +1198,10 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * Callback from PosterUploadDialogFragment when the current poster image is removed.
+     * Clears the posterImage field in the event's Firestore document.
+     */
     @Override
     public void onPosterRemoved() {
         if (eventId != null) {
@@ -1114,6 +1218,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * Converts an image URI to a compressed Base64 string for Firestore storage.
+     */
     private String uriToBase64(Uri uri) {
         try {
             InputStream inputStream = getContentResolver().openInputStream(uri);

@@ -50,6 +50,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Activity for displaying a specific comment thread.
+ * It shows the parent comment and all its nested replies in a hierarchical-like linear list.
+ * Users can reply to the parent or any existing reply, react, and delete their own comments.
+ */
 public class CommentThreadActivity extends AppCompatActivity implements ReplyAdapter.OnReplyInteractionListener {
 
     private static final String TAG = "CommentThreadActivity";
@@ -100,6 +105,7 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
 
         db = FirebaseFirestore.getInstance();
 
+        // Ensure mandatory IDs are provided
         if (!loadIntentExtras()) {
             Toast.makeText(this, "Error: Missing Thread ID", Toast.LENGTH_SHORT).show();
             finish();
@@ -128,12 +134,17 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
 
     @Override
     public void finish() {
+        // Return OK result if any new comments or reactions were added/removed
         if (hasChanges) {
             setResult(RESULT_OK, new Intent());
         }
         super.finish();
     }
 
+    /**
+     * Loads required data from the intent.
+     * @return True if successful, false otherwise.
+     */
     private boolean loadIntentExtras() {
         eventId = getIntent().getStringExtra("eventId");
         parentCommentId = getIntent().getStringExtra("parentCommentId");
@@ -144,6 +155,9 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         return !TextUtils.isEmpty(eventId) && !TextUtils.isEmpty(parentCommentId);
     }
 
+    /**
+     * Links UI components to variables.
+     */
     private void initViews() {
         recyclerViewReplies = findViewById(R.id.recyclerViewReplies);
         editTextReply = findViewById(R.id.editTextReply);
@@ -170,6 +184,9 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         buttonParentDelete = parentHeader.findViewById(R.id.buttonParentDelete);
     }
 
+    /**
+     * Configures the top toolbar.
+     */
     private void setupToolbar() {
         MaterialToolbar toolbar = findViewById(R.id.toolbarCommentThread);
         setSupportActionBar(toolbar);
@@ -180,12 +197,18 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         textToolbarTitle.setText("Thread");
     }
 
+    /**
+     * Initializes the RecyclerView for replies.
+     */
     private void setupRecyclerView() {
         adapter = new ReplyAdapter(this, currentUserType, deviceId, isAdmin, this);
         recyclerViewReplies.setLayoutManager(new LinearLayoutManager(this));
         recyclerViewReplies.setAdapter(adapter);
     }
 
+    /**
+     * Sets up click listeners for the parent comment and input area.
+     */
     private void setupListeners() {
         buttonSendReply.setOnClickListener(v -> postReply());
 
@@ -223,6 +246,9 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         });
     }
 
+    /**
+     * Starts monitoring Firestore for changes in the thread.
+     */
     private void startRealtimeListeners() {
         stopRealtimeListeners();
         listenParentComment();
@@ -230,6 +256,9 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         listenReplies();
     }
 
+    /**
+     * Removes active listeners.
+     */
     private void stopRealtimeListeners() {
         if (parentCommentRegistration != null) {
             parentCommentRegistration.remove();
@@ -245,6 +274,9 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         }
     }
 
+    /**
+     * Monitors the parent comment document for updates.
+     */
     private void listenParentComment() {
         parentCommentRegistration = db.collection("events")
                 .document(eventId)
@@ -260,11 +292,15 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
                         parentComment = doc.toObject(Comment.class);
                         bindParentComment(parentComment);
                     } else {
+                        // Parent deleted, exit thread
                         finish();
                     }
                 });
     }
 
+    /**
+     * Monitors the current user's reaction to the parent comment.
+     */
     private void listenParentUserReaction() {
         parentReactionRegistration = db.collection("events")
                 .document(eventId)
@@ -285,6 +321,9 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
                 });
     }
 
+    /**
+     * Listens for all replies that belong to this root thread.
+     */
     private void listenReplies() {
         repliesRegistration = db.collection("events")
                 .document(eventId)
@@ -305,11 +344,12 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
     }
 
     /**
-     * Keep a linear 3-level display:
-     * parent -> level1 -> level2
+     * Sorts the raw list of replies into a hierarchical order for linear display.
+     * It maps parent-child relationships and flattens them into a list where
+     * replies appear below their parents.
      *
-     * Data can still chain deeper by parentCommentId,
-     * but UI display keeps all descendants after the first reply level visually as level 2.
+     * @param rawReplies List of all replies in the thread.
+     * @return Sorted list ready for the adapter.
      */
     private List<Comment> sortRepliesNested(List<Comment> rawReplies) {
         Map<String, List<Comment>> byParent = new HashMap<>();
@@ -342,6 +382,9 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         return result;
     }
 
+    /**
+     * Recursively adds a comment and its children to the result list.
+     */
     private void addWithChildren(Comment parent, Map<String, List<Comment>> byParent, List<Comment> result, boolean forceLevel2) {
         if (forceLevel2) {
             parent.setThreadLevel(2);
@@ -364,6 +407,9 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         }
     }
 
+    /**
+     * Compares two comments by their creation timestamp.
+     */
     private int compareComments(Comment c1, Comment c2) {
         if (c1 == null && c2 == null) return 0;
         if (c1 == null) return -1;
@@ -376,6 +422,9 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         return c1.getCreatedAt().compareTo(c2.getCreatedAt());
     }
 
+    /**
+     * Updates the UI with parent comment data.
+     */
     private void bindParentComment(Comment comment) {
         if (comment == null) return;
 
@@ -391,7 +440,6 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
             textParentTime.setText("");
         }
 
-        // Load parent author avatar
         loadAuthorAvatar(comment, imageParentAvatar);
 
         reactionSummary.setVisibility(comment.getReactionCount() > 0 ? View.VISIBLE : View.GONE);
@@ -428,6 +476,9 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         buttonParentDelete.setVisibility(canDelete ? View.VISIBLE : View.GONE);
     }
 
+    /**
+     * Fetches the profile image of the comment author.
+     */
     private void loadAuthorAvatar(Comment comment, ImageView imageView) {
         String collection = "ORGANIZER".equalsIgnoreCase(comment.getAuthorType()) ? "organizers" : "entrants";
         db.collection(collection).document(comment.getAuthorId()).get().addOnSuccessListener(doc -> {
@@ -444,6 +495,9 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         }).addOnFailureListener(e -> imageView.setImageResource(R.drawable.ic_profile_avatar));
     }
 
+    /**
+     * Decodes and displays a Base64 encoded image.
+     */
     private void displayBase64Image(String base64, ImageView imageView) {
         try {
             byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
@@ -455,6 +509,9 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         }
     }
 
+    /**
+     * Colors the reaction card based on selection.
+     */
     private void setCardSelected(MaterialCardView card, boolean selected, int color, TextView countText) {
         if (selected) {
             card.setCardBackgroundColor(ColorStateList.valueOf(Color.parseColor("#FFFFFF")));
@@ -465,6 +522,10 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         }
     }
 
+    /**
+     * Sets the active reply target. If null, the user is replying to the parent comment.
+     * @param target The comment being replied to.
+     */
     private void setReplyTarget(Comment target) {
         activeReplyTarget = target;
 
@@ -481,6 +542,9 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         }
     }
 
+    /**
+     * Posts a new reply to Firestore.
+     */
     private void postReply() {
         String content = editTextReply.getText().toString().trim();
         if (TextUtils.isEmpty(content)) return;
@@ -503,8 +567,6 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         reply.setRootCommentId(parentCommentId);
 
         if (activeReplyTarget != null) {
-            // Reply any reply directly under that clicked reply.
-            // Visually all descendants stay in level 2.
             reply.setParentCommentId(activeReplyTarget.getCommentId());
             reply.setReplyToUserId(activeReplyTarget.getAuthorId());
             reply.setReplyToUserNameSnapshot(activeReplyTarget.getAuthorNameSnapshot());
@@ -519,6 +581,7 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         WriteBatch batch = db.batch();
         batch.set(replyRef, reply);
 
+        // Update parent comment reply count if it's a direct level 1 reply
         if (reply.getThreadLevel() == 1) {
             DocumentReference rootRef = db.collection("events")
                     .document(eventId)
@@ -545,6 +608,10 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
                 );
     }
 
+    /**
+     * Deletes a comment and its entire subtree of replies.
+     * @param comment The root of the subtree to delete.
+     */
     private void deleteComment(Comment comment) {
         if (comment == null) return;
 
@@ -578,6 +645,7 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
 
             int deletedLevel1Count = countDeletedLevel1Replies(idsToDelete);
 
+            // Update parent reply count if any top-level replies were deleted
             if (deletedLevel1Count > 0 && !TextUtils.equals(comment.getCommentId(), parentCommentId)) {
                 DocumentReference rootRef = db.collection("events")
                         .document(eventId)
@@ -603,6 +671,9 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         dialog.show();
     }
 
+    /**
+     * Recursively identifies all child comment IDs for deletion.
+     */
     private Set<String> collectSubtreeCommentIds(String startCommentId) {
         Set<String> result = new LinkedHashSet<>();
         if (TextUtils.isEmpty(startCommentId)) return result;
@@ -626,6 +697,9 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         return result;
     }
 
+    /**
+     * Counts how many level 1 replies are in the set of IDs to be deleted.
+     */
     private int countDeletedLevel1Replies(Set<String> idsToDelete) {
         int count = 0;
         for (Comment reply : replies) {
@@ -639,6 +713,9 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         return count;
     }
 
+    /**
+     * Toggles a reaction for a reply.
+     */
     private void toggleReaction(Comment comment, String type) {
         if (comment == null) return;
 

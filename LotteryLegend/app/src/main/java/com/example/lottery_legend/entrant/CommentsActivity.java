@@ -45,6 +45,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+/**
+ * Activity for displaying and managing top-level comments for a specific event.
+ * It allows users to post comments, reply to them, react with emojis, and delete their own comments.
+ */
 public class CommentsActivity extends AppCompatActivity {
 
     private String eventId;
@@ -68,6 +72,9 @@ public class CommentsActivity extends AppCompatActivity {
     private ListenerRegistration commentsRegistration;
     private ListenerRegistration reactionsRegistration;
 
+    /**
+     * Launcher for CommentThreadActivity to restart listeners upon return.
+     */
     private final ActivityResultLauncher<Intent> threadLauncher =
             registerForActivityResult(
                     new ActivityResultContracts.StartActivityForResult(),
@@ -92,6 +99,7 @@ public class CommentsActivity extends AppCompatActivity {
 
         db = FirebaseFirestore.getInstance();
 
+        // Retrieve intent extras
         eventId = getIntent().getStringExtra("eventId");
         deviceId = getIntent().getStringExtra("deviceId");
         authorName = getIntent().getStringExtra("authorName");
@@ -108,6 +116,7 @@ public class CommentsActivity extends AppCompatActivity {
             finish();
         }
 
+        // Setup common navigation bar
         NavbarEntrant.setup(this, deviceId, NavbarEntrant.Tab.HOME);
     }
 
@@ -125,6 +134,9 @@ public class CommentsActivity extends AppCompatActivity {
         stopRealtimeListeners();
     }
 
+    /**
+     * Initializes the views and sets up basic click listeners.
+     */
     private void setupViews() {
         Toolbar toolbar = findViewById(R.id.toolbarComments);
         setSupportActionBar(toolbar);
@@ -153,16 +165,25 @@ public class CommentsActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Starts real-time listeners for comments and user reactions.
+     */
     private void startRealtimeListeners() {
         stopRealtimeListeners();
         listenComments();
         listenCurrentUserReactions();
     }
 
+    /**
+     * Restarts the listeners.
+     */
     private void restartRealtimeListeners() {
         startRealtimeListeners();
     }
 
+    /**
+     * Stops all active Firestore listeners.
+     */
     private void stopRealtimeListeners() {
         if (commentsRegistration != null) {
             commentsRegistration.remove();
@@ -174,6 +195,9 @@ public class CommentsActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Listens for comment updates in the specific event sub-collection.
+     */
     private void listenComments() {
         commentsRegistration = db.collection("events")
                 .document(eventId)
@@ -185,6 +209,7 @@ public class CommentsActivity extends AppCompatActivity {
 
                     List<Comment> comments = value.toObjects(Comment.class);
 
+                    // Sort comments by creation time
                     Collections.sort(comments, (c1, c2) -> {
                         if (c1.getCreatedAt() == null && c2.getCreatedAt() == null) return 0;
                         if (c1.getCreatedAt() == null) return -1;
@@ -197,6 +222,7 @@ public class CommentsActivity extends AppCompatActivity {
 
                     rebuildDirectReplyCountMap(comments);
 
+                    // Filter only top-level comments for main list
                     List<Comment> parentComments = new ArrayList<>();
                     for (Comment comment : comments) {
                         if (comment.getThreadLevel() == 0) {
@@ -208,6 +234,10 @@ public class CommentsActivity extends AppCompatActivity {
                 });
     }
 
+    /**
+     * Maps root comment IDs to the number of direct replies.
+     * @param comments Full list of comments.
+     */
     private void rebuildDirectReplyCountMap(List<Comment> comments) {
         directReplyCountMap.clear();
 
@@ -226,6 +256,9 @@ public class CommentsActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Listens for reactions made by the current user across all comments in the collection group.
+     */
     private void listenCurrentUserReactions() {
         reactionsRegistration = db.collectionGroup("reactions")
                 .whereEqualTo("deviceId", deviceId)
@@ -248,6 +281,9 @@ public class CommentsActivity extends AppCompatActivity {
                 });
     }
 
+    /**
+     * Posts a new top-level comment to Firestore.
+     */
     private void postComment() {
         String content = editComment.getText().toString().trim();
         if (TextUtils.isEmpty(content)) return;
@@ -275,6 +311,9 @@ public class CommentsActivity extends AppCompatActivity {
         ref.set(comment).addOnSuccessListener(aVoid -> editComment.setText(""));
     }
 
+    /**
+     * Posts a reply to a specific comment.
+     */
     private void postReply() {
         String content = editComment.getText().toString().trim();
         if (TextUtils.isEmpty(content) || replyingTo == null) return;
@@ -316,6 +355,10 @@ public class CommentsActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Displays a delete confirmation dialog and deletes the comment if confirmed.
+     * @param comment The comment object to be deleted.
+     */
     private void deleteComment(Comment comment) {
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_comment_delete, null);
         AlertDialog dialog = new AlertDialog.Builder(this, R.style.TransparentDialog)
@@ -336,6 +379,12 @@ public class CommentsActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    /**
+     * Toggles a reaction (Like, Love, Helpful) for a specific comment.
+     * Uses a Firestore transaction to update counts atomically.
+     * @param comment The comment being reacted to.
+     * @param type The type of reaction.
+     */
     private void toggleReaction(Comment comment, String type) {
         DocumentReference commentRef = db.collection("events")
                 .document(eventId)
@@ -390,6 +439,9 @@ public class CommentsActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * RecyclerView adapter for top-level comments.
+     */
     private class CommentsAdapter extends RecyclerView.Adapter<CommentViewHolder> {
         private List<Comment> comments = new ArrayList<>();
 
@@ -417,6 +469,9 @@ public class CommentsActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * ViewHolder for individual comment items.
+     */
     private class CommentViewHolder extends RecyclerView.ViewHolder {
 
         ImageView imageAvatar;
@@ -523,6 +578,9 @@ public class CommentsActivity extends AppCompatActivity {
             cardHelpful.setOnClickListener(v -> toggleReaction(comment, "HELPFUL"));
         }
 
+        /**
+         * Fetches and displays the author's avatar from Firestore.
+         */
         private void loadAuthorAvatar(Comment comment) {
             String collection = "ORGANIZER".equalsIgnoreCase(comment.getAuthorType()) ? "organizers" : "entrants";
             db.collection(collection).document(comment.getAuthorId()).get().addOnSuccessListener(doc -> {
@@ -539,6 +597,9 @@ public class CommentsActivity extends AppCompatActivity {
             }).addOnFailureListener(e -> imageAvatar.setImageResource(R.drawable.ic_profile_avatar));
         }
 
+        /**
+         * Updates the reaction counts and user selected states in the UI.
+         */
         private void updateReactionUI(Comment comment) {
             reactionSummary.setVisibility(comment.getReactionCount() > 0 ? View.VISIBLE : View.GONE);
 
@@ -557,6 +618,9 @@ public class CommentsActivity extends AppCompatActivity {
             setCardSelected(cardHelpful, reaction != null && reaction.isHelpful(), Color.parseColor("#EAB308"), helpfulCount);
         }
 
+        /**
+         * Colors the reaction pill based on whether the current user has selected it.
+         */
         private void setCardSelected(MaterialCardView card, boolean selected, int color, TextView countText) {
             if (selected) {
                 card.setCardBackgroundColor(ColorStateList.valueOf(Color.parseColor("#FFFFFF")));
@@ -568,6 +632,9 @@ public class CommentsActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Decodes and displays a Base64 encoded image string into an ImageView.
+     */
     private void displayBase64Image(String base64, ImageView imageView) {
         try {
             byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
