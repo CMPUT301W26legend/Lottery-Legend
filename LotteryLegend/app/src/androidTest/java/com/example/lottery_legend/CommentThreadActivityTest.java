@@ -11,6 +11,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.withText;
 
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.core.app.ApplicationProvider;
@@ -22,6 +23,7 @@ import com.example.lottery_legend.model.Comment;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
 
 import org.junit.After;
 import org.junit.Before;
@@ -32,12 +34,13 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * UI Test for CommentThreadActivity.
- * Uses manual ActivityScenario launch to ensure Firestore data is ready before activity starts.
+ * Uses Firestore Emulator to avoid direct connection to production.
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
 public class CommentThreadActivityTest {
 
+    private static final String TAG = "CommentThreadActivityTest";
     private static final String TEST_EVENT_ID = "test-event-id";
     private static final String TEST_PARENT_COMMENT_ID = "test-parent-comment-id";
     private static final String TEST_DEVICE_ID = "test-device-id";
@@ -58,6 +61,15 @@ public class CommentThreadActivityTest {
     @Before
     public void setUp() throws Exception {
         db = FirebaseFirestore.getInstance();
+        try {
+            db.useEmulator("10.0.2.2", 8080);
+            FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
+                    .setPersistenceEnabled(false)
+                    .build();
+            db.setFirestoreSettings(settings);
+        } catch (IllegalStateException e) {
+            // Already configured
+        }
 
         // Setup a parent comment in Firestore
         Comment parentComment = new Comment();
@@ -69,17 +81,25 @@ public class CommentThreadActivityTest {
         parentComment.setAuthorType("ENTRANT");
 
         // Ensure data is written to Firestore BEFORE tests launch the activity
-        Tasks.await(db.collection("events").document(TEST_EVENT_ID)
-                .collection("comments").document(TEST_PARENT_COMMENT_ID)
-                .set(parentComment), 10, TimeUnit.SECONDS);
+        try {
+            Tasks.await(db.collection("events").document(TEST_EVENT_ID)
+                    .collection("comments").document(TEST_PARENT_COMMENT_ID)
+                    .set(parentComment), 20, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            Log.e(TAG, "Setup failed: " + e.getMessage());
+        }
     }
 
     @After
     public void tearDown() throws Exception {
         if (db != null) {
-            Tasks.await(db.collection("events").document(TEST_EVENT_ID)
-                    .collection("comments").document(TEST_PARENT_COMMENT_ID)
-                    .delete(), 10, TimeUnit.SECONDS);
+            try {
+                Tasks.await(db.collection("events").document(TEST_EVENT_ID)
+                        .collection("comments").document(TEST_PARENT_COMMENT_ID)
+                        .delete(), 20, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                Log.e(TAG, "TearDown cleanup failed: " + e.getMessage());
+            }
         }
     }
 

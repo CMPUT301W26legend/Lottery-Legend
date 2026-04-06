@@ -3,6 +3,7 @@ package com.example.lottery_legend;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.closeSoftKeyboard;
+import static androidx.test.espresso.action.ViewActions.replaceText;
 import static androidx.test.espresso.action.ViewActions.scrollTo;
 import static androidx.test.espresso.action.ViewActions.typeText;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
@@ -25,11 +26,18 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
 import com.example.lottery_legend.organizer.CreateEventActivity;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
 
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+/**
+ * UI Test for CreateEventActivity.
+ * Uses Firestore Emulator to avoid direct connection to production.
+ */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
 public class CreateEventActivityTest {
@@ -47,6 +55,20 @@ public class CreateEventActivityTest {
         return intent;
     }
 
+    @Before
+    public void setUp() {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        try {
+            db.useEmulator("10.0.2.2", 8080);
+            FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
+                    .setPersistenceEnabled(false)
+                    .build();
+            db.setFirestoreSettings(settings);
+        } catch (IllegalStateException e) {
+            // Already configured
+        }
+    }
+
     @Test
     public void testCreateEventActivityLaunch() {
         onView(withId(R.id.editTextEventTitle)).check(matches(isDisplayed()));
@@ -61,7 +83,9 @@ public class CreateEventActivityTest {
                 .perform(typeText("This is an automated test description."), closeSoftKeyboard());
 
         onView(withId(R.id.editTextPrice)).perform(scrollTo(), typeText("10.0"), closeSoftKeyboard());
-        onView(withId(R.id.editTextLocation)).perform(scrollTo(), typeText("Test Location"), closeSoftKeyboard());
+        
+        // Use replaceText for location to avoid triggering the Google Places Autocomplete Intent
+        onView(withId(R.id.editTextLocation)).perform(scrollTo(), replaceText("Test Location"));
 
         setDate(R.id.eventStartDateTime, 2025, 12, 1);
         setDate(R.id.eventEndDateTime, 2025, 12, 2);
