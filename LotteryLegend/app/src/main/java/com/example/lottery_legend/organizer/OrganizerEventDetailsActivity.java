@@ -71,7 +71,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
     private TextView textWaitingCount, textSelectedCount, textCapacity;
     private TextView textEventTitle, textEventStatus, tagCoOrganizer, textEventVisibility;
     private TextView textEventDate, textRegistrationDeadline, textLocation, textPrice;
-    private TextView textDescription, textLotteryGuidelines, textOrganizerName;
+    private TextView textDescription, textLotteryGuidelines, textOrganizerName, toolbarTitle;
     private LinearLayout organizerSection, layoutCoOrganizersContainer, layoutCoOrganizersList;
     private Button btnViewWaitingList, btnRunLotteryDraw, btnSendNotification, btnDeleteEvent, btnInviteEntrants;
     private ImageButton editIcon, updatePoster, commentIcon, mapIcon, shareIcon;
@@ -98,6 +98,12 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         deviceId = getIntent().getStringExtra("deviceId");
 
         initViews();
+
+        String intentTitle = getIntent().getStringExtra("eventTitle");
+        if (intentTitle != null && toolbarTitle != null) {
+            toolbarTitle.setText("Details: " + intentTitle);
+        }
+
         setupListeners();
         checkCoOrganizerStatus();
         fetchEventDetails();
@@ -141,6 +147,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
     private void initViews() {
         MaterialToolbar toolbar = findViewById(R.id.toolbarOrganizerDetails);
         toolbar.setNavigationOnClickListener(v -> finish());
+        toolbarTitle = findViewById(R.id.toolbarTitle);
 
         editIcon = findViewById(R.id.editIcon);
         updatePoster = findViewById(R.id.updatePoster);
@@ -346,6 +353,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity
         this.currentEvent = event;
 
         textEventTitle.setText(event.getTitle());
+        if (toolbarTitle != null) {
+            toolbarTitle.setText("Details: " + event.getTitle());
+        }
         textDescription.setText(event.getDescription());
         textCapacity.setText(String.valueOf(event.getCapacity()));
 
