@@ -152,6 +152,15 @@ public class AdminEventAdapter extends RecyclerView.Adapter<AdminEventAdapter.Ev
         });
     }
 
+    /**
+     * Updates the adapter's data set and refreshes the recycler view.
+     * @param newList The new list of events to display.
+     */
+    public void updateList(ArrayList<Event> newList) {
+        this.eventList = newList;
+        notifyDataSetChanged();
+    }
+
 
     @Override
     public int getItemCount() {

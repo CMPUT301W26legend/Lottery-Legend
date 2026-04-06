@@ -2,10 +2,8 @@ package com.example.lottery_legend;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
 
 import android.text.TextUtils;
 import android.text.format.DateUtils;
@@ -66,10 +64,17 @@ public class NotificationAdapterTest {
         notification.setTitle("Custom Title");
         assertEquals("Custom Title", method.invoke(null, notification, "TYPE"));
 
-        // Case: No title, specific type
+        // Case: No title, specific types
         notification.setTitle(null);
         assertEquals("Lottery Result", method.invoke(null, notification, "LOTTERY_WIN"));
+        assertEquals("Lottery Result", method.invoke(null, notification, "LOTTERY_LOSE"));
         assertEquals("Sign-up Invitation", method.invoke(null, notification, "SIGN_UP_MESSAGE"));
+        assertEquals("Waiting List Update", method.invoke(null, notification, "WAITLIST_MESSAGE"));
+        assertEquals("Selected Group Message", method.invoke(null, notification, "SELECTED_MESSAGE"));
+        assertEquals("Cancellation Update", method.invoke(null, notification, "CANCELLED_MESSAGE"));
+        assertEquals("Co-organizer Invitation", method.invoke(null, notification, "CO_ORGANIZER_INVITE"));
+        assertEquals("Private Event Invitation", method.invoke(null, notification, "PRIVATE_INVITE"));
+        assertEquals("General Notification", method.invoke(null, notification, "GENERIC_ANNOUNCEMENT"));
         assertEquals("Notification", method.invoke(null, notification, "UNKNOWN"));
     }
 
@@ -84,8 +89,15 @@ public class NotificationAdapterTest {
         // Case: SIGN_UP_MESSAGE with status ACCEPTED
         assertEquals("Invite • Accepted", method.invoke(null, notification, "SIGN_UP_MESSAGE", "ACCEPTED"));
         
+        // Case: SIGN_UP_MESSAGE with status DECLINED
+        assertEquals("Invite • Declined", method.invoke(null, notification, "SIGN_UP_MESSAGE", "DECLINED"));
+        
         // Case: Already has status
         notification.setMessage("Invite • Accepted");
         assertEquals("Invite • Accepted", method.invoke(null, notification, "SIGN_UP_MESSAGE", "ACCEPTED"));
+
+        // Case: Other type (should just return message)
+        notification.setMessage("Win!");
+        assertEquals("Win!", method.invoke(null, notification, "LOTTERY_WIN", "ANY"));
     }
 }

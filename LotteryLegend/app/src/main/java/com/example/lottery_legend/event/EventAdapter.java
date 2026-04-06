@@ -37,16 +37,16 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
      * ViewHolder class that holds the views for a single event card.
      * Reference: https://developer.android.com/develop/ui/views/layout/recyclerview#java
      */
-    static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView title;
-        TextView status;
-        TextView locationText;
-        TextView deadline;
-        TextView waitingCount;
-        LinearLayout locationRow;
-        Button joinButton;
-        ImageView posterImage;
-        LinearLayout cardContent;
+    public static class ViewHolder extends RecyclerView.ViewHolder {
+        public TextView title;
+        public TextView status;
+        public TextView locationText;
+        public TextView deadline;
+        public TextView waitingCount;
+        public LinearLayout locationRow;
+        public Button joinButton;
+        public ImageView posterImage;
+        public LinearLayout cardContent;
 
         /**
          * Constructs a ViewHolder and initializes all UI components.

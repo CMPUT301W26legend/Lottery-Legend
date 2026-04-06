@@ -1,15 +1,14 @@
 package com.example.lottery_legend;
 
 import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.spy;
 
 import android.content.Context;
 
 import com.example.lottery_legend.admin.AdminUserAdapter;
 import com.example.lottery_legend.model.Entrant;
+import com.example.lottery_legend.model.Organizer;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import org.junit.After;
@@ -48,5 +47,23 @@ public class AdminUserAdapterTest {
         Context context = mock(Context.class);
         AdminUserAdapter adapter = new AdminUserAdapter(context, new ArrayList<>());
         adapter.setCurrentCollection("organizers");
+        // Verify it doesn't crash
+    }
+
+    @Test
+    public void testMultipleUserTypes() {
+        Context context = mock(Context.class);
+        ArrayList<Object> userList = new ArrayList<>();
+        
+        Entrant e = new Entrant();
+        e.setName("Entrant");
+        userList.add(e);
+        
+        Organizer o = new Organizer();
+        o.setName("Organizer");
+        userList.add(o);
+        
+        AdminUserAdapter adapter = new AdminUserAdapter(context, userList);
+        assertEquals(2, adapter.getItemCount());
     }
 }
