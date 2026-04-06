@@ -40,6 +40,7 @@ import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.WriteBatch;
 
@@ -72,13 +73,14 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
     private TextView textEventTitle, textEventStatus, tagCoOrganizer, textEventVisibility;
     private TextView textEventDate, textRegistrationDeadline, textLocation, textPrice;
     private TextView textDescription, textLotteryGuidelines, textOrganizerName;
-    private LinearLayout organizerSection;
+    private LinearLayout organizerSection, layoutCoOrganizersContainer, layoutCoOrganizersList;
     private Button btnViewWaitingList, btnRunLotteryDraw, btnSendNotification, btnDeleteEvent, btnInviteEntrants;
     private ImageButton editIcon, updatePoster, commentIcon, mapIcon, shareIcon;
 
     private String currentPosterBase64;
     private String currentUserName;
     private Event currentEvent;
+    private boolean isCoOrganizer = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,10 +99,39 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
 
         initViews();
         setupListeners();
+        checkCoOrganizerStatus();
         fetchEventDetails();
         fetchCurrentUserName();
 
         NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.HISTORY);
+    }
+
+    private void checkCoOrganizerStatus() {
+        if (eventId == null || deviceId == null) return;
+        db.collection("events").document(eventId).collection("coOrganizers").document(deviceId).get()
+                .addOnSuccessListener(doc -> {
+                    if (doc.exists() && "ACCEPTED".equals(doc.getString("status"))) {
+                        isCoOrganizer = true;
+                        updatePermissionsUI();
+                    }
+                });
+    }
+
+    private void updatePermissionsUI() {
+        if (currentEvent == null) return;
+        
+        boolean isPrimary = deviceId != null && deviceId.equals(currentEvent.getOrganizerId());
+        
+        if (isPrimary) {
+            editIcon.setVisibility(View.VISIBLE);
+            updatePoster.setVisibility(View.VISIBLE);
+            btnDeleteEvent.setVisibility(View.VISIBLE);
+        } else {
+            // Hide for co-organizers and anyone else
+            editIcon.setVisibility(View.GONE);
+            updatePoster.setVisibility(View.GONE);
+            btnDeleteEvent.setVisibility(View.GONE);
+        }
     }
 
     private void initViews() {
@@ -130,12 +161,19 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         textLotteryGuidelines = findViewById(R.id.textLotteryGuidelines);
         textOrganizerName = findViewById(R.id.textOrganizerName);
         organizerSection = findViewById(R.id.organizerSection);
+        layoutCoOrganizersContainer = findViewById(R.id.layoutCoOrganizersContainer);
+        layoutCoOrganizersList = findViewById(R.id.layoutCoOrganizersList);
 
         btnViewWaitingList = findViewById(R.id.btnViewWaitingList);
         btnRunLotteryDraw = findViewById(R.id.btnRunLotteryDraw);
         btnSendNotification = findViewById(R.id.btnSendNotification);
         btnDeleteEvent = findViewById(R.id.btnDeleteEvent);
         btnInviteEntrants = findViewById(R.id.btnInviteEntrants);
+        
+        // Initially hide restricted icons until ownership is confirmed
+        editIcon.setVisibility(View.GONE);
+        updatePoster.setVisibility(View.GONE);
+        btnDeleteEvent.setVisibility(View.GONE);
     }
 
     private void setupListeners() {
@@ -303,6 +341,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
             });
         }
 
+        fetchCoOrganizers();
+        updatePermissionsUI();
+
         int waitingListSize = (event.getWaitingList() != null) ? event.getWaitingList().size() : 0;
         if (event.getMaxWaitingList() != null) {
             textWaitingCount.setText(String.format(Locale.getDefault(), "%d/%d", waitingListSize, event.getMaxWaitingList()));
@@ -371,6 +412,100 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         } else {
             eventPoster.setImageResource(R.drawable.img_poster);
         }
+    }
+
+    private void fetchCoOrganizers() {
+        if (eventId == null) return;
+
+        db.collection("events").document(eventId).collection("coOrganizers")
+                .whereEqualTo("status", "ACCEPTED")
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    layoutCoOrganizersList.removeAllViews();
+                    if (queryDocumentSnapshots.isEmpty()) {
+                        layoutCoOrganizersContainer.setVisibility(View.GONE);
+                    } else {
+                        layoutCoOrganizersContainer.setVisibility(View.VISIBLE);
+                        for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                            String coOrgId = doc.getString("deviceId");
+                            if (coOrgId != null) {
+                                addCoOrganizerToView(coOrgId);
+                            }
+                        }
+                    }
+                });
+    }
+
+    private void addCoOrganizerToView(String coOrgId) {
+        db.collection("organizers").document(coOrgId).get().addOnSuccessListener(doc -> {
+            if (doc.exists()) {
+                View view = LayoutInflater.from(this).inflate(R.layout.item_co_organizer_display, layoutCoOrganizersList, false);
+                TextView nameText = view.findViewById(R.id.textCoOrganizerName);
+                ImageView avatar = view.findViewById(R.id.imageCoOrganizerAvatar);
+                ImageButton btnRemove = view.findViewById(R.id.btnRemoveCoOrganizer);
+
+                String name = doc.getString("name");
+                nameText.setText(name);
+                String profileImage = doc.getString("profileImage");
+                if (profileImage != null && !profileImage.isEmpty()) {
+                    displayBase64Image(profileImage, avatar);
+                } else {
+                    avatar.setImageResource(R.drawable.ic_profile_avatar);
+                }
+
+                // Only the primary organizer can remove co-organizers
+                if (currentEvent != null && deviceId.equals(currentEvent.getOrganizerId())) {
+                    btnRemove.setVisibility(View.VISIBLE);
+                    btnRemove.setOnClickListener(v -> showRemoveCoOrganizerConfirmation(coOrgId, name));
+                } else {
+                    btnRemove.setVisibility(View.GONE);
+                }
+
+                view.setOnClickListener(v -> {
+                    Intent intent = new Intent(this, com.example.lottery_legend.entrant.ProfileActivity.class);
+                    intent.putExtra("deviceId", coOrgId);
+                    intent.putExtra("isReadOnly", true);
+                    intent.putExtra("isOrganizerMode", true);
+                    startActivity(intent);
+                });
+
+                layoutCoOrganizersList.addView(view);
+            }
+        });
+    }
+
+    private void showRemoveCoOrganizerConfirmation(String coOrgId, String name) {
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_remove_co_organizer, null);
+        AlertDialog dialog = new AlertDialog.Builder(this, R.style.CustomAlertDialog)
+                .setView(dialogView)
+                .create();
+
+        TextView title = dialogView.findViewById(R.id.textRemoveTitle);
+        TextView message = dialogView.findViewById(R.id.textRemoveMessage);
+        Button btnCancel = dialogView.findViewById(R.id.btnCancelRemove);
+        Button btnConfirm = dialogView.findViewById(R.id.btnConfirmRemove);
+
+        title.setText("Remove Co-organizer");
+        message.setText("Are you sure you want to remove " + name + " as a co-organizer?");
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        btnConfirm.setOnClickListener(v -> {
+            removeCoOrganizer(coOrgId);
+            dialog.dismiss();
+        });
+
+        dialog.show();
+    }
+
+    private void removeCoOrganizer(String coOrgId) {
+        if (eventId == null) return;
+        db.collection("events").document(eventId).collection("coOrganizers").document(coOrgId)
+                .delete()
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, "Co-organizer removed", Toast.LENGTH_SHORT).show();
+                    fetchCoOrganizers();
+                })
+                .addOnFailureListener(e -> Toast.makeText(this, "Error removing co-organizer", Toast.LENGTH_SHORT).show());
     }
 
     private void displayBase64Image(String base64, ImageView imageView) {

@@ -36,6 +36,7 @@ import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.text.SimpleDateFormat;
 import java.util.List;
@@ -67,6 +68,8 @@ public class EventDetailsActivity extends AppCompatActivity {
     private TextView tagPrivate;
     private LinearLayout layoutOrganizerProfile;
     private LinearLayout layoutLotteryResponse;
+    private LinearLayout layoutCoOrganizersContainer;
+    private LinearLayout layoutCoOrganizersList;
     private MaterialButton btnJoinWaitingList, btnAcceptInvitation, btnDeclineInvitation;
     private ImageButton shareIcon;
     private ImageButton commentIcon;
@@ -131,6 +134,8 @@ public class EventDetailsActivity extends AppCompatActivity {
         tagPrivate = findViewById(R.id.tagPrivate);
         layoutOrganizerProfile = findViewById(R.id.layoutOrganizerProfile);
         layoutLotteryResponse = findViewById(R.id.layoutLotteryResponse);
+        layoutCoOrganizersContainer = findViewById(R.id.layoutCoOrganizersContainer);
+        layoutCoOrganizersList = findViewById(R.id.layoutCoOrganizersList);
         btnJoinWaitingList = findViewById(R.id.btnJoinWaitingList);
         btnAcceptInvitation = findViewById(R.id.btnAcceptInvitation);
         btnDeclineInvitation = findViewById(R.id.btnDeclineInvitation);
@@ -249,6 +254,7 @@ public class EventDetailsActivity extends AppCompatActivity {
         organizerId = event.getOrganizerId();
 
         fetchOrganizerData(organizerId);
+        fetchCoOrganizers();
         setupNotificationBadge();
 
         Event.EventLocation loc = event.getEventLocation();
@@ -333,6 +339,56 @@ public class EventDetailsActivity extends AppCompatActivity {
         } else {
             posterImage.setImageResource(R.drawable.img_poster);
         }
+    }
+
+    private void fetchCoOrganizers() {
+        if (eventId == null) return;
+
+        db.collection("events").document(eventId).collection("coOrganizers")
+                .whereEqualTo("status", "ACCEPTED")
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    layoutCoOrganizersList.removeAllViews();
+                    if (queryDocumentSnapshots.isEmpty()) {
+                        layoutCoOrganizersContainer.setVisibility(View.GONE);
+                    } else {
+                        layoutCoOrganizersContainer.setVisibility(View.VISIBLE);
+                        for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                            String coOrgId = doc.getString("deviceId");
+                            if (coOrgId != null) {
+                                addCoOrganizerToView(coOrgId);
+                            }
+                        }
+                    }
+                });
+    }
+
+    private void addCoOrganizerToView(String coOrgId) {
+        db.collection("organizers").document(coOrgId).get().addOnSuccessListener(doc -> {
+            if (doc.exists()) {
+                View view = LayoutInflater.from(this).inflate(R.layout.item_co_organizer_display, layoutCoOrganizersList, false);
+                TextView nameText = view.findViewById(R.id.textCoOrganizerName);
+                ImageView avatar = view.findViewById(R.id.imageCoOrganizerAvatar);
+
+                nameText.setText(doc.getString("name"));
+                String profileImage = doc.getString("profileImage");
+                if (profileImage != null && !profileImage.isEmpty()) {
+                    displayBase64Image(profileImage, avatar);
+                } else {
+                    avatar.setImageResource(R.drawable.ic_profile_avatar);
+                }
+
+                view.setOnClickListener(v -> {
+                    Intent intent = new Intent(this, ProfileActivity.class);
+                    intent.putExtra("deviceId", coOrgId);
+                    intent.putExtra("isReadOnly", true);
+                    intent.putExtra("isOrganizerMode", true);
+                    startActivity(intent);
+                });
+
+                layoutCoOrganizersList.addView(view);
+            }
+        });
     }
 
     private void updateStatusUI(Event event, boolean isJoined, String participationStatus) {

@@ -591,9 +591,35 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
                             android:text="view profile"
-                            android:textColor="#6B7280"
+                            android:textColor="#3B82F6"
                             android:textSize="12sp" />
                     </LinearLayout>
+                </LinearLayout>
+
+                <!-- Co-organizers Section -->
+                <LinearLayout
+                    android:id="@+id/layoutCoOrganizersContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Co-organizers"
+                        android:textColor="#111827"
+                        android:textSize="20sp"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:id="@+id/layoutCoOrganizersList"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:orientation="vertical" />
                 </LinearLayout>
 
                 <!-- Buttons -->

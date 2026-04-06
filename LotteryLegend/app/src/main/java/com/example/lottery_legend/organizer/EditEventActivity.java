@@ -81,6 +81,7 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
     private String currentPosterBase64;
     private Double selectedLat = null;
     private Double selectedLng = null;
+    private String primaryOrganizerId = null;
 
     private final ActivityResultLauncher<Intent> mapPickerLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -210,6 +211,7 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
         db.collection("events").document(eventId).get().addOnSuccessListener(documentSnapshot -> {
             Event event = documentSnapshot.toObject(Event.class);
             if (event != null) {
+                primaryOrganizerId = event.getOrganizerId();
                 editTextEventTitle.setText(event.getTitle());
                 editTextDescription.setText(event.getDescription());
                 if (event.getEventLocation() != null) {
@@ -355,7 +357,9 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
 
             WriteBatch batch = db.batch();
             batch.update(db.collection("events").document(eventId), updates);
-            batch.update(db.collection("organizers").document(deviceId).collection("createdEvents").document(eventId), updates);
+            if (primaryOrganizerId != null) {
+                batch.update(db.collection("organizers").document(primaryOrganizerId).collection("createdEvents").document(eventId), updates);
+            }
 
             batch.commit()
                     .addOnSuccessListener(aVoid -> {

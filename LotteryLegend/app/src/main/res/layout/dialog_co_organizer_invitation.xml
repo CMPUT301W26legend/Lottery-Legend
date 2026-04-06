@@ -26,7 +26,7 @@
                 android:layout_alignParentEnd="true"
                 android:contentDescription="Close"
                 android:src="@drawable/ic_close"
-                android:tint="#4B5563" />
+                app:tint="#4B5563" />
 
             <TextView
                 android:id="@+id/tvDialogTitle"

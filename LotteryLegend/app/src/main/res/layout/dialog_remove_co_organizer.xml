@@ -20,22 +20,22 @@
         android:paddingBottom="14dp">
 
         <TextView
-            android:id="@+id/textPromoteTitle"
+            android:id="@+id/textRemoveTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="Promote to Co-organizer"
+            android:text="Remove Co-organizer"
             android:textColor="#111827"
             android:textSize="18sp"
             android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/textPromoteMessage"
+            android:id="@+id/textRemoveMessage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             android:gravity="start"
-            android:text="This user will become a co-organizer and will be removed from the waiting list."
+            android:text="Are you sure you want to remove this co-organizer?"
             android:textColor="#6B7280"
             android:textSize="14sp" />
 
@@ -47,7 +47,7 @@
             android:weightSum="2">
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonCancelPromote"
+                android:id="@+id/btnCancelRemove"
                 android:layout_width="0dp"
                 android:layout_height="40dp"
                 android:layout_marginEnd="6dp"
@@ -64,18 +64,18 @@
                 app:strokeWidth="0dp" />
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonConfirmPromote"
+                android:id="@+id/btnConfirmRemove"
                 android:layout_width="0dp"
                 android:layout_height="40dp"
                 android:layout_marginStart="6dp"
                 android:layout_weight="1"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                android:text="Promote"
+                android:text="Remove"
                 android:textAllCaps="false"
                 android:textColor="@android:color/white"
                 android:textSize="15sp"
-                app:backgroundTint="#2563EB"
+                app:backgroundTint="#EF2B2D"
                 app:cornerRadius="8dp"
                 app:elevation="0dp"
                 app:strokeWidth="0dp" />
