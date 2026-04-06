@@ -119,7 +119,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         textEventTitle = findViewById(R.id.textEventTitle);
         tagCoOrganizer = findViewById(R.id.tagCoOrganizer);
         textEventStatus = findViewById(R.id.textEventStatus);
-        textEventVisibility = findViewById(R.id.textEventVisibility);
+        textEventVisibility = findViewById(R.id.tagPrivate);
         textEventDate = findViewById(R.id.textEventDate);
         textRegistrationDeadline = findViewById(R.id.textRegistrationDeadline);
         textLocation = findViewById(R.id.textLocation);

@@ -36,6 +36,7 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
         TextView waiting;
         TextView selected;
         TextView tagCoOrganizer;
+        TextView tagPrivate;
 
         /**
          * Initializes the UI components from the inflated layout.
@@ -49,6 +50,7 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
             waiting = itemView.findViewById(R.id.waiting);
             selected = itemView.findViewById(R.id.selected);
             tagCoOrganizer = itemView.findViewById(R.id.tagCoOrganizer);
+            tagPrivate = itemView.findViewById(R.id.tagPrivate);
         }
     }
 
@@ -95,6 +97,13 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
         } else {
             holder.tagCoOrganizer.setVisibility(View.GONE);
         }
+
+        // Show private tag if the event is private
+        if (event.isIsPrivateEvent()) {
+            holder.tagPrivate.setVisibility(View.VISIBLE);
+        } else {
+            holder.tagPrivate.setVisibility(View.GONE);
+        }
         
         String deadlineStr = "";
         Timestamp registrationEndAt = event.getRegistrationEndAt();
@@ -132,8 +141,8 @@ public class OrganizerEventAdapter extends RecyclerView.Adapter<OrganizerEventAd
         if (event.getEventStartAt() != null && event.getEventStartAt().compareTo(now) < 0) {
             statusView.setText("CLOSED");
             statusView.setTextColor(Color.parseColor("#9CA3AF"));
-        } else if ("drawed".equals(status)) {
-            statusView.setText("DRAWED");
+        } else if ("drawed".equals(status) || "drawn".equals(status)) {
+            statusView.setText("DRAWN");
             statusView.setTextColor(Color.parseColor("#F57C00"));
         } else {
             statusView.setText("ACTIVE");

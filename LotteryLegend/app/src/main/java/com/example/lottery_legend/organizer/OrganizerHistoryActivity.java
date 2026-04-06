@@ -2,7 +2,6 @@ package com.example.lottery_legend.organizer;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.Button;
 
 import androidx.activity.EdgeToEdge;
@@ -18,6 +17,7 @@ import com.example.lottery_legend.model.Event;
 import com.google.android.material.tabs.TabLayout;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
@@ -108,9 +108,10 @@ public class OrganizerHistoryActivity extends AppCompatActivity {
         eventList.clear();
         adapter.notifyDataSetChanged();
 
-        currentListener = db.collection("organizers")
-                .document(deviceId)
-                .collection("createdEvents")
+        // Query the main events collection directly to get real-time status updates
+        currentListener = db.collection("events")
+                .whereEqualTo("organizerId", deviceId)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
                 .addSnapshotListener((value, error) -> {
                     if (error != null) return;
                     eventList.clear();
@@ -130,6 +131,8 @@ public class OrganizerHistoryActivity extends AppCompatActivity {
         eventList.clear();
         adapter.notifyDataSetChanged();
 
+        // For co-organizers, we still need to check the sub-collections or use a collection group query
+        // For now, we'll listen to events where the user is listed as a co-organizer
         currentListener = db.collection("events")
                 .addSnapshotListener((value, error) -> {
                     if (error != null) return;

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
@@ -30,12 +31,32 @@
                 android:textColor="#22C55E"
                 android:textSize="12sp" />
 
+            <!-- Private tag -->
+            <TextView
+                android:id="@+id/tagPrivate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@id/status"
+                android:layout_marginEnd="8dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:text="PRIVATE"
+                android:textAllCaps="true"
+                android:textColor="#DC2626"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_tag_co_organizer"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
             <!-- Co-organizer badge -->
             <TextView
                 android:id="@+id/tagCoOrganizer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_toStartOf="@id/status"
+                android:layout_toStartOf="@id/tagPrivate"
                 android:layout_marginEnd="8dp"
                 android:paddingStart="6dp"
                 android:paddingEnd="6dp"

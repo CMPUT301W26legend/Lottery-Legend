@@ -264,11 +264,12 @@
 
                     <TextView
                         android:id="@+id/textEventTitle"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_weight="1"
                         android:text="Summer Music Festival"
                         android:textColor="#111827"
-                        android:textSize="18sp"
+                        android:textSize="20sp"
                         android:textStyle="bold" />
 
                     <!-- Co-organizer Tag -->
@@ -288,17 +289,22 @@
                         android:visibility="gone"
                         tools:visibility="visible" />
 
+                    <!-- Private Tag -->
                     <TextView
-                        android:id="@+id/textEventVisibility"
+                        android:id="@+id/tagPrivate"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
-                        android:layout_marginTop="1dp"
-                        android:text="private"
+                        android:background="@drawable/bg_tag_co_organizer"
+                        android:paddingHorizontal="8dp"
+                        android:paddingVertical="4dp"
+                        android:text="PRIVATE"
+                        android:textAllCaps="true"
                         android:textColor="#DC2626"
                         android:textSize="10sp"
                         android:textStyle="bold"
-                        android:visibility="gone"/>
+                        android:visibility="gone"
+                        tools:visibility="visible" />
 
 
                 </LinearLayout>

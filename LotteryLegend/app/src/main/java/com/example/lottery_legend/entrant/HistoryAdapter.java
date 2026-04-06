@@ -73,6 +73,13 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
             holder.textLotteryDraw.setText("Lottery draw: TBD");
         }
 
+        // Show private tag if the event is private
+        if (event.isIsPrivateEvent()) {
+            holder.tagPrivate.setVisibility(View.VISIBLE);
+        } else {
+            holder.tagPrivate.setVisibility(View.GONE);
+        }
+
         // Open details on click
         holder.itemView.setOnClickListener(v -> {
             Intent intent = new Intent(v.getContext(), EventDetailsActivity.class);
@@ -159,7 +166,7 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView textEventTitle, textStatus, textDateRange, textLotteryDraw;
+        TextView textEventTitle, textStatus, textDateRange, textLotteryDraw, tagPrivate;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -167,6 +174,7 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
             textStatus = itemView.findViewById(R.id.textStatus);
             textDateRange = itemView.findViewById(R.id.textDateRange);
             textLotteryDraw = itemView.findViewById(R.id.textLotteryDraw);
+            tagPrivate = itemView.findViewById(R.id.tagPrivate);
         }
     }
 }
