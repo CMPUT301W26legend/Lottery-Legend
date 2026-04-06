@@ -49,7 +49,7 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapte
         return notifications.size();
     }
 
-    static class NotificationViewHolder extends RecyclerView.ViewHolder {
+    public static class NotificationViewHolder extends RecyclerView.ViewHolder {
         private final TextView tvTitle;
         private final TextView tvMessage;
         private final TextView tvEventName;
@@ -102,7 +102,7 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapte
             itemView.setOnClickListener(v -> listener.onNotificationClick(notification));
         }
 
-        private String resolveTitle(Notification notification, String type) {
+        private static String resolveTitle(Notification notification, String type) {
             if (!TextUtils.isEmpty(notification.getTitle())) {
                 return notification.getTitle();
             }
@@ -138,7 +138,7 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapte
             }
         }
 
-        private String resolveMessage(Notification notification, String type, String actionStatus) {
+        private static String resolveMessage(Notification notification, String type, String actionStatus) {
             String originalMessage = notification.getMessage() != null ? notification.getMessage() : "";
 
             switch (type) {
@@ -164,7 +164,7 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapte
             }
         }
 
-        private String appendStatusIfNeeded(String message, String status) {
+        private static String appendStatusIfNeeded(String message, String status) {
             if (TextUtils.isEmpty(message)) {
                 return status;
             }

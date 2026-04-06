@@ -109,7 +109,7 @@ public class WaitingListAdapter extends RecyclerView.Adapter<WaitingListAdapter.
         }
     }
 
-    private void updateStatusUI(ViewHolder holder, String status) {
+    public void updateStatusUI(ViewHolder holder, String status) {
         switch (status) {
             case "waiting":
                 holder.textStatus.setText("Waiting");
@@ -160,9 +160,9 @@ public class WaitingListAdapter extends RecyclerView.Adapter<WaitingListAdapter.
         return users.size();
     }
 
-    static class ViewHolder extends RecyclerView.ViewHolder {
-        ImageView imageProfile;
-        TextView textName, textStatus, textJoinedTime, textPromote;
+    public static class ViewHolder extends RecyclerView.ViewHolder {
+        public ImageView imageProfile;
+        public TextView textName, textStatus, textJoinedTime, textPromote;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
