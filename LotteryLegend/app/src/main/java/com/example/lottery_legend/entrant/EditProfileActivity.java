@@ -181,7 +181,7 @@ public class EditProfileActivity extends AppCompatActivity {
     private void saveProfileData() {
         String name = editTextName.getText().toString().trim();
         String email = editTextEmail.getText().toString().trim();
-        String phone = editTextPhone.getText().toString().trim();
+        String phoneRaw = editTextPhone.getText().toString().trim();
 
         if (name.isEmpty() || email.isEmpty()) {
             Toast.makeText(this, "Please fill in Name and Email", Toast.LENGTH_SHORT).show();
@@ -193,16 +193,27 @@ public class EditProfileActivity extends AppCompatActivity {
             return;
         }
 
-        if (!phone.isEmpty() && !isValidCAPhone(phone)) {
-            editTextPhone.setError("Invalid Canadian phone format (e.g., 123-456-7890)");
-            return;
+        String phoneFormatted = phoneRaw;
+        if (!phoneRaw.isEmpty()) {
+            // Remove all non-digit characters to check count
+            String digits = phoneRaw.replaceAll("\\D", "");
+            if (digits.length() == 10) {
+                // Auto-apply CA format: XXX-XXX-XXXX
+                phoneFormatted = digits.substring(0, 3) + "-" + digits.substring(3, 6) + "-" + digits.substring(6);
+                editTextPhone.setText(phoneFormatted);
+            }
+
+            if (!isValidCAPhone(phoneFormatted)) {
+                editTextPhone.setError("Invalid Canadian phone format (e.g., 123-456-7890)");
+                return;
+            }
         }
 
         String collection = isOrganizerMode ? "organizers" : "entrants";
         db.collection(collection).document(deviceId)
                 .update("name", name,
                         "email", email,
-                        "phone", phone,
+                        "phone", phoneFormatted,
                         "profileImage", profileImageBase64,
                         "updatedAt", Timestamp.now())
                 .addOnSuccessListener(aVoid -> {

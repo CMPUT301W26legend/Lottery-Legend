@@ -88,7 +88,7 @@ public class CreateProfileActivity extends AppCompatActivity {
         saveButton.setOnClickListener(v -> {
             String name = nameEditText.getText().toString().trim();
             String email = emailEditText.getText().toString().trim();
-            String phone = phoneEditText.getText().toString().trim();
+            String phoneRaw = phoneEditText.getText().toString().trim();
             boolean notification = switchNotification.isChecked();
 
             if (name.isEmpty() || email.isEmpty()) {
@@ -101,13 +101,24 @@ public class CreateProfileActivity extends AppCompatActivity {
                 return;
             }
 
-            if (!phone.isEmpty() && !isValidCAPhone(phone)) {
-                phoneEditText.setError("Invalid Canadian phone format (e.g., 123-456-7890)");
-                return;
+            String phoneFormatted = phoneRaw;
+            if (!phoneRaw.isEmpty()) {
+                // Remove all non-digit characters to check count
+                String digits = phoneRaw.replaceAll("\\D", "");
+                if (digits.length() == 10) {
+                    // Auto-apply CA format: XXX-XXX-XXXX
+                    phoneFormatted = digits.substring(0, 3) + "-" + digits.substring(3, 6) + "-" + digits.substring(6);
+                    phoneEditText.setText(phoneFormatted);
+                }
+
+                if (!isValidCAPhone(phoneFormatted)) {
+                    phoneEditText.setError("Invalid phone format. Please use 10 digits (e.g., 123-456-7890)");
+                    return;
+                }
             }
             
             Timestamp now = Timestamp.now();
-            Entrant user = new Entrant(deviceId, name, email, phone, notification, now, now, false, profileImageBase64);
+            Entrant user = new Entrant(deviceId, name, email, phoneFormatted, notification, now, now, false, profileImageBase64);
 
             // Add a new document with a generated ID
             db.collection("entrants").document(deviceId).set(user)
@@ -125,9 +136,8 @@ public class CreateProfileActivity extends AppCompatActivity {
     }
 
     private boolean isValidCAPhone(String phone) {
-        // Regex for Canadian phone formats: 1234567890, 123-456-7890, (123) 456-7890, etc.
-        String regex = "^(\\+?1)?[2-9]\\d{2}[2-9]\\d{2}\\d{4}$" +
-                "|^(\\+?1)?\\s*\\(?([2-9]\\d{2})\\)?[-.\\s]?([2-9]\\d{2})[-.\\s]?(\\d{4})$";
+        // Inclusive regex for common phone formats, allowing 1 as first digit for testing
+        String regex = "^(\\+?1)?[\\s.-]?\\(?\\d{3}\\)?[\\s.-]?\\d{3}[\\s.-]?\\d{4}$";
         return Pattern.compile(regex).matcher(phone).matches();
     }
 
