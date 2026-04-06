@@ -21,14 +21,19 @@ import java.util.Locale;
 import java.util.Objects;
 
 /**
- * Adapter for displaying entrant's event participation history.
- * Binds existing Event model data directly to the card layout.
+ * Adapter for the RecyclerView displaying an entrant's event history.
+ * Binds event data to card views and handles navigation to event details.
  */
 public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHolder> {
 
     private List<Event> eventList;
     private final String currentDeviceId;
 
+    /**
+     * Constructs a new HistoryAdapter.
+     * @param eventList       List of events to display.
+     * @param deviceId        Unique identifier for the user's device.
+     */
     public HistoryAdapter(List<Event> eventList, String deviceId) {
         this.eventList = eventList;
         this.currentDeviceId = deviceId;
@@ -36,6 +41,7 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
 
     /**
      * Updates the data set and refreshes the RecyclerView.
+     * @param newList The new list of events.
      */
     public void updateList(List<Event> newList) {
         this.eventList = newList;
@@ -45,7 +51,6 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        // history_card_content.xml is the merged layout with MaterialCardView as root
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.history_card_content, parent, false);
         return new ViewHolder(view);
     }
@@ -58,13 +63,12 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
         holder.textEventTitle.setText(event.getTitle());
         holder.textStatus.setText(entrantStatus);
 
-        // Set status color based on computed status text
+        // Apply specific text color based on participation status
         holder.textStatus.setTextColor(getStatusColor(entrantStatus));
 
-        // Format Date Range
         holder.textDateRange.setText(formatEventDateRange(event));
 
-        // Format Lottery Draw Date
+        // Display lottery draw date or TBD if not set
         if (event.getDrawAt() != null) {
             SimpleDateFormat sdf = new SimpleDateFormat("MMMM d, yyyy", Locale.getDefault());
             String drawDate = "Lottery draw: " + sdf.format(event.getDrawAt().toDate());
@@ -73,7 +77,14 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
             holder.textLotteryDraw.setText("Lottery draw: TBD");
         }
 
-        // Open details on click
+        // Toggle visibility of the "Private" tag based on event visibility
+        if (event.isIsPrivateEvent()) {
+            holder.tagPrivate.setVisibility(View.VISIBLE);
+        } else {
+            holder.tagPrivate.setVisibility(View.GONE);
+        }
+
+        // Navigate to details page when an item is clicked
         holder.itemView.setOnClickListener(v -> {
             Intent intent = new Intent(v.getContext(), EventDetailsActivity.class);
             intent.putExtra("eventId", event.getEventId());
@@ -88,18 +99,27 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
     }
 
     /**
-     * Determines the specific status string for the current entrant in the given event.
+     * Computes the display status for an entrant within a specific event.
+     * Maps internal participation codes to user-friendly strings.
+     *
+     * @param event The event to check.
+     * @return A localized status string (e.g., "Waiting", "Accepted").
      */
     private String determineEntrantStatus(Event event) {
         if (event.getWaitingList() == null) return "Waiting";
 
         for (Event.WaitingListEntry entry : event.getWaitingList()) {
             if (Objects.equals(entry.getDeviceId(), currentDeviceId)) {
+                if ("LOSS".equalsIgnoreCase(entry.getFinalResult())) {
+                    return "Not Selected";
+                }
+
                 String fsStatus = entry.getParticipationStatus();
                 if (fsStatus == null) return "Waiting";
 
                 switch (fsStatus.toLowerCase()) {
                     case "waiting": return "Waiting";
+                    case "selected":
                     case "invited": return "Waiting Response";
                     case "accepted":
                     case "enrolled": return "Accepted";
@@ -114,15 +134,18 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
         return "Waiting";
     }
 
+    /**
+     * Returns the appropriate Color for a given status string.
+     */
     private int getStatusColor(String displayStatus) {
         switch (displayStatus) {
             case "Waiting":
             case "Waiting Response":
-                return Color.parseColor("#F59E0B"); // Amber/Orange
+                return Color.parseColor("#F59E0B"); // Amber
             case "Accepted":
                 return Color.parseColor("#10B981"); // Green
             case "Not Selected":
-                return Color.parseColor("#6B7280"); // Gray
+                return Color.parseColor("#9CA3AF"); // Gray
             case "Cancelled":
             case "Declined":
                 return Color.parseColor("#EF4444"); // Red
@@ -131,6 +154,9 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
         }
     }
 
+    /**
+     * Formats the event's start and end dates into a readable range string.
+     */
     private String formatEventDateRange(Event event) {
         Timestamp start = event.getEventStartAt();
         Timestamp end = event.getEventEndAt();
@@ -158,8 +184,11 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
         return result;
     }
 
+    /**
+     * ViewHolder for history event items.
+     */
     static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView textEventTitle, textStatus, textDateRange, textLotteryDraw;
+        TextView textEventTitle, textStatus, textDateRange, textLotteryDraw, tagPrivate;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -167,6 +196,7 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
             textStatus = itemView.findViewById(R.id.textStatus);
             textDateRange = itemView.findViewById(R.id.textDateRange);
             textLotteryDraw = itemView.findViewById(R.id.textLotteryDraw);
+            tagPrivate = itemView.findViewById(R.id.tagPrivate);
         }
     }
 }

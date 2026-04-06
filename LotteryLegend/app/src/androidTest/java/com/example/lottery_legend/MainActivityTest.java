@@ -25,6 +25,8 @@ import com.example.lottery_legend.entrant.MainActivity;
 import com.example.lottery_legend.entrant.ProfileActivity;
 import com.example.lottery_legend.event.WaitingListDialogFragment;
 import com.example.lottery_legend.model.Event;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
 
 import org.junit.After;
 import org.junit.Before;
@@ -36,7 +38,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * UI tests for MainActivity, including dialog interactions and navigation.
+ * UI tests for MainActivity.
+ * Uses Firestore Emulator to avoid direct connection to production.
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
@@ -58,6 +61,16 @@ public class MainActivityTest {
     @Before
     public void setUp() {
         Intents.init();
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        try {
+            db.useEmulator("10.0.2.2", 8080);
+            FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
+                    .setPersistenceEnabled(false)
+                    .build();
+            db.setFirestoreSettings(settings);
+        } catch (IllegalStateException e) {
+            // Already configured
+        }
     }
 
     @After

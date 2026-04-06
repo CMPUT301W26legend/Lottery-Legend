@@ -264,24 +264,13 @@
 
                     <TextView
                         android:id="@+id/textEventTitle"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_weight="1"
                         android:text="Summer Music Festival"
                         android:textColor="#111827"
-                        android:textSize="18sp"
+                        android:textSize="20sp"
                         android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/textEventVisibility"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="6dp"
-                        android:layout_marginTop="1dp"
-                        android:text="private"
-                        android:textColor="#DC2626"
-                        android:textSize="10sp"
-                        android:textStyle="bold"
-                        android:visibility="gone" />
 
                     <!-- Co-organizer Tag -->
                     <TextView
@@ -299,6 +288,25 @@
                         android:textStyle="bold"
                         android:visibility="gone"
                         tools:visibility="visible" />
+
+                    <!-- Private Tag -->
+                    <TextView
+                        android:id="@+id/tagPrivate"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:background="@drawable/bg_tag_co_organizer"
+                        android:paddingHorizontal="8dp"
+                        android:paddingVertical="4dp"
+                        android:text="PRIVATE"
+                        android:textAllCaps="true"
+                        android:textColor="#DC2626"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:visibility="gone"
+                        tools:visibility="visible" />
+
+
                 </LinearLayout>
 
                 <TextView
@@ -583,9 +591,35 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
                             android:text="view profile"
-                            android:textColor="#6B7280"
+                            android:textColor="#3B82F6"
                             android:textSize="12sp" />
                     </LinearLayout>
+                </LinearLayout>
+
+                <!-- Co-organizers Section -->
+                <LinearLayout
+                    android:id="@+id/layoutCoOrganizersContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Co-organizers"
+                        android:textColor="#111827"
+                        android:textSize="20sp"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:id="@+id/layoutCoOrganizersList"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:orientation="vertical" />
                 </LinearLayout>
 
                 <!-- Buttons -->

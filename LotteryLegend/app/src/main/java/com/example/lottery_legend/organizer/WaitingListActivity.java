@@ -37,6 +37,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+/**
+ * Activity for organizers to view and manage the waiting list of an event.
+ * Provides functionality to search, filter by status, view entrant locations on a map,
+ * promote entrants to co-organizers, and cancel lottery selections.
+ */
 public class WaitingListActivity extends AppCompatActivity implements WaitingListAdapter.OnEntrantActionListener {
 
     private FirebaseFirestore db;
@@ -55,10 +60,20 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
     private String currentSearchText = "";
     private String currentStatusFilter = "All";
 
+    /**
+     * Helper class that bundles an Entrant model with their corresponding WaitingListEntry.
+     */
     public static class WaitingListUser {
+        /** The entrant's profile information. */
         public Entrant entrant;
+        /** The entrant's participation details for this specific event. */
         public Event.WaitingListEntry entry;
 
+        /**
+         * Constructs a new WaitingListUser.
+         * @param entrant The Entrant profile.
+         * @param entry   The waiting list entry details.
+         */
         public WaitingListUser(Entrant entrant, Event.WaitingListEntry entry) {
             this.entrant = entrant;
             this.entry = entry;
@@ -83,6 +98,9 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
         NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.HOME);
     }
 
+    /**
+     * Initializes UI components and sets up the toolbar and window insets.
+     */
     private void initViews() {
         View mainView = findViewById(R.id.main);
         ViewCompat.setOnApplyWindowInsetsListener(mainView, (v, insets) -> {
@@ -103,6 +121,9 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
         btnFilter.setOnClickListener(this::showFilterMenu);
     }
 
+    /**
+     * Launches the MapActivity to display the locations of entrants who joined with geolocation.
+     */
     private void openEntrantMap() {
         ArrayList<Double> latitudes = new ArrayList<>();
         ArrayList<Double> longitudes = new ArrayList<>();
@@ -129,6 +150,10 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
         startActivity(intent);
     }
 
+    /**
+     * Displays a popup menu to filter the waiting list by participation status.
+     * @param v The view that triggered the menu.
+     */
     private void showFilterMenu(View v) {
         PopupMenu popup = new PopupMenu(this, v);
         String[] statuses = {"All", "Waiting", "Selected", "Accepted", "Cancelled/Declined", "Not Selected"};
@@ -143,6 +168,9 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
         popup.show();
     }
 
+    /**
+     * Initializes the RecyclerView with a linear layout manager and the custom adapter.
+     */
     private void setupRecyclerView() {
         recyclerView = findViewById(R.id.recyclerWaitingList);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -150,6 +178,9 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
         recyclerView.setAdapter(adapter);
     }
 
+    /**
+     * Sets up a snapshot listener for the event document to stay updated with waiting list changes.
+     */
     private void fetchWaitingList() {
         if (eventId == null) return;
         db.collection("events").document(eventId).addSnapshotListener((documentSnapshot, error) -> {
@@ -167,6 +198,10 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
         });
     }
 
+    /**
+     * Fetches detailed profile information for each entrant in the waiting list.
+     * @param entries The list of waiting list entries from the event document.
+     */
     private void loadEntrantDetails(List<Event.WaitingListEntry> entries) {
         if (entries.isEmpty()) {
             entrantList.clear();
@@ -198,6 +233,9 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
         }
     }
 
+    /**
+     * Applies the current search text and status filter to the list of entrants.
+     */
     private void applyFilters() {
         List<WaitingListUser> filteredList = new ArrayList<>();
         for (WaitingListUser item : entrantList) {
@@ -209,6 +247,9 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
         textEntrantCount.setText(String.format(Locale.getDefault(), "%d entrants", filteredList.size()));
     }
 
+    /**
+     * Helper to determine if a status matches a filter category.
+     */
     private boolean isStatusMatch(String actualStatus, String filterStatus) {
         if (actualStatus == null) actualStatus = "Waiting";
         String s = actualStatus.toLowerCase();
@@ -222,6 +263,9 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
         }
     }
 
+    /**
+     * Configures the search EditText to trigger list filtering on text changes.
+     */
     private void setupSearch() {
         editSearch.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -233,6 +277,9 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
         });
     }
 
+    /**
+     * Callback from adapter when the promote button is clicked. Shows a confirmation dialog.
+     */
     @Override
     public void onPromote(WaitingListUser user) {
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_promote_coorganizer, null);
@@ -245,6 +292,9 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
         dialog.show();
     }
 
+    /**
+     * Callback from adapter when the cancel selection button is clicked. Shows a confirmation dialog.
+     */
     @Override
     public void onCancelSelection(WaitingListUser user) {
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_cancel_selection, null);
@@ -257,7 +307,18 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
         dialog.show();
     }
 
+    /**
+     * Promotes an entrant to a co-organizer by sending them a formal invitation notification.
+     * @param user The user to promote.
+     */
     private void promoteUser(WaitingListUser user) {
+        if (user.entrant == null) return;
+
+        if (!user.entrant.isNotificationsEnabled()) {
+            Toast.makeText(this, "Notification denied: user has disabled notifications", Toast.LENGTH_LONG).show();
+            return;
+        }
+
         String notificationId = db.collection("notifications").document().getId();
         Notification notif = new Notification(
             notificationId, deviceId, user.entrant.getDeviceId(), "ENTRANT",
@@ -269,7 +330,7 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
         WriteBatch batch = db.batch();
         batch.set(db.collection("notifications").document(notificationId), notif);
         
-        // Basic info for Entrant's sub-collection
+        // Add notification summary to entrant's sub-collection
         Map<String, Object> summary = new HashMap<>();
         summary.put("notificationId", notificationId);
         summary.put("type", notif.getType());
@@ -279,6 +340,10 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
         batch.commit().addOnSuccessListener(aVoid -> Toast.makeText(this, "Invitation sent", Toast.LENGTH_SHORT).show());
     }
 
+    /**
+     * Cancels an entrant's lottery selection and updates their status in the waiting list.
+     * @param user The user whose selection should be cancelled.
+     */
     private void cancelSelection(WaitingListUser user) {
         db.collection("events").document(eventId).get().addOnSuccessListener(doc -> {
             if (doc.exists()) {
@@ -294,7 +359,11 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
                     }
                     db.collection("events").document(eventId).update("waitingList", waitingList)
                         .addOnSuccessListener(aVoid -> {
-                            sendCancellationNotification(user);
+                            if (user.entrant.isNotificationsEnabled()) {
+                                sendCancellationNotification(user);
+                            } else {
+                                Toast.makeText(this, "Notification denied: user has disabled notifications", Toast.LENGTH_LONG).show();
+                            }
                             Toast.makeText(this, "Selection cancelled", Toast.LENGTH_SHORT).show();
                         });
                 }
@@ -302,6 +371,10 @@ public class WaitingListActivity extends AppCompatActivity implements WaitingLis
         });
     }
 
+    /**
+     * Sends a notification to an entrant informing them that their selection has been cancelled.
+     * @param user The recipient user.
+     */
     private void sendCancellationNotification(WaitingListUser user) {
         String notificationId = db.collection("notifications").document().getId();
         Notification notif = new Notification(

@@ -54,6 +54,8 @@ import java.util.Map;
 
 /**
  * Activity for organizers to edit an existing event.
+ * Allows updating event details such as title, description, location, price, and dates.
+ * Organizers can also update the event's poster image and geolocation requirements.
  */
 public class EditEventActivity extends AppCompatActivity implements PosterUploadDialogFragment.OnPosterEventListener {
 
@@ -81,7 +83,11 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
     private String currentPosterBase64;
     private Double selectedLat = null;
     private Double selectedLng = null;
+    private String primaryOrganizerId = null;
 
+    /**
+     * Launcher for selecting a location on a map.
+     */
     private final ActivityResultLauncher<Intent> mapPickerLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
@@ -96,6 +102,9 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
             }
     );
 
+    /**
+     * Launcher for Google Places Autocomplete search.
+     */
     private final ActivityResultLauncher<Intent> placesLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
@@ -128,9 +137,9 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
         eventId = getIntent().getStringExtra("eventId");
         deviceId = getIntent().getStringExtra("deviceId");
 
-        // Initialize Places SDK
+        // Initialize Places SDK if it hasn't been initialized yet
         if (!Places.isInitialized()) {
-            String apiKey = "AIzaSyAGM4mRqzD07usvdcKhFyXzbu9UhYu9LpE"; // From your manifest
+            String apiKey = "AIzaSyAGM4mRqzD07usvdcKhFyXzbu9UhYu9LpE"; // API key from manifest
             Places.initialize(getApplicationContext(), apiKey);
         }
 
@@ -141,6 +150,9 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
         NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.HOME);
     }
 
+    /**
+     * Initializes the views and sets up the toolbar for editing.
+     */
     private void initViews() {
         toolbar = findViewById(R.id.toolbarCreateEvent);
         toolbar.setTitle("Edit Event");
@@ -163,11 +175,14 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
         uploadButton = findViewById(R.id.uploadButton);
         locationButton = findViewById(R.id.locationButton);
 
-        // Make location edit text look like a search bar trigger
+        // Make location edit text clickable to trigger the autocomplete intent
         editTextLocation.setFocusable(false);
         editTextLocation.setClickable(true);
     }
 
+    /**
+     * Sets up listeners for user interactions.
+     */
     private void setupListeners() {
         toolbar.setNavigationOnClickListener(v -> finish());
 
@@ -197,6 +212,9 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
         saveButton.setOnClickListener(v -> updateEvent());
     }
 
+    /**
+     * Starts the Google Places Autocomplete intent for location selection.
+     */
     private void startAutocompleteIntent() {
         List<Place.Field> fields = Arrays.asList(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS, Place.Field.LAT_LNG);
         Intent intent = new Autocomplete.IntentBuilder(AutocompleteActivityMode.OVERLAY, fields)
@@ -204,12 +222,16 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
         placesLauncher.launch(intent);
     }
 
+    /**
+     * Loads the existing event data from Firestore to populate the UI fields.
+     */
     private void loadEventData() {
         if (eventId == null) return;
 
         db.collection("events").document(eventId).get().addOnSuccessListener(documentSnapshot -> {
             Event event = documentSnapshot.toObject(Event.class);
             if (event != null) {
+                primaryOrganizerId = event.getOrganizerId();
                 editTextEventTitle.setText(event.getTitle());
                 editTextDescription.setText(event.getDescription());
                 if (event.getEventLocation() != null) {
@@ -241,6 +263,10 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
         });
     }
 
+    /**
+     * Callback when a new poster image is selected.
+     * @param uri The URI of the selected image.
+     */
     @Override
     public void onPosterSelected(Uri uri) {
         this.imageUri = uri;
@@ -248,6 +274,9 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
         uploadButton.setText("Image Selected");
     }
 
+    /**
+     * Callback when the poster image is removed.
+     */
     @Override
     public void onPosterRemoved() {
         this.imageUri = null;
@@ -255,6 +284,9 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
         uploadButton.setText("Upload Poster Image");
     }
 
+    /**
+     * Sets up click listeners for all date/time picker fields.
+     */
     private void setupDateTimePickers() {
         EditText[] dateFields = {eventStartDateTime, eventEndDateTime, registrationStartDateTime, registrationEndDateTime, drawDateTime};
         for (EditText et : dateFields) {
@@ -262,6 +294,10 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
         }
     }
 
+    /**
+     * Displays a date and time picker dialog for the specified EditText.
+     * @param et The EditText field that will display the selected date and time.
+     */
     private void showDateTimePicker(EditText et) {
         final Calendar c = Calendar.getInstance();
         int year = c.get(Calendar.YEAR);
@@ -282,6 +318,9 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
         datePickerDialog.show();
     }
 
+    /**
+     * Validates input and updates the event data in Firestore.
+     */
     private void updateEvent() {
         String title = editTextEventTitle.getText().toString().trim();
         String description = editTextDescription.getText().toString().trim();
@@ -353,9 +392,12 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
             updates.put("qrCodeValue", qrCodeValue);
             updates.put("updatedAt", Timestamp.now());
 
+            // Use a batch write to update both the main events collection and the organizer's event summary
             WriteBatch batch = db.batch();
             batch.update(db.collection("events").document(eventId), updates);
-            batch.update(db.collection("organizers").document(deviceId).collection("createdEvents").document(eventId), updates);
+            if (primaryOrganizerId != null) {
+                batch.update(db.collection("organizers").document(primaryOrganizerId).collection("createdEvents").document(eventId), updates);
+            }
 
             batch.commit()
                     .addOnSuccessListener(aVoid -> {
@@ -371,6 +413,11 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
         }
     }
 
+    /**
+     * Generates a QR code from the given text and returns its Base64 encoding.
+     * @param text The text to encode in the QR code.
+     * @return Base64 encoded string of the QR code image.
+     */
     private String generateQRCodeBase64(String text) {
         MultiFormatWriter writer = new MultiFormatWriter();
         try {
@@ -391,6 +438,11 @@ public class EditEventActivity extends AppCompatActivity implements PosterUpload
         }
     }
 
+    /**
+     * Converts an image from the given URI to a Base64 encoded string after resizing.
+     * @param uri The URI of the image.
+     * @return Base64 encoded string of the compressed image.
+     */
     private String uriToBase64(Uri uri) {
         try {
             InputStream inputStream = getContentResolver().openInputStream(uri);

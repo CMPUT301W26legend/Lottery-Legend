@@ -64,7 +64,6 @@
             android:id="@+id/commentIcon"
             android:layout_width="40dp"
             android:layout_height="match_parent"
-            android:layout_marginEnd="8dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Comments"
             android:src="@drawable/ic_comment"
@@ -74,6 +73,7 @@
               android:id="@+id/shareIcon"
               android:layout_width="40dp"
               android:layout_height="match_parent"
+              android:layout_marginEnd="8dp"
               android:background="?attr/selectableItemBackgroundBorderless"
               android:contentDescription="QR Code"
               android:src="@drawable/ic_share"
@@ -111,8 +111,10 @@
           android:id="@+id/posterImage"
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
+          android:minHeight="200dp"
+          android:maxHeight="400dp"
           android:adjustViewBounds="true"
-          android:scaleType="fitCenter"
+          android:scaleType="centerCrop"
           android:src="@drawable/img_poster"
           android:contentDescription="event image"/>
 
@@ -127,15 +129,39 @@
           android:paddingEnd="16dp"
           android:paddingBottom="20dp">
 
-        <!-- Title -->
-        <TextView
-            android:id="@+id/textEventTitle"
+        <!-- Title and Private Tag -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Summer Music Festival"
-            android:textColor="#111827"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/textEventTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Summer Music Festival"
+                android:textColor="#111827"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tagPrivate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_tag_co_organizer"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="PRIVATE"
+                android:textAllCaps="true"
+                android:textColor="#DC2626"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                tools:visibility="visible" />
+        </LinearLayout>
 
         <!-- Status -->
         <TextView
@@ -504,6 +530,94 @@
                 android:textColor="#3B82F6"
                 android:textSize="13sp" />
           </LinearLayout>
+        </LinearLayout>
+
+        <!-- Co-organizers Section -->
+        <LinearLayout
+            android:id="@+id/layoutCoOrganizersContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:orientation="vertical"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Co-organizers"
+                android:textColor="#111827"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:id="@+id/layoutCoOrganizersList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical" />
+        </LinearLayout>
+
+        <!-- Lottery Response Container -->
+        <LinearLayout
+            android:id="@+id/layoutLotteryResponse"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:orientation="vertical"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="You've been selected!"
+                android:textColor="#111827"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_gravity="center_horizontal"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Please respond to your invitation"
+                android:textColor="#6B7280"
+                android:textSize="14sp"
+                android:layout_gravity="center_horizontal"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDeclineInvitation"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:text="Decline"
+                    android:textAllCaps="false"
+                    android:textColor="#EF4444"
+                    app:backgroundTint="@color/white"
+                    app:cornerRadius="8dp"
+                    app:strokeColor="#EF4444"
+                    app:strokeWidth="1dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnAcceptInvitation"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:text="Accept"
+                    android:textAllCaps="false"
+                    android:textColor="@android:color/white"
+                    app:backgroundTint="#16A34A"
+                    app:cornerRadius="8dp" />
+            </LinearLayout>
         </LinearLayout>
 
         <!-- Join Button -->

@@ -22,7 +22,10 @@ import com.example.lottery_legend.R;
 import com.example.lottery_legend.model.Event;
 import com.example.lottery_legend.model.Organizer;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.WriteBatch;
 
 import java.text.SimpleDateFormat;
 import java.util.Locale;
@@ -196,7 +199,7 @@ public class AdminEventDetailFragment extends Fragment {
 
     /**
      * Shows a dialog to confirm the deletion of the event.
-     * If the admin confirms, the event is removed from the database.
+     * If the admin confirms, the event is removed from the database along with its subcollections.
      */
     private void showDeleteDialog() {
         View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_admin_delete, null);
@@ -210,18 +213,47 @@ public class AdminEventDetailFragment extends Fragment {
         Button btnDelete = dialogView.findViewById(R.id.btn_delete);
 
         title.setText("Delete Event");
-        message.setText("This will permanently remove this event.");
+        message.setText("This will permanently remove this event and its associated data.");
 
         btnCancel.setOnClickListener(v -> dialog.dismiss());
         btnDelete.setOnClickListener(v -> {
-            db.collection("events").document(eventId).delete().addOnSuccessListener(aVoid -> {
+            deleteEventWithSubcollections(dialog);
+        });
+
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        dialog.show();
+    }
+
+    private void deleteEventWithSubcollections(AlertDialog dialog) {
+        DocumentReference eventRef = db.collection("events").document(eventId);
+        WriteBatch batch = db.batch();
+
+        eventRef.collection("coOrganizers").get().addOnSuccessListener(coOrgs -> {
+            for (QueryDocumentSnapshot doc : coOrgs) {
+                batch.delete(doc.getReference());
+            }
+
+            eventRef.collection("comments").get().addOnSuccessListener(comments -> {
+                for (QueryDocumentSnapshot doc : comments) {
+                    batch.delete(doc.getReference());
+                }
+
+                batch.delete(eventRef);
+                batch.commit().addOnSuccessListener(aVoid -> {
+                    Toast.makeText(getContext(), "Event removed", Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                    getParentFragmentManager().popBackStack();
+                }).addOnFailureListener(e -> {
+                    Toast.makeText(getContext(), "Error removing event", Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                });
+            });
+        }).addOnFailureListener(e -> {
+            eventRef.delete().addOnSuccessListener(aVoid -> {
                 Toast.makeText(getContext(), "Event removed", Toast.LENGTH_SHORT).show();
                 dialog.dismiss();
                 getParentFragmentManager().popBackStack();
             });
         });
-
-        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        dialog.show();
     }
 }

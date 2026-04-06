@@ -15,7 +15,10 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.lottery_legend.R;
 import com.example.lottery_legend.model.Event;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.WriteBatch;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -84,7 +87,7 @@ public class AdminEventAdapter extends RecyclerView.Adapter<AdminEventAdapter.Ev
 
     /**
      * Shows a dialog to confirm the deletion of an event. If the admin confirms, the event is
-     * removed from the database.
+     * removed from the database along with its subcollections.
      * @param event The event to delete.
      */
     private void showDeleteDialog(Event event) {
@@ -99,26 +102,63 @@ public class AdminEventAdapter extends RecyclerView.Adapter<AdminEventAdapter.Ev
         Button btnDelete = dialogView.findViewById(R.id.btn_delete);
 
         title.setText("Delete Event");
-        message.setText("This will permanently remove this event");
+        message.setText("This will permanently remove this event and its associated data.");
 
         btnCancel.setOnClickListener(v -> dialog.dismiss());
 
         btnDelete.setOnClickListener(v -> {
-            db.collection("events").document(event.getEventId()).delete()
-                    .addOnSuccessListener(aVoid -> {
-                        Toast.makeText(context, "Event removed", Toast.LENGTH_SHORT).show();
-                        dialog.dismiss();
-                    })
-                    .addOnFailureListener(e -> {
-                        Toast.makeText(context, "Error removing event", Toast.LENGTH_SHORT).show();
-                        dialog.dismiss();
-                    });
+            deleteEventWithSubcollections(event.getEventId(), dialog);
         });
 
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         }
         dialog.show();
+    }
+
+    private void deleteEventWithSubcollections(String eventId, AlertDialog dialog) {
+        DocumentReference eventRef = db.collection("events").document(eventId);
+        WriteBatch batch = db.batch();
+
+        // Delete coOrganizers subcollection
+        eventRef.collection("coOrganizers").get().addOnSuccessListener(coOrgs -> {
+            for (QueryDocumentSnapshot doc : coOrgs) {
+                batch.delete(doc.getReference());
+            }
+
+            // Delete comments subcollection
+            eventRef.collection("comments").get().addOnSuccessListener(comments -> {
+                for (QueryDocumentSnapshot doc : comments) {
+                    batch.delete(doc.getReference());
+                }
+
+                // Delete the event document itself
+                batch.delete(eventRef);
+
+                batch.commit().addOnSuccessListener(aVoid -> {
+                    Toast.makeText(context, "Event removed", Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                }).addOnFailureListener(e -> {
+                    Toast.makeText(context, "Error removing event", Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                });
+            });
+        }).addOnFailureListener(e -> {
+            // Fallback: Just delete the event if subcollection fetch fails
+            eventRef.delete().addOnSuccessListener(aVoid -> {
+                Toast.makeText(context, "Event removed", Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+            });
+        });
+    }
+
+    /**
+     * Updates the adapter's data set and refreshes the recycler view.
+     * @param newList The new list of events to display.
+     */
+    public void updateList(ArrayList<Event> newList) {
+        this.eventList = newList;
+        notifyDataSetChanged();
     }
 
 

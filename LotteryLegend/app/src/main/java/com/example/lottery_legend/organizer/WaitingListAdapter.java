@@ -1,6 +1,10 @@
 package com.example.lottery_legend.organizer;
 
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,6 +15,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.lottery_legend.R;
+import com.example.lottery_legend.entrant.ProfileActivity;
 import com.example.lottery_legend.model.Entrant;
 import com.example.lottery_legend.model.Event;
 
@@ -18,22 +23,48 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Adapter for the RecyclerView in WaitingListActivity.
+ * Displays a list of entrants who have joined an event's waiting list or have been selected.
+ * Provides actions to promote an entrant to a co-organizer or cancel their selection.
+ */
 public class WaitingListAdapter extends RecyclerView.Adapter<WaitingListAdapter.ViewHolder> {
 
     private List<WaitingListActivity.WaitingListUser> users;
     private final SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy 'at' h:mm a", Locale.getDefault());
     private final OnEntrantActionListener listener;
 
+    /**
+     * Interface to handle actions performed on an entrant in the list.
+     */
     public interface OnEntrantActionListener {
+        /**
+         * Triggered when the organizer chooses to promote a waiting user to co-organizer.
+         * @param user The user to be promoted.
+         */
         void onPromote(WaitingListActivity.WaitingListUser user);
+
+        /**
+         * Triggered when the organizer chooses to cancel the lottery selection for a user.
+         * @param user The user whose selection is to be cancelled.
+         */
         void onCancelSelection(WaitingListActivity.WaitingListUser user);
     }
 
+    /**
+     * Constructs a new WaitingListAdapter.
+     * @param users    The initial list of users to display.
+     * @param listener The listener for entrant-related actions.
+     */
     public WaitingListAdapter(List<WaitingListActivity.WaitingListUser> users, OnEntrantActionListener listener) {
         this.users = users;
         this.listener = listener;
     }
 
+    /**
+     * Updates the adapter's data set and refreshes the view.
+     * @param newList The new list of users.
+     */
     public void updateList(List<WaitingListActivity.WaitingListUser> newList) {
         this.users = newList;
         notifyDataSetChanged();
@@ -63,6 +94,23 @@ public class WaitingListAdapter extends RecyclerView.Adapter<WaitingListAdapter.
             holder.textJoinedTime.setText("Joined: Unknown");
         }
 
+        // Load profile image if available
+        if (entrant.getProfileImage() != null && !entrant.getProfileImage().isEmpty()) {
+            displayBase64Image(entrant.getProfileImage(), holder.imageProfile);
+        } else {
+            holder.imageProfile.setImageResource(R.drawable.ic_profile_avatar);
+        }
+
+        // Clicking the profile image opens the entrant's profile in read-only mode
+        holder.imageProfile.setOnClickListener(v -> {
+            Intent intent = new Intent(v.getContext(), ProfileActivity.class);
+            intent.putExtra("deviceId", entrant.getDeviceId());
+            intent.putExtra("isReadOnly", true);
+            intent.putExtra("isOrganizerMode", false);
+            v.getContext().startActivity(intent);
+        });
+
+        // Set up action button based on current status
         holder.textPromote.setOnClickListener(v -> {
             if ("waiting".equals(rawStatus)) {
                 listener.onPromote(user);
@@ -72,7 +120,33 @@ public class WaitingListAdapter extends RecyclerView.Adapter<WaitingListAdapter.
         });
     }
 
-    private void updateStatusUI(ViewHolder holder, String status) {
+    /**
+     * Decodes and displays a Base64 encoded image string.
+     * @param base64    The Base64 string.
+     * @param imageView The target ImageView.
+     */
+    private void displayBase64Image(String base64, ImageView imageView) {
+        try {
+            byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
+            Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+            if (bitmap != null && imageView != null) {
+                imageView.setImageBitmap(bitmap);
+            } else if (imageView != null) {
+                imageView.setImageResource(R.drawable.ic_profile_avatar);
+            }
+        } catch (Exception ignored) {
+            if (imageView != null) {
+                imageView.setImageResource(R.drawable.ic_profile_avatar);
+            }
+        }
+    }
+
+    /**
+     * Updates the text and color of the status UI elements based on the entrant's status.
+     * @param holder The ViewHolder to update.
+     * @param status The participation status string.
+     */
+    public void updateStatusUI(ViewHolder holder, String status) {
         switch (status) {
             case "waiting":
                 holder.textStatus.setText("Waiting");
@@ -123,9 +197,12 @@ public class WaitingListAdapter extends RecyclerView.Adapter<WaitingListAdapter.
         return users.size();
     }
 
-    static class ViewHolder extends RecyclerView.ViewHolder {
-        ImageView imageProfile;
-        TextView textName, textStatus, textJoinedTime, textPromote;
+    /**
+     * ViewHolder class for the waiting list adapter.
+     */
+    public static class ViewHolder extends RecyclerView.ViewHolder {
+        public ImageView imageProfile;
+        public TextView textName, textStatus, textJoinedTime, textPromote;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);

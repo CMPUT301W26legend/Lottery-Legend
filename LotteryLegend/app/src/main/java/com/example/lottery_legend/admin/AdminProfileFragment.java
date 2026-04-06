@@ -26,6 +26,8 @@ import com.example.lottery_legend.entrant.MainActivity;
 import com.example.lottery_legend.model.Entrant;
 import com.example.lottery_legend.organizer.OrganizerMainActivity;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.WriteBatch;
 
 /**
  * Fragment that displays the Administrator's profile information and provides options
@@ -174,14 +176,35 @@ public class AdminProfileFragment extends Fragment {
                 .setTitle("Delete Account")
                 .setMessage("This will permanently remove your administrator account. Are you sure?")
                 .setPositiveButton("Delete", (dialog, which) -> {
-                    db.collection("entrants").document(deviceId).delete().addOnSuccessListener(aVoid -> {
+                    deleteAccountWithSubcollections();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void deleteAccountWithSubcollections() {
+        if (deviceId == null) return;
+        
+        WriteBatch batch = db.batch();
+        db.collection("entrants").document(deviceId).collection("notifications").get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                        batch.delete(doc.getReference());
+                    }
+                    batch.delete(db.collection("entrants").document(deviceId));
+                    batch.commit().addOnSuccessListener(aVoid -> {
                         Toast.makeText(getContext(), "Account deleted", Toast.LENGTH_SHORT).show();
                         if (getActivity() != null) {
                             getActivity().finishAffinity();
                         }
                     });
                 })
-                .setNegativeButton("Cancel", null)
-                .show();
+                .addOnFailureListener(e -> {
+                    db.collection("entrants").document(deviceId).delete().addOnSuccessListener(aVoid -> {
+                        if (getActivity() != null) {
+                            getActivity().finishAffinity();
+                        }
+                    });
+                });
     }
 }

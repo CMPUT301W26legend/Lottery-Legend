@@ -1,6 +1,7 @@
 package com.example.lottery_legend.organizer;
 
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -13,12 +14,14 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -34,28 +37,32 @@ import com.google.android.gms.tasks.Tasks;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.Timestamp;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.WriteBatch;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 /**
- * Activity for organizers to view the details of a specific event they have created.
+ * Activity for organizers to view the details of a specific event they have created or are co-organizing.
+ * Provides access to event management features like editing, running the lottery,
+ * sending notifications, and viewing the waiting list.
  */
-public class OrganizerEventDetailsActivity extends AppCompatActivity implements PosterUploadDialogFragment.OnPosterEventListener {
+public class OrganizerEventDetailsActivity extends AppCompatActivity
+        implements PosterUploadDialogFragment.OnPosterEventListener {
 
     private FirebaseFirestore db;
     private String eventId;
@@ -65,19 +72,22 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
     private TextView textWaitingCount, textSelectedCount, textCapacity;
     private TextView textEventTitle, textEventStatus, tagCoOrganizer, textEventVisibility;
     private TextView textEventDate, textRegistrationDeadline, textLocation, textPrice;
-    private TextView textDescription, textLotteryGuidelines, textOrganizerName;
+    private TextView textDescription, textLotteryGuidelines, textOrganizerName, toolbarTitle;
+    private LinearLayout organizerSection, layoutCoOrganizersContainer, layoutCoOrganizersList;
     private Button btnViewWaitingList, btnRunLotteryDraw, btnSendNotification, btnDeleteEvent, btnInviteEntrants;
     private ImageButton editIcon, updatePoster, commentIcon, mapIcon, shareIcon;
 
     private String currentPosterBase64;
     private String currentUserName;
     private Event currentEvent;
+    private boolean isCoOrganizer = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_organizer_event_details);
+
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
@@ -89,16 +99,65 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         deviceId = getIntent().getStringExtra("deviceId");
 
         initViews();
+
+        String intentTitle = getIntent().getStringExtra("eventTitle");
+        if (intentTitle != null && toolbarTitle != null) {
+            toolbarTitle.setText("Details: " + intentTitle);
+        }
+
         setupListeners();
+        checkCoOrganizerStatus();
         fetchEventDetails();
         fetchCurrentUserName();
 
         NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.HISTORY);
     }
 
+    /**
+     * Checks if the current user is an accepted co-organizer for the event.
+     */
+    private void checkCoOrganizerStatus() {
+        if (eventId == null || deviceId == null) return;
+
+        db.collection("events")
+                .document(eventId)
+                .collection("coOrganizers")
+                .document(deviceId)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    if (doc.exists() && "ACCEPTED".equals(doc.getString("status"))) {
+                        isCoOrganizer = true;
+                        updatePermissionsUI();
+                    }
+                });
+    }
+
+    /**
+     * Updates the UI to show or hide management buttons based on the user's role (Primary vs Co-organizer).
+     */
+    private void updatePermissionsUI() {
+        if (currentEvent == null) return;
+
+        boolean isPrimary = deviceId != null && deviceId.equals(currentEvent.getOrganizerId());
+
+        if (isPrimary) {
+            editIcon.setVisibility(View.VISIBLE);
+            updatePoster.setVisibility(View.VISIBLE);
+            btnDeleteEvent.setVisibility(View.VISIBLE);
+        } else {
+            editIcon.setVisibility(View.GONE);
+            updatePoster.setVisibility(View.GONE);
+            btnDeleteEvent.setVisibility(View.GONE);
+        }
+    }
+
+    /**
+     * Initializes UI references and sets default visibility states.
+     */
     private void initViews() {
         MaterialToolbar toolbar = findViewById(R.id.toolbarOrganizerDetails);
         toolbar.setNavigationOnClickListener(v -> finish());
+        toolbarTitle = findViewById(R.id.toolbarTitle);
 
         editIcon = findViewById(R.id.editIcon);
         updatePoster = findViewById(R.id.updatePoster);
@@ -114,7 +173,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         textEventTitle = findViewById(R.id.textEventTitle);
         tagCoOrganizer = findViewById(R.id.tagCoOrganizer);
         textEventStatus = findViewById(R.id.textEventStatus);
-        textEventVisibility = findViewById(R.id.textEventVisibility);
+        textEventVisibility = findViewById(R.id.tagPrivate);
         textEventDate = findViewById(R.id.textEventDate);
         textRegistrationDeadline = findViewById(R.id.textRegistrationDeadline);
         textLocation = findViewById(R.id.textLocation);
@@ -122,14 +181,24 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         textDescription = findViewById(R.id.textDescription);
         textLotteryGuidelines = findViewById(R.id.textLotteryGuidelines);
         textOrganizerName = findViewById(R.id.textOrganizerName);
+        organizerSection = findViewById(R.id.organizerSection);
+        layoutCoOrganizersContainer = findViewById(R.id.layoutCoOrganizersContainer);
+        layoutCoOrganizersList = findViewById(R.id.layoutCoOrganizersList);
 
         btnViewWaitingList = findViewById(R.id.btnViewWaitingList);
         btnRunLotteryDraw = findViewById(R.id.btnRunLotteryDraw);
         btnSendNotification = findViewById(R.id.btnSendNotification);
         btnDeleteEvent = findViewById(R.id.btnDeleteEvent);
         btnInviteEntrants = findViewById(R.id.btnInviteEntrants);
+
+        editIcon.setVisibility(View.GONE);
+        updatePoster.setVisibility(View.GONE);
+        btnDeleteEvent.setVisibility(View.GONE);
     }
 
+    /**
+     * Sets up click listeners for all interactive elements in the activity.
+     */
     private void setupListeners() {
         shareIcon.setOnClickListener(v -> {
             if (eventId != null) {
@@ -189,27 +258,53 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
             }
         });
 
-        btnRunLotteryDraw.setOnClickListener(v -> showRunLotteryDrawDialog());
+        btnRunLotteryDraw.setOnClickListener(v -> handleLotteryClick());
 
-        btnSendNotification.setOnClickListener(v ->
-                Toast.makeText(this, "Send Notification coming soon", Toast.LENGTH_SHORT).show()
-        );
+        btnSendNotification.setOnClickListener(v -> {
+            if (eventId != null) {
+                Intent intent = new Intent(OrganizerEventDetailsActivity.this, SendNotificationActivity.class);
+                intent.putExtra("eventId", eventId);
+                intent.putExtra("deviceId", deviceId);
+                startActivity(intent);
+            }
+        });
 
         btnDeleteEvent.setOnClickListener(v -> showDeleteConfirmationDialog());
-
         btnInviteEntrants.setOnClickListener(v -> showInviteSearchDialog());
-    }
 
-    private void fetchCurrentUserName() {
-        if (deviceId == null) return;
-
-        db.collection("organizers").document(deviceId).get().addOnSuccessListener(doc -> {
-            if (doc.exists()) {
-                currentUserName = doc.getString("name");
+        organizerSection.setOnClickListener(v -> {
+            if (currentEvent != null && currentEvent.getOrganizerId() != null) {
+                Intent intent = new Intent(
+                        OrganizerEventDetailsActivity.this,
+                        com.example.lottery_legend.entrant.ProfileActivity.class
+                );
+                intent.putExtra("deviceId", currentEvent.getOrganizerId());
+                intent.putExtra("isReadOnly", true);
+                intent.putExtra("isOrganizerMode", true);
+                startActivity(intent);
             }
         });
     }
 
+    /**
+     * Fetches the current organizer's name for comment snapshots.
+     */
+    private void fetchCurrentUserName() {
+        if (deviceId == null) return;
+
+        db.collection("organizers")
+                .document(deviceId)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    if (doc.exists()) {
+                        currentUserName = doc.getString("name");
+                    }
+                });
+    }
+
+    /**
+     * Displays a dialog to confirm event deletion.
+     */
     private void showDeleteConfirmationDialog() {
         new AlertDialog.Builder(this)
                 .setTitle("Delete Event")
@@ -219,89 +314,122 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
                 .show();
     }
 
+    /**
+     * Deletes the event and its associated sub-collections from Firestore.
+     */
     private void deleteEvent() {
         if (eventId == null) return;
 
-        db.collection("events").document(eventId)
-                .delete()
-                .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(this, "Event deleted successfully", Toast.LENGTH_SHORT).show();
-                    finish();
-                })
-                .addOnFailureListener(e ->
-                        Toast.makeText(this, "Error deleting event", Toast.LENGTH_SHORT).show()
-                );
-    }
+        DocumentReference eventRef = db.collection("events").document(eventId);
+        WriteBatch batch = db.batch();
 
-    private void fetchEventDetails() {
-        if (eventId == null) return;
-
-        db.collection("events").document(eventId).addSnapshotListener((documentSnapshot, error) -> {
-            if (error != null) {
-                Toast.makeText(this, "Error loading event details", Toast.LENGTH_SHORT).show();
-                return;
+        eventRef.collection("coOrganizers").get().addOnSuccessListener(coOrgs -> {
+            for (QueryDocumentSnapshot doc : coOrgs) {
+                batch.delete(doc.getReference());
             }
 
-            if (documentSnapshot != null && documentSnapshot.exists()) {
-                Event event = documentSnapshot.toObject(Event.class);
-                if (event != null) {
-                    populateViews(event);
+            eventRef.collection("comments").get().addOnSuccessListener(comments -> {
+                for (QueryDocumentSnapshot doc : comments) {
+                    batch.delete(doc.getReference());
                 }
-            }
+
+                batch.delete(eventRef);
+                batch.commit()
+                        .addOnSuccessListener(aVoid -> {
+                            Toast.makeText(this, "Event deleted successfully", Toast.LENGTH_SHORT).show();
+                            finish();
+                        })
+                        .addOnFailureListener(e ->
+                                Toast.makeText(this, "Error deleting event", Toast.LENGTH_SHORT).show()
+                        );
+            });
+        }).addOnFailureListener(e -> {
+            eventRef.delete().addOnSuccessListener(aVoid -> {
+                Toast.makeText(this, "Event deleted successfully", Toast.LENGTH_SHORT).show();
+                finish();
+            });
         });
     }
 
+    /**
+     * Fetches and listens for real-time updates to the event document.
+     */
+    private void fetchEventDetails() {
+        if (eventId == null) return;
+
+        db.collection("events")
+                .document(eventId)
+                .addSnapshotListener((documentSnapshot, error) -> {
+                    if (error != null) {
+                        Toast.makeText(this, "Error loading event details", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    if (documentSnapshot != null && documentSnapshot.exists()) {
+                        Event event = documentSnapshot.toObject(Event.class);
+                        if (event != null) {
+                            populateViews(event);
+                        }
+                    }
+                });
+    }
+
+    /**
+     * Populates the UI views with the provided event data.
+     * @param event The event model.
+     */
     private void populateViews(Event event) {
         this.currentEvent = event;
 
         textEventTitle.setText(event.getTitle());
+        if (toolbarTitle != null) {
+            toolbarTitle.setText("Details: " + event.getTitle());
+        }
         textDescription.setText(event.getDescription());
         textCapacity.setText(String.valueOf(event.getCapacity()));
 
-        // Show Co-organizer tag if the current user is not the primary organizer
+        // Check if current user is co-organizer
         if (event.getOrganizerId() != null && !event.getOrganizerId().equals(deviceId)) {
             tagCoOrganizer.setVisibility(View.VISIBLE);
         } else {
             tagCoOrganizer.setVisibility(View.GONE);
         }
 
-        // Fetch organizer details (name and profile image)
+        // Fetch primary organizer info
         if (event.getOrganizerId() != null) {
-            db.collection("organizers").document(event.getOrganizerId()).get().addOnSuccessListener(doc -> {
-                if (doc.exists()) {
-                    textOrganizerName.setText(doc.getString("name"));
-                    String profileImage = doc.getString("profileImage");
-                    if (profileImage != null && !profileImage.isEmpty()) {
-                        displayBase64Image(profileImage, imageOrganizerProfile);
-                    } else {
-                        imageOrganizerProfile.setImageResource(R.drawable.ic_profile_avatar);
-                    }
-                }
-            });
+            db.collection("organizers")
+                    .document(event.getOrganizerId())
+                    .get()
+                    .addOnSuccessListener(doc -> {
+                        if (doc.exists()) {
+                            textOrganizerName.setText(doc.getString("name"));
+                            String profileImage = doc.getString("profileImage");
+                            if (profileImage != null && !profileImage.isEmpty()) {
+                                displayBase64Image(profileImage, imageOrganizerProfile);
+                            } else {
+                                imageOrganizerProfile.setImageResource(R.drawable.ic_profile_avatar);
+                            }
+                        }
+                    });
         }
 
-        int waitingListSize = (event.getWaitingList() != null) ? event.getWaitingList().size() : 0;
+        fetchCoOrganizers();
+        updatePermissionsUI();
+
+        // Update counts and statistics
+        int waitingListSize = event.getWaitingList() != null ? event.getWaitingList().size() : 0;
         if (event.getMaxWaitingList() != null) {
-            textWaitingCount.setText(String.format(Locale.getDefault(), "%d/%d", waitingListSize, event.getMaxWaitingList()));
+            textWaitingCount.setText(String.format(
+                    Locale.getDefault(),
+                    "%d/%d",
+                    waitingListSize,
+                    event.getMaxWaitingList()
+            ));
         } else {
             textWaitingCount.setText(String.valueOf(waitingListSize));
         }
 
-        // Count already sampled entrants: selected + accepted only
-        int selected = 0;
-        if (event.getWaitingList() != null) {
-            for (Event.WaitingListEntry entry : event.getWaitingList()) {
-                if (entry == null) continue;
-
-                String status = entry.getParticipationStatus();
-                if (status != null &&
-                        ("selected".equalsIgnoreCase(status) ||
-                                "accepted".equalsIgnoreCase(status))) {
-                    selected++;
-                }
-            }
-        }
-        textSelectedCount.setText(String.valueOf(selected));
+        textSelectedCount.setText(String.valueOf(getOccupiedCount()));
 
         Event.EventLocation loc = event.getEventLocation();
         textLocation.setText(loc != null ? loc.getName() : "No location provided");
@@ -318,6 +446,7 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
             textRegistrationDeadline.setText(sdf.format(event.getRegistrationEndAt().toDate()));
         }
 
+        // Generate guidelines summary
         if (event.getDrawAt() != null) {
             String drawDateStr = sdf.format(event.getDrawAt().toDate());
             String guidelines =
@@ -329,15 +458,29 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         }
 
         updateStatusUI(event);
+        updateLotteryButtonState();
 
-        if (event.isIsPrivateEvent()) {
-            btnInviteEntrants.setVisibility(View.VISIBLE);
-            textEventVisibility.setVisibility(View.VISIBLE);
-        } else {
-            btnInviteEntrants.setVisibility(View.GONE);
-            textEventVisibility.setVisibility(View.GONE);
+        // Automatic lottery execution if scheduled time has passed
+        if (event.getDrawAt() != null
+                && event.getDrawAt().compareTo(Timestamp.now()) <= 0
+                && !"drawn".equalsIgnoreCase(event.getStatus())) {
+            List<Event.WaitingListEntry> candidates = getWaitingEntrants();
+            if (!candidates.isEmpty()) {
+                executeLottery(candidates, event.getCapacity(), true);
+            } else if (!"closed".equalsIgnoreCase(event.getStatus())) {
+                db.collection("events").document(eventId).update("status", "drawn");
+            }
         }
 
+        if (event.isIsPrivateEvent()) {
+            textEventVisibility.setVisibility(View.VISIBLE);
+            btnInviteEntrants.setVisibility(View.VISIBLE);
+        } else {
+            textEventVisibility.setVisibility(View.GONE);
+            btnInviteEntrants.setVisibility(View.GONE);
+        }
+
+        // Load poster image
         currentPosterBase64 = event.getPosterImage();
         if (currentPosterBase64 != null && !currentPosterBase64.isEmpty()) {
             try {
@@ -354,6 +497,129 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         }
     }
 
+    /**
+     * Fetches and displays the list of co-organizers for the event.
+     */
+    private void fetchCoOrganizers() {
+        if (eventId == null) return;
+
+        db.collection("events")
+                .document(eventId)
+                .collection("coOrganizers")
+                .whereEqualTo("status", "ACCEPTED")
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    layoutCoOrganizersList.removeAllViews();
+                    if (queryDocumentSnapshots.isEmpty()) {
+                        layoutCoOrganizersContainer.setVisibility(View.GONE);
+                    } else {
+                        layoutCoOrganizersContainer.setVisibility(View.VISIBLE);
+                        for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                            String coOrgId = doc.getString("deviceId");
+                            if (coOrgId != null) {
+                                addCoOrganizerToView(coOrgId);
+                            }
+                        }
+                    }
+                });
+    }
+
+    /**
+     * Adds an individual co-organizer item to the scrollable layout.
+     * @param coOrgId The co-organizer's unique ID.
+     */
+    private void addCoOrganizerToView(String coOrgId) {
+        db.collection("organizers")
+                .document(coOrgId)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    if (doc.exists()) {
+                        View view = LayoutInflater.from(this)
+                                .inflate(R.layout.item_co_organizer_display, layoutCoOrganizersList, false);
+
+                        TextView nameText = view.findViewById(R.id.textCoOrganizerName);
+                        ImageView avatar = view.findViewById(R.id.imageCoOrganizerAvatar);
+                        ImageButton btnRemove = view.findViewById(R.id.btnRemoveCoOrganizer);
+
+                        String name = doc.getString("name");
+                        nameText.setText(name);
+
+                        String profileImage = doc.getString("profileImage");
+                        if (profileImage != null && !profileImage.isEmpty()) {
+                            displayBase64Image(profileImage, avatar);
+                        } else {
+                            avatar.setImageResource(R.drawable.ic_profile_avatar);
+                        }
+
+                        // Only the primary organizer can remove co-organizers
+                        if (currentEvent != null && deviceId.equals(currentEvent.getOrganizerId())) {
+                            btnRemove.setVisibility(View.VISIBLE);
+                            btnRemove.setOnClickListener(v -> showRemoveCoOrganizerConfirmation(coOrgId, name));
+                        } else {
+                            btnRemove.setVisibility(View.GONE);
+                        }
+
+                        view.setOnClickListener(v -> {
+                            Intent intent = new Intent(this, com.example.lottery_legend.entrant.ProfileActivity.class);
+                            intent.putExtra("deviceId", coOrgId);
+                            intent.putExtra("isReadOnly", true);
+                            intent.putExtra("isOrganizerMode", true);
+                            startActivity(intent);
+                        });
+
+                        layoutCoOrganizersList.addView(view);
+                    }
+                });
+    }
+
+    /**
+     * Displays confirmation dialog before removing a co-organizer.
+     */
+    private void showRemoveCoOrganizerConfirmation(String coOrgId, String name) {
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_remove_co_organizer, null);
+        AlertDialog dialog = new AlertDialog.Builder(this, R.style.CustomAlertDialog)
+                .setView(dialogView)
+                .create();
+
+        TextView title = dialogView.findViewById(R.id.textRemoveTitle);
+        TextView message = dialogView.findViewById(R.id.textRemoveMessage);
+        Button btnCancel = dialogView.findViewById(R.id.btnCancelRemove);
+        Button btnConfirm = dialogView.findViewById(R.id.btnConfirmRemove);
+
+        title.setText("Remove Co-organizer");
+        message.setText("Are you sure you want to remove " + name + " as a co-organizer?");
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        btnConfirm.setOnClickListener(v -> {
+            removeCoOrganizer(coOrgId);
+            dialog.dismiss();
+        });
+
+        dialog.show();
+    }
+
+    /**
+     * Removes a co-organizer record from the event sub-collection.
+     */
+    private void removeCoOrganizer(String coOrgId) {
+        if (eventId == null) return;
+
+        db.collection("events")
+                .document(eventId)
+                .collection("coOrganizers")
+                .document(coOrgId)
+                .delete()
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, "Co-organizer removed", Toast.LENGTH_SHORT).show();
+                    fetchCoOrganizers();
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "Error removing co-organizer", Toast.LENGTH_SHORT).show());
+    }
+
+    /**
+     * Helper to decode and display a Base64 image.
+     */
     private void displayBase64Image(String base64, ImageView imageView) {
         try {
             byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
@@ -365,6 +631,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         }
     }
 
+    /**
+     * Updates the status TextView based on current time and event state.
+     */
     private void updateStatusUI(Event event) {
         Timestamp now = Timestamp.now();
         String status = event.getStatus() != null ? event.getStatus().toLowerCase() : "open";
@@ -375,6 +644,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
             if (!"closed".equals(status)) {
                 db.collection("events").document(eventId).update("status", "closed");
             }
+        } else if ("finalized".equals(status)) {
+            textEventStatus.setText("FINALIZED");
+            textEventStatus.setTextColor(Color.parseColor("#16A34A"));
         } else if ("drawn".equals(status)) {
             textEventStatus.setText("DRAWN");
             textEventStatus.setTextColor(Color.parseColor("#F57C00"));
@@ -387,47 +659,161 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         }
     }
 
-    private void showRunLotteryDrawDialog() {
+    /**
+     * Updates the text and behavior of the lottery/draw button based on event status and occupancy.
+     */
+    private void updateLotteryButtonState() {
         if (currentEvent == null) return;
 
+        String status = currentEvent.getStatus() != null ? currentEvent.getStatus().toLowerCase() : "";
+        int slots = getAvailableSlots();
+        boolean hasWaiting = !getWaitingEntrants().isEmpty();
+
+        if ("finalized".equals(status)) {
+            btnRunLotteryDraw.setText("Export Attendee List");
+            btnRunLotteryDraw.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#16A34A")));
+            btnRunLotteryDraw.setEnabled(true);
+            btnRunLotteryDraw.setAlpha(1.0f);
+        } else if (!"drawn".equals(status)) {
+            btnRunLotteryDraw.setText("Draw Lottery");
+            btnRunLotteryDraw.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#1976D2")));
+            btnRunLotteryDraw.setEnabled(true);
+            btnRunLotteryDraw.setAlpha(1.0f);
+        } else {
+            if (slots > 0) {
+                btnRunLotteryDraw.setText("Replacement Draw");
+                btnRunLotteryDraw.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#1976D2")));
+                if (hasWaiting) {
+                    btnRunLotteryDraw.setEnabled(true);
+                    btnRunLotteryDraw.setAlpha(1.0f);
+                } else {
+                    btnRunLotteryDraw.setEnabled(false);
+                    btnRunLotteryDraw.setAlpha(0.5f);
+                }
+            } else {
+                btnRunLotteryDraw.setText("Draw Lottery");
+                btnRunLotteryDraw.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#1976D2")));
+                btnRunLotteryDraw.setEnabled(false);
+                btnRunLotteryDraw.setAlpha(0.5f);
+            }
+        }
+    }
+
+    /**
+     * Handles clicks on the primary action button (Lottery or Export).
+     */
+    private void handleLotteryClick() {
+        if (currentEvent == null) return;
+
+        String status = currentEvent.getStatus() != null ? currentEvent.getStatus().toLowerCase() : "";
+
+        if ("finalized".equals(status)) {
+            exportFinalAttendeeListToCsv();
+            return;
+        }
+
+        List<Event.WaitingListEntry> candidates = getWaitingEntrants();
+
+        if (candidates.isEmpty()) {
+            Toast.makeText(this, "No entrants in waiting list", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (!"drawn".equals(status)) {
+            showDrawDialog(candidates, currentEvent.getCapacity(), true);
+        } else {
+            int slots = getAvailableSlots();
+            if (slots > 0) {
+                showDrawDialog(candidates, slots, false);
+            } else {
+                Toast.makeText(this, "No available slots for replacement", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    /**
+     * Exports the list of final winners to a CSV file and shares it.
+     */
+    private void exportFinalAttendeeListToCsv() {
+        if (currentEvent == null || currentEvent.getWaitingList() == null) return;
+
+        List<String> winnerIds = new ArrayList<>();
+        for (Event.WaitingListEntry entry : currentEvent.getWaitingList()) {
+            if ("WIN".equals(entry.getFinalResult())) {
+                winnerIds.add(entry.getDeviceId());
+            }
+        }
+
+        if (winnerIds.isEmpty()) {
+            Toast.makeText(this, "No finalized winners to export", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        List<Task<DocumentSnapshot>> tasks = new ArrayList<>();
+        for (String wid : winnerIds) {
+            tasks.add(db.collection("entrants").document(wid).get());
+        }
+
+        Tasks.whenAllSuccess(tasks)
+                .addOnSuccessListener(results -> {
+                    StringBuilder csv = new StringBuilder("Name,Email\n");
+                    for (Object obj : results) {
+                        DocumentSnapshot doc = (DocumentSnapshot) obj;
+                        if (doc.exists()) {
+                            String name = doc.getString("name");
+                            String email = doc.getString("email");
+                            csv.append(name != null ? name : "N/A")
+                                    .append(",")
+                                    .append(email != null ? email : "N/A")
+                                    .append("\n");
+                        }
+                    }
+                    saveAndShareCsv(csv.toString());
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "Export failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+    }
+
+    /**
+     * Saves the CSV string to a temporary file and triggers a share intent.
+     */
+    private void saveAndShareCsv(String content) {
+        try {
+            File file = new File(getExternalCacheDir(), "AttendeeList_" + eventId + ".csv");
+            FileOutputStream fos = new FileOutputStream(file);
+            fos.write(content.getBytes());
+            fos.close();
+
+            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", file);
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("text/csv");
+            intent.putExtra(Intent.EXTRA_STREAM, uri);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(intent, "Share Attendee List"));
+        } catch (Exception e) {
+            Toast.makeText(this, "Failed to save CSV: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Shows a dialog to configure and start a lottery draw.
+     * @param candidates   Eligible entrants.
+     * @param maxAllowed   Max number of entrants that can be picked.
+     * @param isFirstDraw  Whether this is the initial draw for the event.
+     */
+    private void showDrawDialog(List<Event.WaitingListEntry> candidates, int maxAllowed, boolean isFirstDraw) {
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_run_lottery, null);
         EditText editSampleCount = view.findViewById(R.id.editSampleCount);
         TextView textSampleHint = view.findViewById(R.id.textSampleHint);
         Button btnCancel = view.findViewById(R.id.buttonCancelRunLottery);
         Button btnConfirm = view.findViewById(R.id.buttonConfirmRunLottery);
 
-        List<Event.WaitingListEntry> waitingList = currentEvent.getWaitingList();
-        if (waitingList == null) {
-            waitingList = new ArrayList<>();
-        }
-
-        int capacity = currentEvent.getCapacity();
-        int alreadySampled = 0;
-        List<Event.WaitingListEntry> eligibleEntrants = new ArrayList<>();
-
-        for (Event.WaitingListEntry entry : waitingList) {
-            if (entry == null) continue;
-
-            String status = entry.getParticipationStatus();
-            if (status == null) status = "";
-
-            // alreadySampled = selected + accepted only
-            if ("selected".equalsIgnoreCase(status) || "accepted".equalsIgnoreCase(status)) {
-                alreadySampled++;
-            } else {
-                // All others are still eligible to be drawn
-                eligibleEntrants.add(entry);
-            }
-        }
-
-        int remainingSlots = Math.max(0, capacity - alreadySampled);
-        int waitingListCount = eligibleEntrants.size();
-        int maxSampleAllowed = Math.min(remainingSlots, waitingListCount);
-
+        int countToPick = Math.min(maxAllowed, candidates.size());
         textSampleHint.setText(String.format(
                 Locale.getDefault(),
-                "Maximum allowed: %d",
-                maxSampleAllowed
+                "Picking from %d waiting entrants. Max allowed: %d",
+                candidates.size(),
+                maxAllowed
         ));
 
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
@@ -440,106 +826,149 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
 
         btnCancel.setOnClickListener(v -> dialog.dismiss());
 
-        if (maxSampleAllowed <= 0) {
-            btnConfirm.setEnabled(false);
-            textSampleHint.setText("No available slots left");
-            textSampleHint.setTextColor(Color.RED);
-        }
-
         btnConfirm.setOnClickListener(v -> {
-            String input = editSampleCount.getText() == null
-                    ? ""
-                    : editSampleCount.getText().toString().trim();
+            String input = editSampleCount.getText().toString().trim();
+            int pickCount = input.isEmpty() ? countToPick : Integer.parseInt(input);
 
-            int sampleCount;
-
-            if (input.isEmpty()) {
-                sampleCount = maxSampleAllowed;
-            } else {
-                try {
-                    sampleCount = Integer.parseInt(input);
-                } catch (NumberFormatException e) {
-                    editSampleCount.setError("Invalid number");
-                    return;
-                }
-
-                if (sampleCount <= 0) {
-                    editSampleCount.setError("Must be greater than 0");
-                    return;
-                }
-
-                if (sampleCount > maxSampleAllowed) {
-                    editSampleCount.setError("Cannot exceed maximum allowed (" + maxSampleAllowed + ")");
-                    return;
-                }
-            }
-
-            if (sampleCount <= 0) {
-                Toast.makeText(this, "No available entrants to sample", Toast.LENGTH_SHORT).show();
+            if (pickCount <= 0 || pickCount > countToPick) {
+                editSampleCount.setError("Invalid number");
                 return;
             }
 
-            executeLottery(eligibleEntrants, sampleCount);
+            executeLottery(candidates, pickCount, isFirstDraw);
             dialog.dismiss();
         });
 
         dialog.show();
     }
 
-    private void executeLottery(List<Event.WaitingListEntry> eligibleEntrants, int sampleCount) {
-        if (sampleCount <= 0 || eligibleEntrants == null || eligibleEntrants.isEmpty()) {
-            return;
-        }
+    /**
+     * Executes the random selection of entrants and sends notifications.
+     */
+    private void executeLottery(List<Event.WaitingListEntry> candidates, int sampleCount, boolean isFirstDraw) {
+        if (sampleCount <= 0 || candidates.isEmpty()) return;
 
-        Collections.shuffle(eligibleEntrants);
-
-        int actualSampleCount = Math.min(sampleCount, eligibleEntrants.size());
-        List<Event.WaitingListEntry> selected = eligibleEntrants.subList(0, actualSampleCount);
-
-        WriteBatch batch = db.batch();
-
+        Collections.shuffle(candidates);
+        List<Event.WaitingListEntry> selected = candidates.subList(0, Math.min(sampleCount, candidates.size()));
+        List<String> selectedDeviceIds = new ArrayList<>();
         for (Event.WaitingListEntry entry : selected) {
-            entry.setParticipationStatus("selected");
-            entry.setSelectedAt(Timestamp.now());
-
-            Map<String, Object> notification = new HashMap<>();
-            notification.put("recipientId", entry.getDeviceId());
-            notification.put("senderId", deviceId);
-            notification.put("recipientType", "ENTRANT");
-            notification.put("eventId", eventId);
-            notification.put("type", "LOTTERY_WIN");
-            notification.put("title", "Lottery Selection");
-            notification.put("message", "You have been selected for " + currentEvent.getTitle());
-            notification.put("isRead", false);
-            notification.put("createdAt", Timestamp.now());
-            notification.put("actionStatus", "PENDING");
-
-            batch.set(db.collection("notifications").document(), notification);
+            selectedDeviceIds.add(entry.getDeviceId());
         }
 
-        batch.update(
-                db.collection("events").document(eventId),
-                "waitingList", currentEvent.getWaitingList(),
-                "status", "drawn"
-        );
+        db.collection("entrants")
+                .whereIn("deviceId", selectedDeviceIds)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    Map<String, Boolean> notificationMap = new HashMap<>();
+                    for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
+                        Entrant entrant = doc.toObject(Entrant.class);
+                        if (entrant != null) {
+                            notificationMap.put(entrant.getDeviceId(), entrant.isNotificationsEnabled());
+                        }
+                    }
 
-        batch.commit()
-                .addOnSuccessListener(aVoid ->
+                    WriteBatch batch = db.batch();
+                    Timestamp now = Timestamp.now();
+
+                    for (Event.WaitingListEntry entry : selected) {
+                        entry.setParticipationStatus("selected");
+                        entry.setSelectedAt(now);
+                        entry.setUpdatedAt(now);
+
+                        boolean canNotify = notificationMap.getOrDefault(entry.getDeviceId(), true);
+                        if (canNotify) {
+                            String notificationId = db.collection("notifications").document().getId();
+
+                            Map<String, Object> notification = new HashMap<>();
+                            notification.put("notificationId", notificationId);
+                            notification.put("recipientId", entry.getDeviceId());
+                            notification.put("senderId", deviceId);
+                            notification.put("recipientType", "ENTRANT");
+                            notification.put("eventId", eventId);
+                            notification.put("type", "SIGN_UP_MESSAGE");
+                            notification.put("title", "Sign-up Invitation");
+                            notification.put("message",
+                                    "You have been selected for " + currentEvent.getTitle() + ". Please respond to confirm your spot.");
+                            notification.put("isRead", false);
+                            notification.put("createdAt", now);
+                            notification.put("actionStatus", "PENDING");
+
+                            batch.set(db.collection("notifications").document(notificationId), notification);
+                        }
+                    }
+
+                    Map<String, Object> eventUpdates = new HashMap<>();
+                    eventUpdates.put("waitingList", currentEvent.getWaitingList());
+                    
+                    int totalOccupiedAfterDraw = getOccupiedCount() + selected.size();
+                    if (totalOccupiedAfterDraw >= currentEvent.getCapacity()) {
+                        eventUpdates.put("status", "drawn");
+                    }
+                    
+                    eventUpdates.put("updatedAt", now);
+
+                    batch.update(db.collection("events").document(eventId), eventUpdates);
+
+                    batch.commit().addOnSuccessListener(aVoid -> {
+                        String msg = isFirstDraw ? "First draw completed" : "Replacement draw completed";
                         Toast.makeText(
                                 this,
-                                "Successfully sampled " + selected.size() + " entrants",
+                                msg + ": " + selected.size() + " entrants picked",
                                 Toast.LENGTH_SHORT
-                        ).show()
-                )
-                .addOnFailureListener(e ->
-                        Toast.makeText(
-                                this,
-                                "Failed to run lottery: " + e.getMessage(),
-                                Toast.LENGTH_SHORT
-                        ).show()
-                );
+                        ).show();
+                    });
+                });
     }
 
+    /**
+     * Calculates the total number of occupied slots (selected, accepted, enrolled, etc.).
+     * @return Occupied slot count.
+     */
+    private int getOccupiedCount() {
+        if (currentEvent == null || currentEvent.getWaitingList() == null) return 0;
+
+        int count = 0;
+        for (Event.WaitingListEntry entry : currentEvent.getWaitingList()) {
+            String status = entry.getParticipationStatus() != null
+                    ? entry.getParticipationStatus().toLowerCase()
+                    : "";
+            if (status.equals("selected")
+                    || status.equals("invited")
+                    || status.equals("accepted")
+                    || status.equals("enrolled")
+                    || status.equals("confirmed")) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Calculates number of remaining available slots based on event capacity.
+     */
+    private int getAvailableSlots() {
+        if (currentEvent == null) return 0;
+        return Math.max(0, currentEvent.getCapacity() - getOccupiedCount());
+    }
+
+    /**
+     * Returns a list of all entrants currently with 'waiting' status.
+     */
+    private List<Event.WaitingListEntry> getWaitingEntrants() {
+        List<Event.WaitingListEntry> candidates = new ArrayList<>();
+        if (currentEvent == null || currentEvent.getWaitingList() == null) return candidates;
+
+        for (Event.WaitingListEntry entry : currentEvent.getWaitingList()) {
+            if ("waiting".equalsIgnoreCase(entry.getParticipationStatus())) {
+                candidates.add(entry);
+            }
+        }
+        return candidates;
+    }
+
+    /**
+     * Displays dialog for searching and inviting entrants manually (Private Events).
+     */
     private void showInviteSearchDialog() {
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_invite_entrants_search, null);
         EditText editName = view.findViewById(R.id.editSearchName);
@@ -575,45 +1004,65 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         dialog.show();
     }
 
+    /**
+     * Performs a text-based search for entrants in Firestore based on various criteria.
+     */
     private void performEntrantSearch(String name, String email, String phone) {
         List<Task<QuerySnapshot>> tasks = new ArrayList<>();
 
-        // Create prefix-range queries for non-empty fields
         if (!name.isEmpty()) {
-            tasks.add(db.collection("entrants").orderBy("name").startAt(name).endAt(name + "\uf8ff").get());
+            tasks.add(db.collection("entrants")
+                    .orderBy("name")
+                    .startAt(name)
+                    .endAt(name + "\uf8ff")
+                    .get());
         }
+
         if (!email.isEmpty()) {
-            // Case Sensitivity: ensure lowercase for email if database requirement exists
             String emailSearch = email.toLowerCase();
-            tasks.add(db.collection("entrants").orderBy("email").startAt(emailSearch).endAt(emailSearch + "\uf8ff").get());
+            tasks.add(db.collection("entrants")
+                    .orderBy("email")
+                    .startAt(emailSearch)
+                    .endAt(emailSearch + "\uf8ff")
+                    .get());
         }
+
         if (!phone.isEmpty()) {
-            tasks.add(db.collection("entrants").orderBy("phone").startAt(phone).endAt(phone + "\uf8ff").get());
+            tasks.add(db.collection("entrants")
+                    .orderBy("phone")
+                    .startAt(phone)
+                    .endAt(phone + "\uf8ff")
+                    .get());
         }
 
-        Tasks.whenAllSuccess(tasks).addOnSuccessListener(list -> {
-            Map<String, Entrant> uniqueResults = new HashMap<>();
-            for (Object item : list) {
-                QuerySnapshot snapshot = (QuerySnapshot) item;
-                for (DocumentSnapshot doc : snapshot.getDocuments()) {
-                    Entrant entrant = doc.toObject(Entrant.class);
-                    if (entrant != null) {
-                        uniqueResults.put(entrant.getDeviceId(), entrant);
+        Tasks.whenAllSuccess(tasks)
+                .addOnSuccessListener(list -> {
+                    Map<String, Entrant> uniqueResults = new HashMap<>();
+                    for (Object item : list) {
+                        QuerySnapshot snapshot = (QuerySnapshot) item;
+                        for (DocumentSnapshot doc : snapshot.getDocuments()) {
+                            Entrant entrant = doc.toObject(Entrant.class);
+                            if (entrant != null) {
+                                uniqueResults.put(entrant.getDeviceId(), entrant);
+                            }
+                        }
                     }
-                }
-            }
 
-            List<Entrant> results = new ArrayList<>(uniqueResults.values());
-            if (results.isEmpty()) {
-                Toast.makeText(this, "No entrants found matching criteria", Toast.LENGTH_SHORT).show();
-            } else {
-                showSearchResultsDialog(results);
-            }
-        }).addOnFailureListener(e -> {
-            Toast.makeText(this, "Search failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        });
+                    List<Entrant> results = new ArrayList<>(uniqueResults.values());
+                    if (results.isEmpty()) {
+                        Toast.makeText(this, "No entrants found matching criteria", Toast.LENGTH_SHORT).show();
+                    } else {
+                        showSearchResultsDialog(results);
+                    }
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "Search failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 
+    /**
+     * Displays the results of an entrant search in a selectable list.
+     * @param results List of found entrant profiles.
+     */
     private void showSearchResultsDialog(List<Entrant> results) {
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_invite_search_results, null);
         RecyclerView recycler = view.findViewById(R.id.recyclerSearchResults);
@@ -662,57 +1111,83 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         dialog.show();
     }
 
+    /**
+     * Adds selected entrants to the private event's waiting list and sends invitations.
+     * @param entrantIds List of entrant device IDs to invite.
+     */
     private void inviteSelectedEntrants(List<String> entrantIds) {
         if (currentEvent == null || eventId == null) return;
 
-        List<Event.WaitingListEntry> waitingList = currentEvent.getWaitingList();
-        if (waitingList == null) waitingList = new ArrayList<>();
+        db.collection("entrants")
+                .whereIn("deviceId", entrantIds)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    Map<String, Boolean> notificationMap = new HashMap<>();
+                    for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
+                        Entrant entrant = doc.toObject(Entrant.class);
+                        if (entrant != null) {
+                            notificationMap.put(entrant.getDeviceId(), entrant.isNotificationsEnabled());
+                        }
+                    }
 
-        WriteBatch batch = db.batch();
-        Timestamp now = Timestamp.now();
-        boolean isPrivate = currentEvent.isIsPrivateEvent();
+                    List<Event.WaitingListEntry> waitingList = currentEvent.getWaitingList();
+                    if (waitingList == null) waitingList = new ArrayList<>();
 
-        for (String eid : entrantIds) {
-            Event.WaitingListEntry entry = new Event.WaitingListEntry();
-            entry.setDeviceId(eid);
-            entry.setJoinedAt(now);
-            entry.setUpdatedAt(now);
-            entry.setInviteSentAt(now);
-            // Project Rule: set participationStatus = "invited" for private invites
-            entry.setParticipationStatus("invited");
-            waitingList.add(entry);
+                    WriteBatch batch = db.batch();
+                    Timestamp now = Timestamp.now();
+                    boolean isPrivate = currentEvent.isIsPrivateEvent();
 
-            Map<String, Object> notification = new HashMap<>();
-            notification.put("recipientId", eid);
-            notification.put("senderId", deviceId);
-            notification.put("recipientType", "ENTRANT");
-            notification.put("eventId", eventId);
-            notification.put("type", isPrivate ? "PRIVATE_INVITE" : "INVITATION");
-            notification.put("title", isPrivate ? "Private Event Invitation" : "Event Invitation");
-            notification.put("message", isPrivate
-                    ? "You have been privately invited to join " + currentEvent.getTitle()
-                    : "You have been invited to join the waiting list for " + currentEvent.getTitle());
-            notification.put("isRead", false);
-            notification.put("createdAt", now);
-            notification.put("actionStatus", "PENDING");
+                    for (String eid : entrantIds) {
+                        Event.WaitingListEntry entry = new Event.WaitingListEntry();
+                        entry.setDeviceId(eid);
+                        entry.setJoinedAt(now);
+                        entry.setUpdatedAt(now);
+                        entry.setInviteSentAt(now);
+                        entry.setParticipationStatus("invited");
+                        waitingList.add(entry);
 
-            batch.set(db.collection("notifications").document(), notification);
-        }
+                        boolean canNotify = notificationMap.getOrDefault(eid, true);
+                        if (isPrivate && canNotify) {
+                            String notificationId = db.collection("notifications").document().getId();
 
-        batch.update(db.collection("events").document(eventId), "waitingList", waitingList);
+                            Map<String, Object> notification = new HashMap<>();
+                            notification.put("notificationId", notificationId);
+                            notification.put("recipientId", eid);
+                            notification.put("senderId", deviceId);
+                            notification.put("recipientType", "ENTRANT");
+                            notification.put("eventId", eventId);
+                            notification.put("type", "PRIVATE_INVITE");
+                            notification.put("title", "Private Event Invitation");
+                            notification.put("message", "You have been privately invited to join " + currentEvent.getTitle());
+                            notification.put("isRead", false);
+                            notification.put("createdAt", now);
+                            notification.put("actionStatus", "PENDING");
 
-        batch.commit().addOnSuccessListener(aVoid -> {
-            Toast.makeText(this, "Invites sent successfully", Toast.LENGTH_SHORT).show();
-        }).addOnFailureListener(e -> {
-            Toast.makeText(this, "Failed to send invites: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        });
+                            batch.set(db.collection("notifications").document(notificationId), notification);
+                        }
+                    }
+
+                    batch.update(db.collection("events").document(eventId), "waitingList", waitingList);
+
+                    batch.commit()
+                            .addOnSuccessListener(aVoid ->
+                                    Toast.makeText(this, "Invites sent successfully", Toast.LENGTH_SHORT).show())
+                            .addOnFailureListener(e ->
+                                    Toast.makeText(this, "Failed to send invites: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                });
     }
 
+    /**
+     * Callback from PosterUploadDialogFragment when a new poster image is selected.
+     * Updates the event document in Firestore with the Base64 image string.
+     * @param uri The URI of the selected image.
+     */
     @Override
     public void onPosterSelected(Uri uri) {
         String base64Image = uriToBase64(uri);
         if (base64Image != null && eventId != null) {
-            db.collection("events").document(eventId)
+            db.collection("events")
+                    .document(eventId)
                     .update("posterImage", base64Image, "updatedAt", Timestamp.now())
                     .addOnSuccessListener(aVoid ->
                             Toast.makeText(this, "Poster updated successfully", Toast.LENGTH_SHORT).show()
@@ -723,10 +1198,15 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         }
     }
 
+    /**
+     * Callback from PosterUploadDialogFragment when the current poster image is removed.
+     * Clears the posterImage field in the event's Firestore document.
+     */
     @Override
     public void onPosterRemoved() {
         if (eventId != null) {
-            db.collection("events").document(eventId)
+            db.collection("events")
+                    .document(eventId)
                     .update("posterImage", null, "updatedAt", Timestamp.now())
                     .addOnSuccessListener(aVoid -> {
                         eventPoster.setImageResource(R.drawable.img_poster);
@@ -738,6 +1218,9 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
         }
     }
 
+    /**
+     * Converts an image URI to a compressed Base64 string for Firestore storage.
+     */
     private String uriToBase64(Uri uri) {
         try {
             InputStream inputStream = getContentResolver().openInputStream(uri);
@@ -746,8 +1229,11 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
                 inputStream.close();
             }
 
+            if (bitmap == null) return null;
+
             int maxWidth = 800;
             int maxHeight = 800;
+
             if (bitmap.getWidth() > maxWidth || bitmap.getHeight() > maxHeight) {
                 float ratio = Math.min(
                         (float) maxWidth / bitmap.getWidth(),

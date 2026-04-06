@@ -26,31 +26,34 @@ import java.util.Locale;
 import java.util.Objects;
 
 /**
- * Adapter for the RecyclerView that displays a list of Events for entrants.
+ * Adapter for the RecyclerView that displays a list of events to entrants.
+ * It manages the display of event cards, including status updates, image decoding,
+ * and handles interactions such as joining or leaving a waiting list.
  */
 public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> {
 
+    /** The list of event models to be displayed. */
     private List<Event> eventList;
+    /** The device ID of the current user, used to determine participation status. */
     private String currentDeviceId;
 
     /**
-     * ViewHolder class that holds the views for a single event card.
-     * Reference: https://developer.android.com/develop/ui/views/layout/recyclerview#java
+     * ViewHolder class that holds references to the UI components for an individual event item.
      */
-    static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView title;
-        TextView status;
-        TextView locationText;
-        TextView deadline;
-        TextView waitingCount;
-        LinearLayout locationRow;
-        Button joinButton;
-        ImageView posterImage;
-        LinearLayout cardContent;
+    public static class ViewHolder extends RecyclerView.ViewHolder {
+        public TextView title;
+        public TextView status;
+        public TextView locationText;
+        public TextView deadline;
+        public TextView waitingCount;
+        public LinearLayout locationRow;
+        public Button joinButton;
+        public ImageView posterImage;
+        public LinearLayout cardContent;
 
         /**
-         * Constructs a ViewHolder and initializes all UI components.
-         * @param itemView The view of the individual list item.
+         * Initializes UI components from the inflated layout.
+         * @param itemView The root view of the item layout.
          */
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -67,9 +70,9 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
     }
 
     /**
-     * Constructs an EventAdapter with the specified data.
-     * @param eventList       List of Event objects to display.
-     * @param currentDeviceId Device ID of the user viewing the list.
+     * Constructs a new EventAdapter.
+     * @param eventList       The data set of events.
+     * @param currentDeviceId The unique ID of the current device/user.
      */
     public EventAdapter(List<Event> eventList, String currentDeviceId) {
         this.eventList = eventList;
@@ -77,10 +80,7 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
     }
 
     /**
-     * Called when RecyclerView needs a new {@link ViewHolder} of the given type to represent an item.
-     * @param parent   The ViewGroup into which the new View will be added.
-     * @param viewType The view type of the new View.
-     * @return A new ViewHolder that holds a View of the given type.
+     * Inflates the layout for a single event card.
      */
     @NonNull
     @Override
@@ -90,10 +90,11 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
     }
 
     /**
-     * Called by RecyclerView to display the data at the specified position.
-     * Updates the contents of the {@link ViewHolder#itemView} to reflect the event item at the given position.
-     * @param holder   The ViewHolder which should be updated.
-     * @param position The position of the item within the adapter's data set.
+     * Binds event data to the view holder. Sets text fields, decodes images, 
+     * and updates the UI based on the user's current participation status.
+     *
+     * @param holder   The ViewHolder to update.
+     * @param position The position of the event in the list.
      */
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
@@ -112,6 +113,7 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
             holder.deadline.setText("");
         }
 
+        // Display current waiting list occupancy and capacity
         int waitingListSize = (event.getWaitingList() != null) ? event.getWaitingList().size() : 0;
         if (event.getMaxWaitingList() != null) {
             holder.waitingCount.setText(String.format(Locale.getDefault(), "%d/%d waiting", waitingListSize, event.getMaxWaitingList()));
@@ -119,9 +121,10 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
             holder.waitingCount.setText(String.format(Locale.getDefault(), "%d waiting", waitingListSize));
         }
 
+        // Only show location row if geolocation is required
         holder.locationRow.setVisibility(event.isGeoEnabled() ? View.VISIBLE : View.GONE);
 
-        // Decode and set the poster image if available
+        // Decode the Base64 poster image string if it exists
         if (event.getPosterImage() != null && !event.getPosterImage().isEmpty()) {
             try {
                 byte[] decodedString = Base64.decode(event.getPosterImage(), Base64.DEFAULT);
@@ -141,21 +144,26 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
 
         // Determine if the current user has already joined the waiting list
         boolean isJoined = false;
+        String participationStatus = null;
+        String finalResult = null;
         if (event.getWaitingList() != null) {
             for (Event.WaitingListEntry entry : event.getWaitingList()) {
                 if (Objects.equals(entry.getDeviceId(), currentDeviceId)) {
                     isJoined = true;
+                    participationStatus = entry.getParticipationStatus();
+                    finalResult = entry.getFinalResult();
                     break;
                 }
             }
         }
 
-        // Reset alpha to full opacity by default
+        // Reset alpha to full opacity before potential changes in updateStatusUI
         setAlpha(holder, 1.0f);
 
-        updateStatusUI(holder, event, isJoined);
+        // Update status label and buttons based on participation logic
+        updateStatusUI(holder, event, isJoined, participationStatus, finalResult);
 
-        // Click on the card to open event details
+        // Clicking the whole card opens the detailed event view
         holder.itemView.setOnClickListener(v -> {
             Intent intent = new Intent(v.getContext(), EventDetailsActivity.class);
             intent.putExtra("eventId", event.getEventId());
@@ -164,21 +172,49 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
         });
     }
 
-    private void updateStatusUI(ViewHolder holder, Event event, boolean isJoined) {
+    /**
+     * Updates the status TextView and the Join/Leave button based on complex event and user states.
+     * Handles states such as "Joined", "Selected", "Accepted", "Drawn", and "Closed".
+     */
+    private void updateStatusUI(ViewHolder holder, Event event, boolean isJoined, String participationStatus, String finalResult) {
         Timestamp now = Timestamp.now();
         String status = event.getStatus() != null ? event.getStatus().toLowerCase() : "open";
         
+        holder.joinButton.setVisibility(View.GONE);
+
+        // If user is in the waiting list, participation status takes precedence
+        if (isJoined) {
+            if ("LOSS".equalsIgnoreCase(finalResult) || "not_selected".equalsIgnoreCase(participationStatus)) {
+                holder.status.setText("Not Selected");
+                holder.status.setTextColor(Color.parseColor("#9CA3AF"));
+                return;
+            }
+            if ("accepted".equalsIgnoreCase(participationStatus)) {
+                holder.status.setText("Accepted");
+                holder.status.setTextColor(Color.parseColor("#388E3C"));
+                return;
+            }
+            if ("declined".equalsIgnoreCase(participationStatus) || "cancelled".equalsIgnoreCase(participationStatus)) {
+                holder.status.setText("Cancelled/Declined");
+                holder.status.setTextColor(Color.parseColor("#EF4444"));
+                return;
+            }
+            if ("selected".equalsIgnoreCase(participationStatus) || "invited".equalsIgnoreCase(participationStatus)) {
+                holder.status.setText("Selected!");
+                holder.status.setTextColor(Color.parseColor("#2563EB"));
+                return;
+            }
+        }
+
+        // Check if the event has actually passed
         if (event.getEventStartAt() != null && event.getEventStartAt().compareTo(now) < 0) {
             holder.status.setText("Closed");
             holder.status.setTextColor(Color.parseColor("#9CA3AF"));
-            holder.joinButton.setVisibility(View.GONE);
             setAlpha(holder, 0.5f);
-        } else if ("drawed".equals(status)) {
-            holder.status.setText("Drawed");
+        } else if ("drawn".equals(status)) {
+            holder.status.setText("Drawn");
             holder.status.setTextColor(Color.parseColor("#F57C00"));
-            holder.joinButton.setVisibility(View.GONE);
-        } else {
-            // "Open" or "Active"
+        } else if ("open".equals(status)) {
             if (isJoined) {
                 holder.status.setText("Joined");
                 holder.status.setTextColor(Color.parseColor("#F59E0B"));
@@ -202,13 +238,15 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
                             .show(((AppCompatActivity) v.getContext()).getSupportFragmentManager(), "Join Waiting List");
                 });
             }
+        } else {
+            // Fallback for unexpected or finalized statuses
+            holder.status.setText(status.toUpperCase());
+            holder.status.setTextColor(Color.parseColor("#9CA3AF"));
         }
     }
 
     /**
-     * Helper method to set the alpha transparency of the card content.
-     * @param holder The ViewHolder containing the card.
-     * @param alpha  The alpha value to set (0.0 to 1.0).
+     * Helper method to set transparency for parts of the card view.
      */
     private void setAlpha(ViewHolder holder, float alpha) {
         if (holder.cardContent.getChildCount() > 1) {
@@ -216,10 +254,6 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
         }
     }
 
-    /**
-     * Returns the total number of items in the data set held by the adapter.
-     * @return The total number of items in this adapter.
-     */
     @Override
     public int getItemCount() {
         return eventList.size();

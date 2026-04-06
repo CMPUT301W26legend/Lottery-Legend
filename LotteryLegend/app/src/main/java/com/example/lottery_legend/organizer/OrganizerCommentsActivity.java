@@ -2,13 +2,17 @@ package com.example.lottery_legend.organizer;
 
 import android.content.Intent;
 import android.content.res.ColorStateList;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
@@ -41,6 +45,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+/**
+ * Activity for organizers to view and manage comments on an event.
+ * Organizers can post comments, reply to existing ones, react with emojis, 
+ * and have the privilege to delete any comment.
+ */
 public class OrganizerCommentsActivity extends AppCompatActivity {
 
     private String eventId;
@@ -54,15 +63,22 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
     private EditText editComment;
     private View btnSend;
 
+    /** The comment currently being replied to, or null if posting a top-level comment. */
     private Comment replyingTo = null;
 
+    /** Map of comment IDs to the current user's reaction for that comment. */
     private final Map<String, Reaction> userReactions = new HashMap<>();
+    /** Local cache of all comments for the current event. */
     private final List<Comment> allComments = new ArrayList<>();
+    /** Map of root comment IDs to the count of their direct (level 1) replies. */
     private final Map<String, Integer> directReplyCountMap = new HashMap<>();
 
     private ListenerRegistration commentsRegistration;
     private ListenerRegistration reactionsRegistration;
 
+    /**
+     * Launcher for viewing nested comment threads. Restarts listeners on return to refresh data.
+     */
     private final ActivityResultLauncher<Intent> threadLauncher =
             registerForActivityResult(
                     new ActivityResultContracts.StartActivityForResult(),
@@ -114,6 +130,9 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
         stopRealtimeListeners();
     }
 
+    /**
+     * Initializes UI components and sets up the toolbar.
+     */
     private void setupViews() {
         Toolbar toolbar = findViewById(R.id.toolbarComments);
         setSupportActionBar(toolbar);
@@ -142,6 +161,9 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Attaches Firestore listeners for comments and user reactions.
+     */
     private void startRealtimeListeners() {
         stopRealtimeListeners();
         listenComments();
@@ -152,6 +174,9 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
         startRealtimeListeners();
     }
 
+    /**
+     * Detaches all active Firestore listeners.
+     */
     private void stopRealtimeListeners() {
         if (commentsRegistration != null) {
             commentsRegistration.remove();
@@ -163,6 +188,10 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Listens for all comments in the current event's sub-collection.
+     * Updates the UI and the reply count map.
+     */
     private void listenComments() {
         commentsRegistration = db.collection("events")
                 .document(eventId)
@@ -174,6 +203,7 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
 
                     List<Comment> comments = value.toObjects(Comment.class);
 
+                    // Sort comments chronologically
                     Collections.sort(comments, (c1, c2) -> {
                         if (c1.getCreatedAt() == null && c2.getCreatedAt() == null) return 0;
                         if (c1.getCreatedAt() == null) return -1;
@@ -186,6 +216,7 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
 
                     rebuildDirectReplyCountMap(comments);
 
+                    // Filter for top-level comments to display in the main list
                     List<Comment> parentComments = new ArrayList<>();
                     for (Comment comment : comments) {
                         if (comment.getThreadLevel() == 0) {
@@ -197,6 +228,10 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
                 });
     }
 
+    /**
+     * Rebuilds the map that stores the count of direct replies for each top-level comment.
+     * @param comments The complete list of comments.
+     */
     private void rebuildDirectReplyCountMap(List<Comment> comments) {
         directReplyCountMap.clear();
 
@@ -213,6 +248,9 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Listens for all reactions posted by the current user across all comments in the system.
+     */
     private void listenCurrentUserReactions() {
         reactionsRegistration = db.collectionGroup("reactions")
                 .whereEqualTo("deviceId", deviceId)
@@ -235,6 +273,9 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
                 });
     }
 
+    /**
+     * Posts a new top-level comment to Firestore.
+     */
     private void postComment() {
         String content = editComment.getText().toString().trim();
         if (TextUtils.isEmpty(content)) return;
@@ -262,6 +303,9 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
         ref.set(comment).addOnSuccessListener(aVoid -> editComment.setText(""));
     }
 
+    /**
+     * Posts a reply to an existing comment.
+     */
     private void postReply() {
         String content = editComment.getText().toString().trim();
         if (TextUtils.isEmpty(content) || replyingTo == null) return;
@@ -303,6 +347,10 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Displays a confirmation dialog and deletes a comment from Firestore.
+     * @param comment The comment to delete.
+     */
     private void deleteComment(Comment comment) {
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_comment_delete, null);
         AlertDialog dialog = new AlertDialog.Builder(this, R.style.TransparentDialog)
@@ -323,6 +371,13 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    /**
+     * Toggles a user reaction (Like, Love, Helpful) for a specific comment.
+     * Uses a transaction to ensure atomic updates to reaction counts.
+     *
+     * @param comment The comment model.
+     * @param type    The reaction type ("LIKE", "LOVE", "HELPFUL").
+     */
     private void toggleReaction(Comment comment, String type) {
         DocumentReference commentRef = db.collection("events")
                 .document(eventId)
@@ -377,6 +432,9 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Adapter for displaying the main list of top-level comments.
+     */
     private class CommentsAdapter extends RecyclerView.Adapter<CommentViewHolder> {
         private List<Comment> comments = new ArrayList<>();
 
@@ -404,8 +462,12 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * ViewHolder class for an individual comment item in the organizer view.
+     */
     private class CommentViewHolder extends RecyclerView.ViewHolder {
 
+        ImageView imageAvatar;
         TextView authorName;
         TextView time;
         TextView content;
@@ -424,6 +486,7 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
         public CommentViewHolder(@NonNull View itemView) {
             super(itemView);
 
+            imageAvatar = itemView.findViewById(R.id.imageAvatar);
             authorName = itemView.findViewById(R.id.textCommentUserName);
             time = itemView.findViewById(R.id.textCommentTime);
             content = itemView.findViewById(R.id.textCommentContent);
@@ -436,11 +499,14 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
             likeCount = itemView.findViewById(R.id.textLikeCount);
             heartCount = itemView.findViewById(R.id.textHeartCount);
 
-            // Corrected IDs from item_comment_organizer.xml
             cardLike = itemView.findViewById(R.id.cardLike);
             cardLove = itemView.findViewById(R.id.cardLove);
         }
 
+        /**
+         * Binds the comment data to the UI elements.
+         * @param comment The comment model.
+         */
         public void bind(Comment comment) {
             authorName.setText(comment.getAuthorNameSnapshot());
             content.setText(comment.getContent());
@@ -452,13 +518,14 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
                 time.setText("");
             }
 
+            loadAuthorAvatar(comment);
             updateReactionUI(comment);
 
             int directReplyCount = directReplyCountMap.getOrDefault(comment.getCommentId(), 0);
 
             if (directReplyCount > 0) {
                 buttonViewReplies.setVisibility(View.VISIBLE);
-                buttonViewReplies.setText("View " + directReplyCount + " Replies");
+                buttonViewReplies.setText(String.format(Locale.getDefault(), "View %d Replies", directReplyCount));
             } else {
                 buttonViewReplies.setVisibility(View.GONE);
             }
@@ -490,7 +557,7 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
                 threadLauncher.launch(intent);
             });
 
-            // Organizer can always delete
+            // Organizers have the privilege to delete any comment
             buttonDelete.setVisibility(View.VISIBLE);
             buttonDelete.setOnClickListener(v -> deleteComment(comment));
 
@@ -498,6 +565,28 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
             if (cardLove != null) cardLove.setOnClickListener(v -> toggleReaction(comment, "LOVE"));
         }
 
+        /**
+         * Fetches and displays the author's avatar image from Firestore.
+         */
+        private void loadAuthorAvatar(Comment comment) {
+            String collection = "ORGANIZER".equalsIgnoreCase(comment.getAuthorType()) ? "organizers" : "entrants";
+            db.collection(collection).document(comment.getAuthorId()).get().addOnSuccessListener(doc -> {
+                if (doc.exists()) {
+                    String profileImage = doc.getString("profileImage");
+                    if (profileImage != null && !profileImage.isEmpty()) {
+                        displayBase64Image(profileImage, imageAvatar);
+                    } else {
+                        imageAvatar.setImageResource(R.drawable.ic_profile_avatar);
+                    }
+                } else {
+                    imageAvatar.setImageResource(R.drawable.ic_profile_avatar);
+                }
+            }).addOnFailureListener(e -> imageAvatar.setImageResource(R.drawable.ic_profile_avatar));
+        }
+
+        /**
+         * Updates the reaction summaries and highlighting for the comment.
+         */
         private void updateReactionUI(Comment comment) {
             reactionSummary.setVisibility(comment.getReactionCount() > 0 ? View.VISIBLE : View.GONE);
 
@@ -513,6 +602,9 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
             if (cardLove != null) setCardSelected(cardLove, reaction != null && reaction.isLove(), Color.parseColor("#EF4444"), heartCount);
         }
 
+        /**
+         * Sets the visual selection state for a reaction card.
+         */
         private void setCardSelected(MaterialCardView card, boolean selected, int color, TextView countText) {
             if (selected) {
                 card.setCardBackgroundColor(ColorStateList.valueOf(Color.parseColor("#FFFFFF")));
@@ -521,6 +613,20 @@ public class OrganizerCommentsActivity extends AppCompatActivity {
                 card.setCardBackgroundColor(ColorStateList.valueOf(Color.parseColor("#F3F4F6")));
                 if (countText != null) countText.setTextColor(Color.parseColor("#6B7280"));
             }
+        }
+    }
+
+    /**
+     * Helper to decode a Base64 image and display it in an ImageView.
+     */
+    private void displayBase64Image(String base64, ImageView imageView) {
+        try {
+            byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
+            Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+            if (bitmap != null && imageView != null) {
+                imageView.setImageBitmap(bitmap);
+            }
+        } catch (Exception ignored) {
         }
     }
 }

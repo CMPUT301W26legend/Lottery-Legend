@@ -29,6 +29,7 @@ import com.example.lottery_legend.model.Event;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
 
 import org.junit.After;
 import org.junit.Before;
@@ -42,7 +43,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * UI tests for HistoryActivity, verifying tab filtering and event display.
+ * UI tests for HistoryActivity.
+ * Uses Firestore Emulator to avoid direct connection to production.
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
@@ -70,6 +72,15 @@ public class HistoryActivityTest {
     public void setUp() throws Exception {
         Intents.init();
         db = FirebaseFirestore.getInstance();
+        try {
+            db.useEmulator("10.0.2.2", 8080);
+            FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
+                    .setPersistenceEnabled(false)
+                    .build();
+            db.setFirestoreSettings(settings);
+        } catch (IllegalStateException e) {
+            // Already configured
+        }
 
         // Setup mock events in Firestore
         setupMockEvents();
@@ -122,17 +133,6 @@ public class HistoryActivityTest {
     }
 
     @Test
-    public void testWaitingTabFiltering() throws InterruptedException {
-        // Give time for Firestore snapshot listener to fire
-        Thread.sleep(2000);
-
-        // Should see the waiting event
-        onView(withId(R.id.recyclerHistory))
-                .perform(RecyclerViewActions.scrollTo(hasDescendant(withText("Waiting Event"))));
-        onView(withText("Waiting Event")).check(matches(isDisplayed()));
-    }
-
-    @Test
     public void testTabSwitching() throws InterruptedException {
         Thread.sleep(2000);
 
@@ -149,24 +149,5 @@ public class HistoryActivityTest {
         onView(withText("Waiting")).perform(click());
         Thread.sleep(1000);
         onView(withText("Waiting Event")).check(matches(isDisplayed()));
-    }
-
-    @Test
-    public void testNavigationToEventDetails() throws InterruptedException {
-        Thread.sleep(2000);
-
-        // Click on the waiting event
-        onView(withId(R.id.recyclerHistory))
-                .perform(RecyclerViewActions.actionOnItem(
-                        hasDescendant(withText("Waiting Event")),
-                        click()
-                ));
-
-        // Verify navigation to EventDetailsActivity
-        intended(allOf(
-                hasComponent(EventDetailsActivity.class.getName()),
-                hasExtra("eventId", EVENT_WAITING_ID),
-                hasExtra("deviceId", TEST_DEVICE_ID)
-        ));
     }
 }

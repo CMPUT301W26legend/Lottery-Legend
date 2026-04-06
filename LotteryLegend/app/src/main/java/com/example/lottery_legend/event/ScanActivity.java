@@ -26,6 +26,7 @@ import java.util.List;
 
 /**
  * Activity that handles QR code scanning using the ZXing library.
+ * It allows entrants to scan event QR codes to quickly view details and join waiting lists.
  *
  * <p>Reference: https://github.com/journeyapps/zxing-android-embedded</p>
  */
@@ -63,15 +64,15 @@ public class ScanActivity extends AppCompatActivity implements BarcodeCallback {
 
     /**
      * Callback method from ZXing when a barcode is successfully scanned.
+     * Extracts the raw text and triggers a database check.
      * @param result The result object containing the raw text of the scanned barcode.
      */
     @Override
     public void barcodeResult(BarcodeResult result) {
         if (result.getText() != null) {
-            // Pause scanning to prevent multiple dialogs from opening
+            // Pause scanning to prevent multiple triggers while processing the current result
             barcodeView.pause();
 
-            // Get the scanned ID and check it in the database
             String scannedId = result.getText();
             checkDatabase(scannedId);
         }
@@ -87,7 +88,7 @@ public class ScanActivity extends AppCompatActivity implements BarcodeCallback {
         db.collection("events").document(eventId).get()
                 .addOnSuccessListener(doc -> {
                     if (doc.exists()) {
-                        // Valid event found, navigate to details and pass relevant IDs
+                        // Valid event found, navigate to details and pass relevant identifiers
                         Intent intent = new Intent(this, EventDetailsActivity.class);
                         intent.putExtra("eventId", eventId);
                         intent.putExtra("deviceId", deviceId);
@@ -100,14 +101,14 @@ public class ScanActivity extends AppCompatActivity implements BarcodeCallback {
                     }
                 })
                 .addOnFailureListener(e -> {
-                    // Handle potential network or permission errors
+                    // Handle potential network or Firestore errors
                     Toast.makeText(this, "Network error", Toast.LENGTH_SHORT).show();
                     barcodeView.resume();
                 });
     }
 
     /**
-     * Manages camera resources when the activity is resumed.
+     * Resumes the camera and scanning process when the activity is brought to the foreground.
      */
     @Override
     protected void onResume() {
@@ -116,7 +117,7 @@ public class ScanActivity extends AppCompatActivity implements BarcodeCallback {
     }
 
     /**
-     * Manages camera resources and stops scanning when the activity is paused.
+     * Pauses the camera and scanning process when the activity is moved to the background.
      */
     @Override
     protected void onPause() {
@@ -126,11 +127,11 @@ public class ScanActivity extends AppCompatActivity implements BarcodeCallback {
 
     /**
      * Callback for potential points detected during the scanning process.
-     * Used for providing visual feedback (e.g., dots over detected patterns).
+     * Can be used for providing visual feedback (e.g., dots over detected patterns).
      * @param resultPoints List of points detected by the scanner.
      */
     @Override
     public void possibleResultPoints(List<com.google.zxing.ResultPoint> resultPoints) {
-        // handle UI feedback for detected points if needed
+        // Implementation for UI feedback on detected points could be added here
     }
 }

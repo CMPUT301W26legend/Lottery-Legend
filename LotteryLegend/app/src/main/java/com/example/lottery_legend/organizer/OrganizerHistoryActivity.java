@@ -2,7 +2,6 @@ package com.example.lottery_legend.organizer;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.Button;
 
 import androidx.activity.EdgeToEdge;
@@ -18,13 +17,15 @@ import com.example.lottery_legend.model.Event;
 import com.google.android.material.tabs.TabLayout;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * OrganizerHistoryActivity displays a list of all events created or co-organized by the current organizer.
+ * Activity that displays a history of events associated with the organizer.
+ * It uses tabs to switch between events created by the user and events where the user is a co-organizer.
  */
 public class OrganizerHistoryActivity extends AppCompatActivity {
 
@@ -55,10 +56,13 @@ public class OrganizerHistoryActivity extends AppCompatActivity {
         setupTabs();
         setupNavbar();
 
-        // Default: Load Organizer events
+        // Default: Load events created by this organizer
         loadOrganizerEvents();
     }
 
+    /**
+     * Initializes the UI components and sets up the RecyclerView.
+     */
     private void initViews() {
         tabLayout = findViewById(R.id.tabLayoutOrganizerHistory);
         recyclerView = findViewById(R.id.recyclerOrganizerEvents);
@@ -74,6 +78,9 @@ public class OrganizerHistoryActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Sets up the TabLayout with listeners to switch between "My Events" and "Co-organized" views.
+     */
     private void setupTabs() {
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
@@ -91,10 +98,16 @@ public class OrganizerHistoryActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Initializes the bottom navigation bar.
+     */
     private void setupNavbar() {
         NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.HISTORY);
     }
 
+    /**
+     * Removes the current Firestore real-time listener if it exists.
+     */
     private void removeListener() {
         if (currentListener != null) {
             currentListener.remove();
@@ -102,15 +115,19 @@ public class OrganizerHistoryActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Queries and listens for events where the current user is the primary organizer.
+     * Updates the list in real-time.
+     */
     private void loadOrganizerEvents() {
         if (deviceId == null) return;
         removeListener();
         eventList.clear();
         adapter.notifyDataSetChanged();
 
-        currentListener = db.collection("organizers")
-                .document(deviceId)
-                .collection("createdEvents")
+        currentListener = db.collection("events")
+                .whereEqualTo("organizerId", deviceId)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
                 .addSnapshotListener((value, error) -> {
                     if (error != null) return;
                     eventList.clear();
@@ -124,6 +141,11 @@ public class OrganizerHistoryActivity extends AppCompatActivity {
                 });
     }
 
+    /**
+     * Queries and listens for events where the current user is listed as a co-organizer.
+     * Since co-organizers are in a sub-collection, this fetches all events and filters client-side 
+     * while the tab is active.
+     */
     private void loadCoOrganizerEvents() {
         if (deviceId == null) return;
         removeListener();
@@ -138,6 +160,7 @@ public class OrganizerHistoryActivity extends AppCompatActivity {
                         for (QueryDocumentSnapshot doc : value) {
                             Event event = doc.toObject(Event.class);
                             if (event != null && !deviceId.equals(event.getOrganizerId())) {
+                                // Check the coOrganizers sub-collection for the current user's ID
                                 doc.getReference().collection("coOrganizers").document(deviceId).get()
                                         .addOnSuccessListener(coDoc -> {
                                             if (coDoc.exists() && tabLayout.getSelectedTabPosition() == 1) {

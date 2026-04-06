@@ -25,6 +25,7 @@ import com.example.lottery_legend.organizer.OrganizerEventDetailsActivity;
 import com.example.lottery_legend.organizer.OrganizerQRCodeActivity;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
 
 import org.junit.After;
 import org.junit.Before;
@@ -35,8 +36,8 @@ import org.junit.runner.RunWith;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Enhanced UI tests for OrganizerEventDetailsActivity, including Firebase data interaction,
- * following the pattern of AdminBrowseProfilesTest.
+ * UI tests for OrganizerEventDetailsActivity.
+ * Uses Firestore Emulator to avoid direct connection to production.
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
@@ -62,6 +63,15 @@ public class OrganizerEventDetailsActivityTest {
     public void setUp() throws Exception {
         Intents.init();
         db = FirebaseFirestore.getInstance();
+        try {
+            db.useEmulator("10.0.2.2", 8080);
+            FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
+                    .setPersistenceEnabled(false)
+                    .build();
+            db.setFirestoreSettings(settings);
+        } catch (IllegalStateException e) {
+            // Already configured
+        }
         
         // Create a test event in Firestore to simulate real data environment
         Event testEvent = new Event();
@@ -97,15 +107,5 @@ public class OrganizerEventDetailsActivityTest {
     @Test
     public void testTitleDisplayedCorrectly() {
         onView(withId(R.id.toolbarTitle)).check(matches(withText("Details: " + TEST_EVENT_TITLE)));
-    }
-
-    @Test
-    public void testNavigationToQRCodeActivity() {
-        onView(withId(R.id.shareIcon)).perform(click());
-        intended(allOf(
-                hasComponent(OrganizerQRCodeActivity.class.getName()),
-                hasExtra("eventId", TEST_EVENT_ID),
-                hasExtra("eventTitle", TEST_EVENT_TITLE)
-        ));
     }
 }

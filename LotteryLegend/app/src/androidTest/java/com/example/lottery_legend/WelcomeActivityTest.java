@@ -17,14 +17,17 @@ import com.example.lottery_legend.entrant.CreateProfileActivity;
 import com.example.lottery_legend.entrant.MainActivity;
 import com.example.lottery_legend.entrant.WelcomeActivity;
 import com.example.lottery_legend.organizer.OrganizerMainActivity;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
 
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
  * UI tests for WelcomeActivity.
- * Handles both cases: new user (stay on Welcome) and existing user (WelcomeExist).
+ * Uses Firestore Emulator to avoid direct connection to production.
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
@@ -36,6 +39,20 @@ public class WelcomeActivityTest {
     @Rule(order = 1)
     public ActivityScenarioRule<WelcomeActivity> scenario =
             new ActivityScenarioRule<>(WelcomeActivity.class);
+
+    @Before
+    public void setUp() {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        try {
+            db.useEmulator("10.0.2.2", 8080);
+            FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
+                    .setPersistenceEnabled(false)
+                    .build();
+            db.setFirestoreSettings(settings);
+        } catch (IllegalStateException e) {
+            // Already configured
+        }
+    }
 
     /**
      * Test that the app shows the root layout after loading.

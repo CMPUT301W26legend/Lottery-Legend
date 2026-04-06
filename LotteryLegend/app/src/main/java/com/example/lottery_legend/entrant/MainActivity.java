@@ -31,6 +31,7 @@ import com.google.android.material.datepicker.MaterialDatePicker;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.text.SimpleDateFormat;
@@ -51,8 +52,8 @@ public class MainActivity extends AppCompatActivity {
     private String deviceId;
     private RecyclerView eventView;
     private EventAdapter adapter;
-    private List<Event> allEvents = new ArrayList<>();
-    private List<Event> filteredEvents = new ArrayList<>();
+    private final List<Event> allEvents = new ArrayList<>();
+    private final List<Event> filteredEvents = new ArrayList<>();
 
     // Filter states
     private String searchQuery = "";
@@ -67,6 +68,10 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvNotificationBadge;
 
     private final SimpleDateFormat displayFormatShort = new SimpleDateFormat("MMM dd", Locale.getDefault());
+    
+    private boolean notificationsEnabled = true;
+    private ListenerRegistration profileListener;
+    private ListenerRegistration badgeListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,11 +88,14 @@ public class MainActivity extends AppCompatActivity {
         setupViews();
         setupListeners();
         fetchEvents();
-        setupNotificationBadge();
+        observeNotificationPreference();
 
         NavbarEntrant.setup(this, deviceId, NavbarEntrant.Tab.HOME);
     }
 
+    /**
+     * Initializes the UI components and sets up edge-to-edge display logic.
+     */
     private void setupViews() {
         View mainView = findViewById(R.id.main);
         ViewCompat.setOnApplyWindowInsetsListener(mainView, (v, insets) -> {
@@ -111,6 +119,9 @@ public class MainActivity extends AppCompatActivity {
         updateFiltersUI();
     }
 
+    /**
+     * Sets up click listeners and text watchers for interactive UI elements.
+     */
     private void setupListeners() {
         searchInput.addTextChangedListener(new TextWatcher() {
             @Override
@@ -135,9 +146,42 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Listens for changes in the user's notification preferences from Firestore.
+     */
+    private void observeNotificationPreference() {
+        if (deviceId == null) return;
+
+        profileListener = db.collection("entrants").document(deviceId)
+                .addSnapshotListener((doc, error) -> {
+                    if (error != null) return;
+                    if (doc != null && doc.exists()) {
+                        Boolean enabled = doc.getBoolean("notificationsEnabled");
+                        notificationsEnabled = enabled != null ? enabled : true;
+                        
+                        // Restart badge listener when preference changes
+                        setupNotificationBadge();
+                    }
+                });
+    }
+
+    /**
+     * Sets up a real-time listener for unread notifications to update the badge count.
+     */
     private void setupNotificationBadge() {
         if (deviceId == null) return;
-        db.collection("notifications")
+
+        if (badgeListener != null) {
+            badgeListener.remove();
+        }
+
+        // If notifications are disabled, hide the badge immediately and don't listen
+        if (!notificationsEnabled) {
+            tvNotificationBadge.setVisibility(View.GONE);
+            return;
+        }
+
+        badgeListener = db.collection("notifications")
                 .whereEqualTo("recipientId", deviceId)
                 .whereEqualTo("isRead", false)
                 .addSnapshotListener((value, error) -> {
@@ -145,6 +189,13 @@ public class MainActivity extends AppCompatActivity {
                         tvNotificationBadge.setVisibility(View.GONE);
                         return;
                     }
+                    
+                    // Double check preference inside listener
+                    if (!notificationsEnabled) {
+                        tvNotificationBadge.setVisibility(View.GONE);
+                        return;
+                    }
+
                     int count = value.size();
                     if (count > 0) {
                         tvNotificationBadge.setVisibility(View.VISIBLE);
@@ -155,6 +206,16 @@ public class MainActivity extends AppCompatActivity {
                 });
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (profileListener != null) profileListener.remove();
+        if (badgeListener != null) badgeListener.remove();
+    }
+
+    /**
+     * Shows a dialog to choose between specific day or date range filtering.
+     */
     private void showDateFilterDialog() {
         String[] modes = {"Specific Day", "Date Range"};
         new MaterialAlertDialogBuilder(this)
@@ -163,6 +224,10 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    /**
+     * Launches the appropriate Material Design date picker.
+     * @param isRangeMode True for range picker, false for single date picker.
+     */
     private void launchPicker(boolean isRangeMode) {
         if (isRangeMode) {
             MaterialDatePicker<Pair<Long, Long>> picker = MaterialDatePicker.Builder.dateRangePicker()
@@ -187,11 +252,23 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Shows a dialog to filter events by time of day.
+     */
     private void showTimeFilterDialog() {
-        // Disabled until time is added to database
-        Toast.makeText(this, "Time filtering is currently unavailable.", Toast.LENGTH_SHORT).show();
+        String[] options = {"Any Time", "Morning (06:00 - 12:00)", "Afternoon (12:01 - 18:00)", "Night (18:01 - 00:00)", "Midnight (00:00 - 06:00)"};
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Select Time of Day")
+                .setItems(options, (dialog, which) -> {
+                    timeFilter = options[which];
+                    updateFiltersUI();
+                })
+                .show();
     }
 
+    /**
+     * Shows a dialog to filter events by their capacity.
+     */
     private void showCapacityFilterDialog() {
         String[] options = {"Any", "< 50", "50 – 100", "100+"};
         new MaterialAlertDialogBuilder(this)
@@ -203,6 +280,9 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    /**
+     * Updates the visual state of filter buttons based on active selections.
+     */
     private void updateFiltersUI() {
         // Date Button
         String dateLabel = "Start Date";
@@ -237,6 +317,9 @@ public class MainActivity extends AppCompatActivity {
         applyFilters();
     }
 
+    /**
+     * Configures individual filter button colors, icons, and behavior.
+     */
     private void updateFilterButton(MaterialButton button, String text, boolean isSelected, View.OnClickListener clearAction) {
         button.setText(text);
         if (isSelected) {
@@ -248,24 +331,22 @@ public class MainActivity extends AppCompatActivity {
             button.setIconGravity(MaterialButton.ICON_GRAVITY_END);
             button.setIconPadding(8);
 
-            // Handle X click separately via touch coordinates on ACTION_DOWN to avoid interference with click
             button.setOnTouchListener((v, event) -> {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     int iconWidth = button.getIcon() != null ? button.getIcon().getIntrinsicWidth() + button.getIconPadding() + button.getPaddingEnd() : 0;
                     int clearZoneWidth = Math.max(iconWidth, (int) (48 * getResources().getDisplayMetrics().density));
                     if (event.getX() > (button.getWidth() - clearZoneWidth)) {
                         clearAction.onClick(v);
-                        return true; // Consume event to clear filter
+                        return true;
                     }
                 }
-                return false; // Let standard click handling proceed
+                return false;
             });
         } else {
             button.setBackgroundTintList(ColorStateList.valueOf(Color.WHITE));
             button.setTextColor(Color.parseColor("#111827"));
             button.setStrokeColor(ColorStateList.valueOf(Color.parseColor("#D1D5DB")));
             
-            // Restore arrow icons for Time and Capacity if they are unselected
             if (button.getId() == R.id.btnTimeFilter || button.getId() == R.id.btnCapacityFilter) {
                 button.setIcon(ContextCompat.getDrawable(this, R.drawable.ic_arrow_down_small));
                 button.setIconTint(ColorStateList.valueOf(Color.parseColor("#6B7280")));
@@ -277,6 +358,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Filters the list of all events based on the current search query and active filter settings.
+     */
     private void applyFilters() {
         filteredEvents.clear();
 
@@ -291,7 +375,6 @@ public class MainActivity extends AppCompatActivity {
                 if (eventStartAt == null) {
                     matchesDate = false;
                 } else {
-                    // Normalize both event date and filter dates to UTC start of day
                     long eventTimeUtc = normalizeToUtcStartOfDay(eventStartAt.toDate().getTime());
                     long rangeStartUtc = normalizeToUtcStartOfDay(startDateFilter);
 
@@ -304,7 +387,29 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
-            boolean matchesTime = true; // Disabled until time is added to database
+            boolean matchesTime = true;
+            if (!timeFilter.equals("Any Time")) {
+                Timestamp eventStartAt = event.getEventStartAt();
+                if (eventStartAt == null) {
+                    matchesTime = false;
+                } else {
+                    Calendar cal = Calendar.getInstance();
+                    cal.setTime(eventStartAt.toDate());
+                    int hour = cal.get(Calendar.HOUR_OF_DAY);
+                    int minute = cal.get(Calendar.MINUTE);
+                    double timeValue = hour + (minute / 60.0);
+
+                    if (timeFilter.startsWith("Morning")) {
+                        matchesTime = (timeValue >= 6.0 && timeValue <= 12.0);
+                    } else if (timeFilter.startsWith("Afternoon")) {
+                        matchesTime = (timeValue > 12.0 && timeValue <= 18.0);
+                    } else if (timeFilter.startsWith("Night")) {
+                        matchesTime = (timeValue > 18.0 || (hour == 0 && minute == 0));
+                    } else if (timeFilter.startsWith("Midnight")) {
+                        matchesTime = (timeValue >= 0.0 && timeValue <= 6.0);
+                    }
+                }
+            }
 
             boolean matchesCapacity = true;
             if (!capacityFilter.equals("Capacity")) {
@@ -326,6 +431,9 @@ public class MainActivity extends AppCompatActivity {
         adapter.notifyDataSetChanged();
     }
 
+    /**
+     * Normalizes a timestamp to the start of the day in UTC.
+     */
     private long normalizeToUtcStartOfDay(long timeMillis) {
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
         calendar.setTimeInMillis(timeMillis);
@@ -336,6 +444,9 @@ public class MainActivity extends AppCompatActivity {
         return calendar.getTimeInMillis();
     }
 
+    /**
+     * Fetches events from Firestore and listens for updates.
+     */
     private void fetchEvents() {
         db.collection("events").addSnapshotListener((value, error) -> {
             if (error != null) return;

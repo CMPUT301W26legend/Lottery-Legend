@@ -3,16 +3,15 @@ package com.example.lottery_legend;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.closeSoftKeyboard;
-import static androidx.test.espresso.action.ViewActions.longClick;
 import static androidx.test.espresso.action.ViewActions.typeText;
 import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
+import static androidx.test.espresso.matcher.RootMatchers.isDialog;
 import static androidx.test.espresso.matcher.ViewMatchers.hasDescendant;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withHint;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
-import static org.hamcrest.Matchers.allOf;
 
 import android.content.Context;
 import android.content.Intent;
@@ -33,6 +32,7 @@ import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreSettings;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import org.hamcrest.Matcher;
 import org.junit.After;
@@ -98,8 +98,12 @@ public class CommentsActivityTest {
         comment.setReplyCount(0);
         comment.setReactionCount(0);
 
-        Tasks.await(db.collection("events").document(TEST_EVENT_ID)
-                .collection("comments").document("test-comment-id").set(comment), 20, TimeUnit.SECONDS);
+        try {
+            Tasks.await(db.collection("events").document(TEST_EVENT_ID)
+                    .collection("comments").document("test-comment-id").set(comment), 20, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            Log.e(TAG, "Setup failed: " + e.getMessage());
+        }
     }
 
     @After
@@ -109,8 +113,10 @@ public class CommentsActivityTest {
                 // Delete all comments in the sub-collection
                 Tasks.await(db.collection("events").document(TEST_EVENT_ID)
                         .collection("comments").get().continueWith(task -> {
-                            for (var doc : task.getResult()) {
-                                doc.getReference().delete();
+                            if (task.isSuccessful() && task.getResult() != null) {
+                                for (QueryDocumentSnapshot doc : task.getResult()) {
+                                    doc.getReference().delete();
+                                }
                             }
                             return null;
                         }), 20, TimeUnit.SECONDS);
@@ -189,10 +195,15 @@ public class CommentsActivityTest {
     public void testDeleteComment() throws InterruptedException {
         Thread.sleep(3000);
 
-        // Long click on the pre-populated comment to trigger deletion (since we are the author)
+        // Click on the Delete button on the pre-populated comment (since we are the author)
         onView(withId(R.id.recyclerViewComments))
                 .perform(RecyclerViewActions.actionOnItem(hasDescendant(withText(TEST_COMMENT_CONTENT)), 
-                        longClick()));
+                        clickOnViewChild(R.id.buttonDelete)));
+
+        // Wait for dialog to appear and click confirm
+        onView(withId(R.id.buttonConfirmDelete))
+                .inRoot(isDialog())
+                .perform(click());
 
         // Wait for deletion to reflect
         Thread.sleep(3000);

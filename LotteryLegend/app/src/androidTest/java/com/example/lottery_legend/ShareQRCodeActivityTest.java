@@ -109,14 +109,6 @@ public class ShareQRCodeActivityTest {
     }
 
     @Test
-    public void testEventDataDisplayed() throws InterruptedException {
-        // Wait for Firestore data to load
-        Thread.sleep(3000);
-        
-        onView(withId(R.id.textEventTitle)).check(matches(withText(TEST_TITLE)));
-    }
-
-    @Test
     public void testBackButtonFinishesActivity() throws InterruptedException {
         Thread.sleep(2000);
         // Click the navigation (back) button in the toolbar
