@@ -27,6 +27,11 @@ public class AdminLogsAdapter extends RecyclerView.Adapter<AdminLogsAdapter.LogV
         void onLogClick(Notification log);
     }
 
+    /**
+     * Constructor for AdminLogsAdapter.
+     * @param logList List of notification logs to display.
+     * @param listener Listener for log item clicks.
+     */
     public AdminLogsAdapter(List<Notification> logList, OnLogClickListener listener) {
         this.logList = logList;
         this.listener = listener;
@@ -86,6 +91,10 @@ public class AdminLogsAdapter extends RecyclerView.Adapter<AdminLogsAdapter.LogV
         holder.itemView.setOnClickListener(v -> listener.onLogClick(log));
     }
 
+    /**
+     * Returns the number of items in the list.
+     * @return Number of items in the list.
+     */
     @Override
     public int getItemCount() {
         return logList.size();
@@ -96,6 +105,9 @@ public class AdminLogsAdapter extends RecyclerView.Adapter<AdminLogsAdapter.LogV
         notifyDataSetChanged();
     }
 
+    /**
+     * ViewHolder for a notification log item.
+     */
     static class LogViewHolder extends RecyclerView.ViewHolder {
         TextView tvEventTitle, tvSenderName, tvReceiverGroup, tvDate;
 

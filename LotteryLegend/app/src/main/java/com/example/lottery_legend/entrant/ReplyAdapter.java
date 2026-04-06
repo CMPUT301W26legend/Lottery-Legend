@@ -30,6 +30,7 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
     private final Context context;
     private final String currentUserType;
     private final String deviceId;
+    private final boolean isAdmin;
     private final OnReplyInteractionListener listener;
 
     private final List<Comment> replies = new ArrayList<>();
@@ -37,10 +38,12 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
     public ReplyAdapter(Context context,
                         String currentUserType,
                         String deviceId,
+                        boolean isAdmin,
                         OnReplyInteractionListener listener) {
         this.context = context;
         this.currentUserType = currentUserType;
         this.deviceId = deviceId;
+        this.isAdmin = isAdmin;
         this.listener = listener;
     }
 
@@ -126,7 +129,7 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
                 }
             });
 
-            boolean canDelete = (!TextUtils.isEmpty(deviceId) && deviceId.equals(comment.getAuthorId()));
+            boolean canDelete = isAdmin || (!TextUtils.isEmpty(deviceId) && deviceId.equals(comment.getAuthorId()));
 
             if (buttonReplyDelete != null) {
                 buttonReplyDelete.setVisibility(canDelete ? View.VISIBLE : View.GONE);

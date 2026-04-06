@@ -501,6 +501,7 @@ public class CommentsActivity extends AppCompatActivity {
                 intent.putExtra("deviceId", deviceId);
                 intent.putExtra("currentUserName", CommentsActivity.this.authorName);
                 intent.putExtra("currentUserType", authorType);
+                intent.putExtra("isAdmin", isAdmin);
                 threadLauncher.launch(intent);
             });
 

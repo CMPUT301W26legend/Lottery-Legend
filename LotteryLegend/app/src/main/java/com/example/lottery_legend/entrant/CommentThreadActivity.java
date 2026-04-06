@@ -55,6 +55,7 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
     private String deviceId;
     private String currentUserName;
     private String currentUserType;
+    private boolean isAdmin = false;
 
     private FirebaseFirestore db;
     private Comment parentComment;
@@ -134,6 +135,7 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
         deviceId = getIntent().getStringExtra("deviceId");
         currentUserName = getIntent().getStringExtra("currentUserName");
         currentUserType = getIntent().getStringExtra("currentUserType");
+        isAdmin = getIntent().getBooleanExtra("isAdmin", false);
         return !TextUtils.isEmpty(eventId) && !TextUtils.isEmpty(parentCommentId);
     }
 
@@ -173,7 +175,7 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
     }
 
     private void setupRecyclerView() {
-        adapter = new ReplyAdapter(this, currentUserType, deviceId, this);
+        adapter = new ReplyAdapter(this, currentUserType, deviceId, isAdmin, this);
         recyclerViewReplies.setLayoutManager(new LinearLayoutManager(this));
         recyclerViewReplies.setAdapter(adapter);
     }
@@ -412,8 +414,8 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
                 textParentHelpfulCount
         );
 
-        boolean canDelete = !TextUtils.isEmpty(deviceId)
-                && deviceId.equals(comment.getAuthorId());
+        boolean canDelete = isAdmin || (!TextUtils.isEmpty(deviceId)
+                && deviceId.equals(comment.getAuthorId()));
         buttonParentDelete.setVisibility(canDelete ? View.VISIBLE : View.GONE);
     }
 
@@ -510,8 +512,8 @@ public class CommentThreadActivity extends AppCompatActivity implements ReplyAda
     private void deleteComment(Comment comment) {
         if (comment == null) return;
 
-        boolean canDelete = !TextUtils.isEmpty(deviceId)
-                && deviceId.equals(comment.getAuthorId());
+        boolean canDelete = isAdmin || (!TextUtils.isEmpty(deviceId)
+                && deviceId.equals(comment.getAuthorId()));
 
         if (!canDelete) {
             Toast.makeText(this, "You can only delete your own comment", Toast.LENGTH_SHORT).show();

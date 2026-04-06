@@ -22,6 +22,8 @@ import java.util.List;
 
 /**
  * Fragment for the Admin Logs section. Displays a list of notification logs and allows searching.
+ * It uses the AdminLogsAdapter to display the logs. The logs are fetched from Firestore and filtered
+ * based on the search query.
  */
 public class AdminLogsFragment extends Fragment {
 
@@ -50,6 +52,9 @@ public class AdminLogsFragment extends Fragment {
         return view;
     }
 
+    /**
+     * Fetches notification logs from Firestore and updates the adapter.
+     */
     private void fetchNotificationLogs() {
         db.collection("notifications")
                 .orderBy("createdAt", Query.Direction.DESCENDING)
@@ -66,6 +71,9 @@ public class AdminLogsFragment extends Fragment {
                 });
     }
 
+    /**
+     * Sets up the search functionality. Updates the adapter based on the search query.
+     */
     private void setupSearch() {
         searchBar.addTextChangedListener(new TextWatcher() {
             @Override
@@ -81,6 +89,10 @@ public class AdminLogsFragment extends Fragment {
         });
     }
 
+    /**
+     * Filters the notification logs based on the search query. Updates the adapter.
+     * @param query The search query.
+     */
     private void filter(String query) {
         List<Notification> filteredList = new ArrayList<>();
         String lowerQuery = query.toLowerCase();
@@ -94,6 +106,10 @@ public class AdminLogsFragment extends Fragment {
         adapter.updateList(filteredList);
     }
 
+    /**
+     * Shows the details of a notification log.
+     * @param log  The notification log to display.
+     */
     private void showLogDetail(Notification log) {
         NotificationDetailFragment detailFragment = NotificationDetailFragment.newInstance(log);
         detailFragment.show(getChildFragmentManager(), "NotificationDetail");

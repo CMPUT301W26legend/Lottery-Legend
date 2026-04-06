@@ -18,12 +18,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Adapter for the search results in the InviteFragment. Displays the list of entrants
+ */
 public class InviteSearchAdapter extends RecyclerView.Adapter<InviteSearchAdapter.ViewHolder> {
 
     private final List<Entrant> entrants;
     private final Map<String, String> entrantStatuses;
     private final Set<String> selectedEntrantIds = new HashSet<>();
 
+    /**
+     * Constructor for InviteSearchAdapter.
+     * @param entrants List of entrants to display.
+     * @param entrantStatuses Map of entrant IDs to their statuses.
+     */
     public InviteSearchAdapter(List<Entrant> entrants, Map<String, String> entrantStatuses) {
         this.entrants = entrants;
         this.entrantStatuses = entrantStatuses;
@@ -36,6 +44,14 @@ public class InviteSearchAdapter extends RecyclerView.Adapter<InviteSearchAdapte
         return new ViewHolder(view);
     }
 
+    /**
+     *  Called by RecyclerView to display the data at the specified position. This method should
+     *  update the contents of the {@link ViewHolder#itemView} to reflect the item at the given
+     *  position.
+     * @param holder   The ViewHolder which should be updated to represent the contents of the
+     *                 item at the given position in the data set.
+     * @param position The position of the item within the adapter's data set.
+     */
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Entrant entrant = entrants.get(position);
@@ -93,6 +109,10 @@ public class InviteSearchAdapter extends RecyclerView.Adapter<InviteSearchAdapte
         }
     }
 
+    /**
+     * Returns the total number of items in the data set held by the adapter.
+     * @return The total number of items in this adapter.
+     */
     @Override
     public int getItemCount() {
         return entrants.size();

@@ -1,6 +1,9 @@
 package com.example.lottery_legend.admin;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -13,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.lottery_legend.R;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.imageview.ShapeableImageView;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 /**
@@ -22,7 +26,8 @@ import com.google.firebase.firestore.FirebaseFirestore;
 public class AdminUserDetailActivity extends AppCompatActivity {
 
     private FirebaseFirestore db;
-    private String userId, name, email, phone, collectionName;
+    private String userId, name, email, phone, collectionName, profileImage;
+    private ShapeableImageView userProfileImage;
 
     /**
      * This runs when the Activity is created. It pulls the user's info from the Intent
@@ -41,6 +46,7 @@ public class AdminUserDetailActivity extends AppCompatActivity {
         email = getIntent().getStringExtra("email");
         phone = getIntent().getStringExtra("phone");
         collectionName = getIntent().getStringExtra("collectionName");
+        profileImage = getIntent().getStringExtra("profileImage");
 
         TextView topTitle = findViewById(R.id.admin_top_title);
         TextView topSubtitle = findViewById(R.id.admin_top_subtitle);
@@ -48,6 +54,7 @@ public class AdminUserDetailActivity extends AppCompatActivity {
         TextView tvName = findViewById(R.id.user_name_detail);
         TextView tvEmail = findViewById(R.id.user_email_detail);
         TextView tvPhone = findViewById(R.id.user_phone_detail);
+        userProfileImage = findViewById(R.id.profile_image_detail);
         Button btnDelete = findViewById(R.id.btn_delete_user);
 
         if (topTitle != null) topTitle.setText("Lottery Legend");
@@ -57,11 +64,36 @@ public class AdminUserDetailActivity extends AppCompatActivity {
         tvEmail.setText(email);
         tvPhone.setText(phone);
 
+        if (profileImage != null && !profileImage.isEmpty()) {
+            displayBase64Image(userProfileImage, profileImage);
+        } else {
+            userProfileImage.setImageResource(R.drawable.ic_profile_avatar);
+        }
+
         if ("organizers".equals(collectionName)) {
             btnDelete.setText("Delete Organizer");
         }
         btnBack.setOnClickListener(v -> finish());
         btnDelete.setOnClickListener(v -> showDeleteDialog());
+    }
+
+    /**
+     * Helper method to decode Base64 string into a Bitmap and set it to the ImageView.
+     * @param imageView The ImageView to display the image.
+     * @param base64 The Base64 encoded image string.
+     */
+    private void displayBase64Image(ShapeableImageView imageView, String base64) {
+        try {
+            byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
+            Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+            if (bitmap != null) {
+                imageView.setImageBitmap(bitmap);
+            } else {
+                imageView.setImageResource(R.drawable.ic_profile_avatar);
+            }
+        } catch (Exception e) {
+            imageView.setImageResource(R.drawable.ic_profile_avatar);
+        }
     }
 
     /**
