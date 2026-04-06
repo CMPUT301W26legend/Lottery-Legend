@@ -4,8 +4,12 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.graphics.Color;
+import android.widget.Button;
+import android.widget.TextView;
 
 import com.example.lottery_legend.event.EventAdapter;
 import com.example.lottery_legend.model.Event;
@@ -16,6 +20,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.MockedStatic;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,7 +38,8 @@ public class EventAdapterTest {
         mockedColor.when(() -> Color.parseColor(anyString())).thenReturn(0);
 
         mockedTimestamp = mockStatic(Timestamp.class);
-        mockedTimestamp.when(Timestamp::now).thenReturn(new Timestamp(1000, 0));
+        // Set "now" to a fixed value for deterministic testing
+        mockedTimestamp.when(Timestamp::now).thenReturn(new Timestamp(1000000, 0));
 
         eventList = new ArrayList<>();
         adapter = new EventAdapter(eventList, deviceId);
@@ -51,7 +57,95 @@ public class EventAdapterTest {
         assertEquals(1, adapter.getItemCount());
     }
 
-    // Logic in updateStatusUI is complex and involves UI updates.
-    // Testing it would require Robolectric or instrumented tests for full coverage.
-    // However, we can test the data-driven part if we isolate it.
+    @Test
+    public void testUpdateStatusUI_Joined_Selected() throws Exception {
+        Method method = EventAdapter.class.getDeclaredMethod("updateStatusUI", 
+                EventAdapter.ViewHolder.class, Event.class, boolean.class, String.class, String.class);
+        method.setAccessible(true);
+
+        EventAdapter.ViewHolder holder = mock(EventAdapter.ViewHolder.class);
+        holder.status = mock(TextView.class);
+        holder.joinButton = mock(Button.class);
+
+        Event event = new Event();
+        event.setStatus("open");
+        
+        // Case: User joined and is selected
+        method.invoke(adapter, holder, event, true, "selected", null);
+        verify(holder.status).setText("Selected!");
+    }
+
+    @Test
+    public void testUpdateStatusUI_Joined_Accepted() throws Exception {
+        Method method = EventAdapter.class.getDeclaredMethod("updateStatusUI", 
+                EventAdapter.ViewHolder.class, Event.class, boolean.class, String.class, String.class);
+        method.setAccessible(true);
+
+        EventAdapter.ViewHolder holder = mock(EventAdapter.ViewHolder.class);
+        holder.status = mock(TextView.class);
+        holder.joinButton = mock(Button.class);
+
+        Event event = new Event();
+        event.setStatus("open");
+
+        // Case: User joined and accepted
+        method.invoke(adapter, holder, event, true, "accepted", null);
+        verify(holder.status).setText("Accepted");
+    }
+
+    @Test
+    public void testUpdateStatusUI_Joined_Cancelled() throws Exception {
+        Method method = EventAdapter.class.getDeclaredMethod("updateStatusUI", 
+                EventAdapter.ViewHolder.class, Event.class, boolean.class, String.class, String.class);
+        method.setAccessible(true);
+
+        EventAdapter.ViewHolder holder = mock(EventAdapter.ViewHolder.class);
+        holder.status = mock(TextView.class);
+        holder.joinButton = mock(Button.class);
+
+        Event event = new Event();
+        event.setStatus("open");
+
+        // Case: User joined but cancelled
+        method.invoke(adapter, holder, event, true, "cancelled", null);
+        verify(holder.status).setText("Cancelled/Declined");
+    }
+
+    @Test
+    public void testUpdateStatusUI_NotSelected() throws Exception {
+        Method method = EventAdapter.class.getDeclaredMethod("updateStatusUI", 
+                EventAdapter.ViewHolder.class, Event.class, boolean.class, String.class, String.class);
+        method.setAccessible(true);
+
+        EventAdapter.ViewHolder holder = mock(EventAdapter.ViewHolder.class);
+        holder.status = mock(TextView.class);
+        holder.joinButton = mock(Button.class);
+
+        Event event = new Event();
+        event.setStatus("open");
+
+        // Case: User joined but final result is LOSS
+        method.invoke(adapter, holder, event, true, "waiting", "LOSS");
+        verify(holder.status).setText("Not Selected");
+    }
+
+    @Test
+    public void testUpdateStatusUI_Closed() throws Exception {
+        Method method = EventAdapter.class.getDeclaredMethod("updateStatusUI", 
+                EventAdapter.ViewHolder.class, Event.class, boolean.class, String.class, String.class);
+        method.setAccessible(true);
+
+        EventAdapter.ViewHolder holder = mock(EventAdapter.ViewHolder.class);
+        holder.status = mock(TextView.class);
+        holder.joinButton = mock(Button.class);
+        // Mock cardContent to avoid NPE in setAlpha
+        holder.cardContent = mock(android.widget.LinearLayout.class);
+
+        Event event = new Event();
+        // Event started in the past relative to our mocked "now" (1000000)
+        event.setEventStartAt(new Timestamp(500000, 0));
+
+        method.invoke(adapter, holder, event, false, null, null);
+        verify(holder.status).setText("Closed");
+    }
 }
