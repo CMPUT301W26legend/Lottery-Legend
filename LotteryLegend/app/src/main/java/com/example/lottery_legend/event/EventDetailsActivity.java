@@ -307,17 +307,19 @@ public class EventDetailsActivity extends AppCompatActivity {
 
         boolean isJoined = false;
         String participationStatus = null;
+        String finalResult = null;
         if (event.getWaitingList() != null) {
             for (Event.WaitingListEntry entry : event.getWaitingList()) {
                 if (Objects.equals(entry.getDeviceId(), deviceId)) {
                     isJoined = true;
                     participationStatus = entry.getParticipationStatus();
+                    finalResult = entry.getFinalResult();
                     break;
                 }
             }
         }
 
-        updateStatusUI(event, isJoined, participationStatus);
+        updateStatusUI(event, isJoined, participationStatus, finalResult);
 
         if (event.isIsPrivateEvent()) {
             tagPrivate.setVisibility(View.VISIBLE);
@@ -392,7 +394,7 @@ public class EventDetailsActivity extends AppCompatActivity {
         });
     }
 
-    private void updateStatusUI(Event event, boolean isJoined, String participationStatus) {
+    private void updateStatusUI(Event event, boolean isJoined, String participationStatus, String finalResult) {
         Timestamp now = Timestamp.now();
         String eventStatus = event.getStatus() != null ? event.getStatus().toLowerCase() : "open";
 
@@ -403,7 +405,7 @@ public class EventDetailsActivity extends AppCompatActivity {
         layoutLotteryResponse.setVisibility(View.GONE);
         btnJoinWaitingList.setVisibility(View.GONE);
 
-        if (isJoined && "not_selected".equalsIgnoreCase(participationStatus)) {
+        if (isJoined && ("LOSS".equalsIgnoreCase(finalResult) || "not_selected".equalsIgnoreCase(participationStatus))) {
             textRegistrationStatus.setText("Not Selected");
             textRegistrationStatus.setTextColor(Color.parseColor("#9CA3AF"));
             return;

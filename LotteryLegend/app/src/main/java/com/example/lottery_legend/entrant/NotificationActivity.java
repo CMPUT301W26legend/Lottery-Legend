@@ -258,6 +258,11 @@ public class NotificationActivity extends AppCompatActivity {
         switch (type) {
             case "LOTTERY_WIN":
             case "LOTTERY_LOSE":
+                if ("LOTTERY_LOSE".equals(type)) {
+                    EntrantActionHelper.handleLotteryLose(deviceId, notification);
+                }
+                showSimpleMessageDialog(notification);
+                break;
             case "WAITLIST_MESSAGE":
             case "CANCELLED_MESSAGE":
             case "GENERAL":

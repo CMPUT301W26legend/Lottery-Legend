@@ -102,6 +102,10 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
 
         for (Event.WaitingListEntry entry : event.getWaitingList()) {
             if (Objects.equals(entry.getDeviceId(), currentDeviceId)) {
+                if ("LOSS".equalsIgnoreCase(entry.getFinalResult())) {
+                    return "Not Selected";
+                }
+
                 String fsStatus = entry.getParticipationStatus();
                 if (fsStatus == null) return "Waiting";
 
@@ -130,7 +134,7 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
             case "Accepted":
                 return Color.parseColor("#10B981"); // Green
             case "Not Selected":
-                return Color.parseColor("#6B7280"); // Gray
+                return Color.parseColor("#9CA3AF"); // Gray (same as Closed)
             case "Cancelled":
             case "Declined":
                 return Color.parseColor("#EF4444"); // Red

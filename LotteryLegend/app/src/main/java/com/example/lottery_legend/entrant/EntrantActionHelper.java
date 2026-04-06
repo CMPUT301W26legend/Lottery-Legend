@@ -189,4 +189,37 @@ public class EntrantActionHelper {
         }
         return false;
     }
+
+    /**
+     * Handles LOTTERY_LOSE message by moving event to "not_selected" history.
+     */
+    public static void handleLotteryLose(String deviceId, Notification notification) {
+        if (notification == null || notification.getEventId() == null || deviceId == null) return;
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        db.collection("events").document(notification.getEventId()).get().addOnSuccessListener(doc -> {
+            if (!doc.exists()) return;
+
+            Event event = doc.toObject(Event.class);
+            if (event == null || event.getWaitingList() == null) return;
+
+            List<Event.WaitingListEntry> list = event.getWaitingList();
+            boolean updated = false;
+
+            for (Event.WaitingListEntry entry : list) {
+                if (entry != null && deviceId.equals(entry.getDeviceId())) {
+                    if (!"not_selected".equals(entry.getParticipationStatus())) {
+                        entry.setParticipationStatus("not_selected");
+                        entry.setUpdatedAt(Timestamp.now());
+                        updated = true;
+                    }
+                    break;
+                }
+            }
+
+            if (updated) {
+                db.collection("events").document(notification.getEventId()).update("waitingList", list);
+            }
+        });
+    }
 }

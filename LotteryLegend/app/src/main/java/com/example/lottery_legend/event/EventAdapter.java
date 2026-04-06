@@ -142,11 +142,13 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
         // Determine if the current user has already joined the waiting list
         boolean isJoined = false;
         String participationStatus = null;
+        String finalResult = null;
         if (event.getWaitingList() != null) {
             for (Event.WaitingListEntry entry : event.getWaitingList()) {
                 if (Objects.equals(entry.getDeviceId(), currentDeviceId)) {
                     isJoined = true;
                     participationStatus = entry.getParticipationStatus();
+                    finalResult = entry.getFinalResult();
                     break;
                 }
             }
@@ -155,7 +157,7 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
         // Reset alpha to full opacity by default
         setAlpha(holder, 1.0f);
 
-        updateStatusUI(holder, event, isJoined, participationStatus);
+        updateStatusUI(holder, event, isJoined, participationStatus, finalResult);
 
         // Click on the card to open event details
         holder.itemView.setOnClickListener(v -> {
@@ -166,13 +168,18 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
         });
     }
 
-    private void updateStatusUI(ViewHolder holder, Event event, boolean isJoined, String participationStatus) {
+    private void updateStatusUI(ViewHolder holder, Event event, boolean isJoined, String participationStatus, String finalResult) {
         Timestamp now = Timestamp.now();
         String status = event.getStatus() != null ? event.getStatus().toLowerCase() : "open";
         
         holder.joinButton.setVisibility(View.GONE);
 
         if (isJoined) {
+            if ("LOSS".equalsIgnoreCase(finalResult) || "not_selected".equalsIgnoreCase(participationStatus)) {
+                holder.status.setText("Not Selected");
+                holder.status.setTextColor(Color.parseColor("#9CA3AF"));
+                return;
+            }
             if ("accepted".equalsIgnoreCase(participationStatus)) {
                 holder.status.setText("Accepted");
                 holder.status.setTextColor(Color.parseColor("#388E3C"));
@@ -181,11 +188,6 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
             if ("declined".equalsIgnoreCase(participationStatus) || "cancelled".equalsIgnoreCase(participationStatus)) {
                 holder.status.setText("Cancelled/Declined");
                 holder.status.setTextColor(Color.parseColor("#EF4444"));
-                return;
-            }
-            if ("not_selected".equalsIgnoreCase(participationStatus)) {
-                holder.status.setText("Not Selected");
-                holder.status.setTextColor(Color.parseColor("#9CA3AF"));
                 return;
             }
             if ("selected".equalsIgnoreCase(participationStatus) || "invited".equalsIgnoreCase(participationStatus)) {

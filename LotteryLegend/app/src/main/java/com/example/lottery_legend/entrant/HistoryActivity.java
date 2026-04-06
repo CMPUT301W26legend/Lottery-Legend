@@ -219,6 +219,10 @@ public class HistoryActivity extends AppCompatActivity {
 
         for (Event.WaitingListEntry entry : event.getWaitingList()) {
             if (Objects.equals(entry.getDeviceId(), deviceId)) {
+                if ("LOSS".equalsIgnoreCase(entry.getFinalResult())) {
+                    return "Not Selected";
+                }
+
                 String fsStatus = entry.getParticipationStatus();
                 if (fsStatus == null) return "Waiting";
 
