@@ -25,18 +25,21 @@ import com.google.firebase.firestore.WriteBatch;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
- * Activity for organizers to send bulk notifications to different groups of entrants.
- * Strictly respects notification permissions and uses defined enum types.
+ * Activity for organizers to send targeted notifications to groups of event participants.
+ * Supports notifying the entire waiting list, only selected/accepted entrants, or cancelled/declined entrants.
+ * Also handles the final lottery results (Win/Loss notifications) and event finalization.
  */
 public class SendNotificationActivity extends AppCompatActivity {
 
     private String eventId;
     private String deviceId;
     private FirebaseFirestore db;
-    private String selectedTab = "waiting"; // "waiting", "selected", "cancelled"
+    /** Currently selected recipient group tab ("waiting", "selected", "cancelled"). */
+    private String selectedTab = "waiting";
 
     private MaterialButton btnWaitingList, btnSelected, btnCancelled, btnNotifyWinLoss;
     private TextInputEditText editMessageTitle, editMessageBody;
@@ -56,7 +59,6 @@ public class SendNotificationActivity extends AppCompatActivity {
 
         eventId = getIntent().getStringExtra("eventId");
         deviceId = getIntent().getStringExtra("deviceId");
-
         db = FirebaseFirestore.getInstance();
 
         initViews();
@@ -66,6 +68,9 @@ public class SendNotificationActivity extends AppCompatActivity {
         NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.HISTORY);
     }
 
+    /**
+     * Initializes UI components and sets up the toolbar.
+     */
     private void initViews() {
         MaterialToolbar toolbar = findViewById(R.id.toolbarSendNotification);
         toolbar.setNavigationOnClickListener(v -> finish());
@@ -80,6 +85,9 @@ public class SendNotificationActivity extends AppCompatActivity {
         btnSend = findViewById(R.id.btnSendToRecipients);
     }
 
+    /**
+     * Configures click listeners for tab buttons and the send button.
+     */
     private void setupListeners() {
         btnWaitingList.setOnClickListener(v -> updateTabSelection("waiting"));
         btnSelected.setOnClickListener(v -> updateTabSelection("selected"));
@@ -104,6 +112,10 @@ public class SendNotificationActivity extends AppCompatActivity {
         btnNotifyWinLoss.setOnClickListener(v -> handleNotifyWinLoss());
     }
 
+    /**
+     * Updates the visual state of the group selection tabs.
+     * @param tab The ID of the tab that was selected.
+     */
     private void updateTabSelection(String tab) {
         selectedTab = tab;
 
@@ -129,7 +141,8 @@ public class SendNotificationActivity extends AppCompatActivity {
     }
 
     /**
-     * Notify all final winners and losers, then finalize the event.
+     * Entry point for sending final win/loss notifications.
+     * Fetches current event data and validates that the event hasn't already been finalized.
      */
     private void handleNotifyWinLoss() {
         if (eventId == null) return;
@@ -160,6 +173,12 @@ public class SendNotificationActivity extends AppCompatActivity {
                         Toast.makeText(this, "Failed to fetch event data", Toast.LENGTH_SHORT).show());
     }
 
+    /**
+     * Updates the final result for every participant and sends Win or Loss notifications.
+     * Finalizes the event status to "finalized".
+     *
+     * @param event The event model to finalize.
+     */
     private void finalizeAndNotify(Event event) {
         Timestamp now = Timestamp.now();
         List<Event.WaitingListEntry> waitingList = event.getWaitingList();
@@ -174,6 +193,7 @@ public class SendNotificationActivity extends AppCompatActivity {
             return;
         }
 
+        // Fetch entrant profiles to check notification preferences
         db.collection("entrants")
                 .whereIn("deviceId", deviceIds)
                 .get()
@@ -232,6 +252,7 @@ public class SendNotificationActivity extends AppCompatActivity {
                         entry.setUpdatedAt(now);
                     }
 
+                    // Update event document status and entire waiting list sub-field
                     DocumentReference eventRef = db.collection("events").document(eventId);
                     batch.update(
                             eventRef,
@@ -247,7 +268,7 @@ public class SendNotificationActivity extends AppCompatActivity {
                             .addOnSuccessListener(aVoid -> {
                                 Toast.makeText(
                                         this,
-                                        "Finalized! Winners: " + finalWinCount + ", Losers: " + finalLossCount,
+                                        String.format(Locale.getDefault(), "Finalized! Winners: %d, Losers: %d", finalWinCount, finalLossCount),
                                         Toast.LENGTH_LONG
                                 ).show();
                                 finish();
@@ -262,7 +283,14 @@ public class SendNotificationActivity extends AppCompatActivity {
     }
 
     /**
-     * Helper to create message-only notification documents.
+     * Helper to add a new notification document to a Firestore WriteBatch.
+     *
+     * @param batch       The active batch.
+     * @param recipientId The target user's device ID.
+     * @param type        The notification type enum string.
+     * @param title       The subject of the notification.
+     * @param message     The body text of the notification.
+     * @param now         The creation timestamp.
      */
     private void addNotificationToBatch(
             WriteBatch batch,
@@ -290,6 +318,12 @@ public class SendNotificationActivity extends AppCompatActivity {
         batch.set(notifRef, notification);
     }
 
+    /**
+     * Filters recipients based on the currently selected tab and triggers a batch send.
+     *
+     * @param title The message title.
+     * @param body  The message body.
+     */
     private void sendNotificationToGroup(String title, String body) {
         if (eventId == null) return;
 
@@ -318,6 +352,9 @@ public class SendNotificationActivity extends AppCompatActivity {
                 });
     }
 
+    /**
+     * Checks if a participation status matches the requirements of the currently selected tab.
+     */
     private boolean isTargetStatus(String status) {
         if (status == null) status = "waiting";
         String s = status.toLowerCase();
@@ -334,6 +371,14 @@ public class SendNotificationActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Sends the notification to all valid recipients in the list while strictly 
+     * respecting their individual notification permission settings.
+     *
+     * @param recipients List of waiting list entries to notify.
+     * @param title      The message title.
+     * @param body       The message body.
+     */
     private void performBatchSend(List<Event.WaitingListEntry> recipients, String title, String body) {
         List<String> deviceIds = new ArrayList<>();
         for (Event.WaitingListEntry r : recipients) {

@@ -42,6 +42,8 @@ import java.util.ArrayList;
 
 /**
  * Activity that displays and manages the user's profile information.
+ * It supports both Entrant and Organizer modes, allowing users to switch between roles,
+ * edit their details, manage notification preferences, and delete their accounts.
  */
 public class ProfileActivity extends AppCompatActivity {
 
@@ -83,6 +85,23 @@ public class ProfileActivity extends AppCompatActivity {
         isOrganizerMode = getIntent().getBooleanExtra("isOrganizerMode", false);
         isReadOnly = getIntent().getBooleanExtra("isReadOnly", false);
 
+        initViews();
+
+        updateUIForMode();
+
+        if (isReadOnly) {
+            setupReadOnlyMode();
+        } else {
+            setupFullMode();
+        }
+
+        refreshProfile();
+    }
+
+    /**
+     * Initializes UI references for all views in the activity.
+     */
+    private void initViews() {
         toolbar = findViewById(R.id.topToolbar);
         viewName = findViewById(R.id.viewName);
         viewEmail = findViewById(R.id.viewEmail);
@@ -97,18 +116,11 @@ public class ProfileActivity extends AppCompatActivity {
         btnDeleteAccount = findViewById(R.id.btnDeleteAccount);
         toolbarRoleText = findViewById(R.id.toolbarRoleText);
         switchRoleLabel = findViewById(R.id.switchRoleLabel);
-
-        updateUIForMode();
-
-        if (isReadOnly) {
-            setupReadOnlyMode();
-        } else {
-            setupFullMode();
-        }
-
-        refreshProfile();
     }
 
+    /**
+     * Configures the UI for read-only mode, hiding management buttons and navigation.
+     */
     private void setupReadOnlyMode() {
         buttonEditProfile.setVisibility(View.GONE);
         layoutSwitchRole.setVisibility(View.GONE);
@@ -117,22 +129,23 @@ public class ProfileActivity extends AppCompatActivity {
         layoutNotifications.setVisibility(View.GONE);
         layoutGoToNotifications.setVisibility(View.GONE);
         
-        // Hide navbar
+        // Hide navigation bar in read-only mode
         View navbarContainer = findViewById(R.id.navbar);
         if (navbarContainer != null) {
             navbarContainer.setVisibility(View.GONE);
         }
         
-        // Add back navigation
+        // Add back button navigation to the toolbar
         toolbar.setNavigationIcon(R.drawable.ic_arrow_left);
         toolbar.setNavigationOnClickListener(v -> finish());
     }
 
+    /**
+     * Configures interactive elements for full-access mode.
+     */
     private void setupFullMode() {
-        // Initially hide the admin button until permissions are verified
         btnContinueAsAdmin.setVisibility(View.GONE);
 
-        // Setup click listener for editing the profile
         buttonEditProfile.setOnClickListener(v -> {
             Intent intent = new Intent(ProfileActivity.this, EditProfileActivity.class);
             intent.putExtra("deviceId", deviceId);
@@ -140,15 +153,12 @@ public class ProfileActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        // Setup click listener for the admin panel
         btnContinueAsAdmin.setOnClickListener(v -> {
             Intent intent = new Intent(ProfileActivity.this, AdminActivity.class);
             startActivity(intent);
         });
 
-        btnDeleteAccount.setOnClickListener(v -> {
-            showDeleteConfirmationDialog();
-        });
+        btnDeleteAccount.setOnClickListener(v -> showDeleteConfirmationDialog());
 
         layoutGoToNotifications.setOnClickListener(v -> {
             Intent intent = new Intent(ProfileActivity.this, NotificationActivity.class);
@@ -156,7 +166,6 @@ public class ProfileActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        // Setup click listener for switching mode
         layoutSwitchRole.setOnClickListener(v -> {
             if (isOrganizerMode) {
                 switchToEntrantMode();
@@ -165,15 +174,16 @@ public class ProfileActivity extends AppCompatActivity {
             }
         });
 
-        // Setup listener for notification preference toggle
         switchNotifications.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            // Only update if the change was triggered by user interaction (touch)
             if (buttonView.isPressed()) {
                 updateNotificationPreference(isChecked);
             }
         });
     }
 
+    /**
+     * Updates the user's notification enablement status in Firestore.
+     */
     private void updateNotificationPreference(boolean isEnabled) {
         if (deviceId == null) return;
 
@@ -187,12 +197,14 @@ public class ProfileActivity extends AppCompatActivity {
                     Toast.makeText(ProfileActivity.this, "Notifications " + status, Toast.LENGTH_SHORT).show();
                 })
                 .addOnFailureListener(e -> {
-                    // Revert UI switch on failure
                     switchNotifications.setChecked(!isEnabled);
                     Toast.makeText(ProfileActivity.this, "Failed to update preference", Toast.LENGTH_SHORT).show();
                 });
     }
 
+    /**
+     * Refreshes the profile data based on the current mode (Entrant vs Organizer).
+     */
     private void refreshProfile() {
         if (isOrganizerMode) {
             fetchOrganizerData();
@@ -205,6 +217,9 @@ public class ProfileActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Updates text labels and visibility based on whether the user is in Entrant or Organizer mode.
+     */
     private void updateUIForMode() {
         if (toolbarRoleText != null) {
             toolbarRoleText.setText(isOrganizerMode ? "Organizer" : "Entrant");
@@ -225,7 +240,7 @@ public class ProfileActivity extends AppCompatActivity {
             }
         }
         
-        // Dynamic Navbar update if not read only
+        // Dynamically update the persistent bottom navigation bar
         if (!isReadOnly) {
             View navbarContainer = findViewById(R.id.navbar);
             if (navbarContainer instanceof ViewGroup) {
@@ -238,8 +253,7 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     /**
-     * Fetches the user's profile data from Firestore using the device ID.
-     * Updates the UI with the retrieved information and checks for admin status.
+     * Fetches entrant profile data from Firestore and updates the UI.
      */
     private void fetchEntrantData() {
         db.collection("entrants").document(deviceId)
@@ -257,8 +271,6 @@ public class ProfileActivity extends AppCompatActivity {
                                 viewPhone.setText("No phone number provided");
                             }
 
-                            // Programmatically setting checked status won't trigger updateNotificationPreference 
-                            // because we check buttonView.isPressed() in the listener
                             switchNotifications.setChecked(currentEntrant.isNotificationsEnabled());
                             
                             String profileImage = currentEntrant.getProfileImage();
@@ -268,7 +280,7 @@ public class ProfileActivity extends AppCompatActivity {
                                 imgAvatar.setImageResource(R.drawable.ic_profile_avatar);
                             }
 
-                            // Show admin button if the user has admin privileges and not read only
+                            // Verify admin privileges
                             if (!isReadOnly && documentSnapshot.getBoolean("isAdmin") != null && documentSnapshot.getBoolean("isAdmin")) {
                                 btnContinueAsAdmin.setVisibility(View.VISIBLE);
                             } else {
@@ -285,6 +297,9 @@ public class ProfileActivity extends AppCompatActivity {
                 });
     }
 
+    /**
+     * Fetches organizer profile data from Firestore and updates the UI.
+     */
     private void fetchOrganizerData() {
         db.collection("organizers").document(deviceId).get().addOnSuccessListener(doc -> {
             if (doc.exists()) {
@@ -301,7 +316,7 @@ public class ProfileActivity extends AppCompatActivity {
                 }
                 
                 if (!isReadOnly) {
-                    // Still check admin from entrants collection
+                    // Admins are identified via the entrants collection
                     db.collection("entrants").document(deviceId).get().addOnSuccessListener(entrantDoc -> {
                         if (entrantDoc.exists() && entrantDoc.getBoolean("isAdmin") != null && entrantDoc.getBoolean("isAdmin")) {
                             btnContinueAsAdmin.setVisibility(View.VISIBLE);
@@ -314,6 +329,9 @@ public class ProfileActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Helper method to decode and display a Base64 encoded profile image.
+     */
     private void displayBase64Image(String base64) {
         try {
             byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
@@ -325,6 +343,9 @@ public class ProfileActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Displays a confirmation dialog before proceeding with account deletion.
+     */
     private void showDeleteConfirmationDialog() {
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_profile_delete, null);
         AlertDialog dialog = new AlertDialog.Builder(this)
@@ -361,20 +382,20 @@ public class ProfileActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    /**
+     * Deletes the user's entrant record and removes them from all event waiting lists.
+     */
     private void deleteEntrantAccount() {
         WriteBatch batch = db.batch();
 
-        // Delete notifications subcollection
         db.collection("entrants").document(deviceId).collection("notifications").get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
                         batch.delete(doc.getReference());
                     }
 
-                    // 1. Delete from entrants collection only
                     batch.delete(db.collection("entrants").document(deviceId));
 
-                    // 2. Remove from all waiting lists
                     db.collection("events")
                             .whereArrayContains("waitingList", deviceId)
                             .get()
@@ -397,7 +418,6 @@ public class ProfileActivity extends AppCompatActivity {
                             });
                 })
                 .addOnFailureListener(e -> {
-                    // Fallback: Just delete the entrant document if subcollection fetch fails
                     db.collection("entrants").document(deviceId).delete()
                             .addOnSuccessListener(aVoid -> {
                                 Toast.makeText(getApplicationContext(), "Entrant profile deleted", Toast.LENGTH_SHORT).show();
@@ -406,10 +426,12 @@ public class ProfileActivity extends AppCompatActivity {
                 });
     }
 
+    /**
+     * Deletes the user's organizer record and all their associated created events.
+     */
     private void deleteOrganizerAccount() {
         WriteBatch batch = db.batch();
         
-        // Delete createdEvents subcollection
         db.collection("organizers").document(deviceId).collection("createdEvents").get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
@@ -435,6 +457,9 @@ public class ProfileActivity extends AppCompatActivity {
                 });
     }
 
+    /**
+     * Checks if the user still has an organizer account after deleting their entrant account.
+     */
     private void checkRemainingAccountAfterEntrantDelete() {
         db.collection("organizers").document(deviceId).get().addOnSuccessListener(doc -> {
             if (doc.exists()) {
@@ -447,6 +472,9 @@ public class ProfileActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Checks if the user still has an entrant account after deleting their organizer account.
+     */
     private void checkRemainingAccountAfterOrganizerDelete() {
         db.collection("entrants").document(deviceId).get().addOnSuccessListener(doc -> {
             if (doc.exists()) {
@@ -459,6 +487,9 @@ public class ProfileActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Terminates the application if no profiles remain.
+     */
     private void closeApp() {
         finishAffinity();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -466,6 +497,9 @@ public class ProfileActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Checks if an organizer account exists; creates one using entrant data if it doesn't.
+     */
     private void checkAndCreateOrganizerAccount() {
         db.collection("organizers").document(deviceId).get().addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
@@ -502,18 +536,18 @@ public class ProfileActivity extends AppCompatActivity {
         });
     }
 
-    private void navigateToOrganizerMain() {
-        Intent intent = new Intent(ProfileActivity.this, OrganizerMainActivity.class);
-        intent.putExtra("deviceId", deviceId);
-        startActivity(intent);
-    }
-
+    /**
+     * Toggles role back to Entrant mode.
+     */
     private void switchToEntrantMode() {
         isOrganizerMode = false;
         updateUIForMode();
         refreshProfile();
     }
 
+    /**
+     * Initializes the role-specific navigation bar.
+     */
     private void setupNavbar() {
         if (isOrganizerMode) {
             NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.PROFILE);

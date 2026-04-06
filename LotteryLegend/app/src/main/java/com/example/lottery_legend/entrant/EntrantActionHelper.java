@@ -15,6 +15,7 @@ import java.util.Objects;
 
 /**
  * Helper class to centralize business logic for entrant actions on notifications and events.
+ * It provides methods for accepting or declining event invitations and managing related Firestore updates.
  */
 public class EntrantActionHelper {
 
@@ -22,11 +23,20 @@ public class EntrantActionHelper {
      * Interface for button visibility callback.
      */
     public interface ButtonVisibilityCallback {
+        /**
+         * Called when the visibility check is complete.
+         * @param showButtons True if buttons should be displayed.
+         */
         void onVisibilityChanged(boolean showButtons);
     }
 
     /**
-     * Handles accepting a SIGN_UP_MESSAGE.
+     * Handles accepting a SIGN_UP_MESSAGE (Lottery invitation).
+     * Updates the entrant's status in the event's waiting list to 'accepted' and marks the notification as processed.
+     * @param context Context for showing Toasts.
+     * @param deviceId Unique ID of the entrant.
+     * @param notification The notification object triggering the action.
+     * @param onSuccess Callback to run after successful Firestore commit.
      */
     public static void acceptSignUp(Context context, String deviceId, Notification notification, Runnable onSuccess) {
         if (notification == null || notification.getEventId() == null || deviceId == null) return;
@@ -41,6 +51,7 @@ public class EntrantActionHelper {
             List<Event.WaitingListEntry> list = event.getWaitingList();
             boolean updated = false;
 
+            // Find the entrant's entry in the event's waiting list
             for (Event.WaitingListEntry entry : list) {
                 if (entry != null && deviceId.equals(entry.getDeviceId())) {
                     entry.setParticipationStatus("accepted");
@@ -53,6 +64,7 @@ public class EntrantActionHelper {
 
             if (!updated) return;
 
+            // Use a batch to update both the event document and the notification status atomically
             WriteBatch batch = db.batch();
             batch.update(db.collection("events").document(notification.getEventId()), "waitingList", list);
             batch.update(db.collection("notifications").document(notification.getNotificationId()), 
@@ -68,7 +80,12 @@ public class EntrantActionHelper {
     }
 
     /**
-     * Handles declining a SIGN_UP_MESSAGE.
+     * Handles declining a SIGN_UP_MESSAGE (Lottery invitation).
+     * Updates the entrant's status in the event's waiting list to 'declined' and marks the notification as processed.
+     * @param context Context for showing Toasts.
+     * @param deviceId Unique ID of the entrant.
+     * @param notification The notification object triggering the action.
+     * @param onSuccess Callback to run after successful Firestore commit.
      */
     public static void declineSignUp(Context context, String deviceId, Notification notification, Runnable onSuccess) {
         if (notification == null || notification.getEventId() == null || deviceId == null) return;
@@ -83,6 +100,7 @@ public class EntrantActionHelper {
             List<Event.WaitingListEntry> list = event.getWaitingList();
             boolean updated = false;
 
+            // Find the entrant's entry in the event's waiting list
             for (Event.WaitingListEntry entry : list) {
                 if (entry != null && deviceId.equals(entry.getDeviceId())) {
                     entry.setParticipationStatus("declined");
@@ -95,6 +113,7 @@ public class EntrantActionHelper {
 
             if (!updated) return;
 
+            // Perform batch update
             WriteBatch batch = db.batch();
             batch.update(db.collection("events").document(notification.getEventId()), "waitingList", list);
             batch.update(db.collection("notifications").document(notification.getNotificationId()), 
@@ -110,7 +129,13 @@ public class EntrantActionHelper {
     }
 
     /**
-     * Finds the pending SIGN_UP_MESSAGE for an event and performs an action.
+     * Finds the pending SIGN_UP_MESSAGE for a specific event and performs the requested action (accept/decline).
+     * Useful when the action is triggered from the Event Details page rather than the Notification page.
+     * @param context Activity context.
+     * @param deviceId ID of the current device.
+     * @param eventId ID of the event.
+     * @param accept True to accept, false to decline.
+     * @param onSuccess Success callback.
      */
     public static void processSignUpActionFromEvent(Context context, String deviceId, String eventId, boolean accept, Runnable onSuccess) {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
@@ -140,11 +165,13 @@ public class EntrantActionHelper {
     }
 
     /**
-     * Checks if the accept/decline buttons should be shown for a SIGN_UP_MESSAGE.
-     * Rule: show buttons only when:
-     * 1. event is open
-     * 2. entrant is in waitingList and status is "selected"
-     * 3. related SIGN_UP_MESSAGE notification actionStatus is still "PENDING"
+     * Checks if the accept/decline buttons should be visible for a user viewing an event.
+     * Buttons are shown if the event is open, the user is selected, and there is a pending notification.
+     * @param deviceId ID of the entrant.
+     * @param eventId ID of the event.
+     * @param participationStatus Current participation status of the entrant.
+     * @param eventStatus Current status of the event (e.g., 'open', 'closed').
+     * @param callback Result callback.
      */
     public static void checkSignUpButtonVisibility(String deviceId, String eventId, String participationStatus, String eventStatus, ButtonVisibilityCallback callback) {
         if (deviceId == null || eventId == null) {
@@ -152,6 +179,7 @@ public class EntrantActionHelper {
             return;
         }
 
+        // Must be an active event and user must have 'selected' status
         if (!"open".equalsIgnoreCase(eventStatus) || !"selected".equalsIgnoreCase(participationStatus)) {
             callback.onVisibilityChanged(false);
             return;
@@ -172,7 +200,11 @@ public class EntrantActionHelper {
     }
 
     /**
-     * Determines if a SIGN_UP_MESSAGE action can be performed given the event and notification.
+     * Logical check to determine if an invitation action is valid.
+     * @param deviceId Current user ID.
+     * @param event Event object.
+     * @param notification Notification object.
+     * @return True if valid.
      */
     public static boolean canPerformSignUpAction(String deviceId, Event event, Notification notification) {
         if (deviceId == null || event == null || notification == null) return false;
@@ -191,7 +223,9 @@ public class EntrantActionHelper {
     }
 
     /**
-     * Handles LOTTERY_LOSE message by moving event to "not_selected" history.
+     * Updates an entrant's status to 'not_selected' when they receive a lottery loss notification.
+     * @param deviceId ID of the entrant.
+     * @param notification The loss notification.
      */
     public static void handleLotteryLose(String deviceId, Notification notification) {
         if (notification == null || notification.getEventId() == null || deviceId == null) return;
