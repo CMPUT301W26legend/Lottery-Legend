@@ -37,6 +37,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+/**
+ * Activity for displaying and interacting with entrant notifications.
+ * It supports filtering by All, Unread, and Read status, and handles various
+ * notification types such as invitations and general announcements.
+ */
 public class NotificationActivity extends AppCompatActivity {
 
     private FirebaseFirestore db;
@@ -69,6 +74,9 @@ public class NotificationActivity extends AppCompatActivity {
         NavbarEntrant.setup(this, deviceId, NavbarEntrant.Tab.HOME);
     }
 
+    /**
+     * Links UI components and sets up the RecyclerView.
+     */
     private void setupViews() {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -93,6 +101,9 @@ public class NotificationActivity extends AppCompatActivity {
         updateTabsUI();
     }
 
+    /**
+     * Sets up click listeners for tabs and actions.
+     */
     private void setupListeners() {
         tvMarkAll.setOnClickListener(v -> markAllAsRead());
 
@@ -112,6 +123,9 @@ public class NotificationActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Monitors the user's notification preference in Firestore.
+     */
     private void observeNotificationPreference() {
         if (deviceId == null) return;
 
@@ -126,6 +140,9 @@ public class NotificationActivity extends AppCompatActivity {
                 });
     }
 
+    /**
+     * Starts listening for notifications addressed to the current device.
+     */
     private void startListeningForNotifications() {
         if (deviceId == null) return;
 
@@ -177,6 +194,9 @@ public class NotificationActivity extends AppCompatActivity {
         if (notificationsListener != null) notificationsListener.remove();
     }
 
+    /**
+     * Filters the list based on the currently selected tab.
+     */
     private void applyFilter() {
         filteredNotifications.clear();
 
@@ -193,6 +213,9 @@ public class NotificationActivity extends AppCompatActivity {
         adapter.notifyDataSetChanged();
     }
 
+    /**
+     * Updates the visual style of the filter tabs.
+     */
     private void updateTabsUI() {
         resetTabs();
 
@@ -207,6 +230,9 @@ public class NotificationActivity extends AppCompatActivity {
         applyFilter();
     }
 
+    /**
+     * Sets all tabs to the unselected state.
+     */
     private void resetTabs() {
         tabAll.setBackgroundResource(R.drawable.bg_notification_tab_unselected);
         tabAll.setTextColor(ContextCompat.getColor(this, R.color.gray_tab_text));
@@ -218,11 +244,18 @@ public class NotificationActivity extends AppCompatActivity {
         tabRead.setTextColor(ContextCompat.getColor(this, R.color.gray_tab_text));
     }
 
+    /**
+     * Sets a specific tab to the selected state.
+     * @param tab The TextView representing the tab.
+     */
     private void setSelectedTab(TextView tab) {
         tab.setBackgroundResource(R.drawable.bg_notification_tab_selected);
         tab.setTextColor(ContextCompat.getColor(this, android.R.color.white));
     }
 
+    /**
+     * Marks all unread notifications as read in a single Firestore batch.
+     */
     private void markAllAsRead() {
         WriteBatch batch = db.batch();
         boolean hasUnread = false;
@@ -245,6 +278,11 @@ public class NotificationActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Routing logic for when a notification item is clicked.
+     * Opens appropriate dialogs based on notification type.
+     * @param notification The clicked notification.
+     */
     private void handleNotificationClick(Notification notification) {
         if (notification == null) return;
 
@@ -290,6 +328,12 @@ public class NotificationActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Handles notifications that require user action (Accept/Decline).
+     * @param notification The notification.
+     * @param actionStatus Current status of the action (PENDING, ACCEPTED, DECLINED).
+     * @param dialogType Category of the dialog to show.
+     */
     private void handleActionableType(Notification notification, String actionStatus, String dialogType) {
         if ("ACCEPTED".equals(actionStatus)) {
             showStatusDialog(notification, "Already Accepted", "You have already accepted this invitation.");
@@ -310,6 +354,9 @@ public class NotificationActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Shows a generic information dialog.
+     */
     private void showStatusDialog(Notification notification, String title, String message) {
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_notification_cancel, null);
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
@@ -331,6 +378,9 @@ public class NotificationActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    /**
+     * Shows a dialog for notifications that only contain a message and no actions.
+     */
     private void showSimpleMessageDialog(Notification notification) {
         if (notification == null) return;
         showStatusDialog(notification, 
@@ -338,6 +388,9 @@ public class NotificationActivity extends AppCompatActivity {
                 notification.getMessage() != null ? notification.getMessage() : "");
     }
 
+    /**
+     * Marks a single notification as read in Firestore.
+     */
     private void markSingleNotificationAsRead(Notification notification) {
         if (notification.getIsRead()) return;
 
@@ -355,6 +408,9 @@ public class NotificationActivity extends AppCompatActivity {
                 .update("isRead", true);
     }
 
+    /**
+     * Displays an invitation dialog for public events.
+     */
     private void showInvitationDialog(Notification notification) {
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_notification_invite, null);
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
@@ -403,6 +459,9 @@ public class NotificationActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    /**
+     * Displays an invitation dialog for private events.
+     */
     private void showPrivateInvitationDialog(Notification notification) {
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_private_event_invite, null);
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
@@ -447,6 +506,9 @@ public class NotificationActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    /**
+     * Displays a dialog for co-organizer role invitations.
+     */
     private void showCoOrganizerInvitationDialog(Notification notification) {
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_co_organizer_invitation, null);
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
@@ -491,6 +553,9 @@ public class NotificationActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    /**
+     * Displays a confirmation dialog before declining an invitation.
+     */
     private void showDeclineDialog(Notification notification) {
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_decline, null);
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
@@ -518,6 +583,9 @@ public class NotificationActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    /**
+     * Logical logic to accept an invitation and update Firestore.
+     */
     private void acceptInvitation(Notification notification) {
         if (notification == null || notification.getEventId() == null) return;
 
@@ -553,6 +621,9 @@ public class NotificationActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Transitions an entrant to a co-organizer role for an event.
+     */
     private void acceptCoOrganizerInvitation(Notification notification) {
         if (notification == null || notification.getEventId() == null) return;
 
@@ -564,6 +635,7 @@ public class NotificationActivity extends AppCompatActivity {
 
             WriteBatch batch = db.batch();
 
+            // Remove from waiting list if present
             if (event.getWaitingList() != null) {
                 List<Event.WaitingListEntry> list = event.getWaitingList();
                 Event.WaitingListEntry toRemove = null;
@@ -579,6 +651,7 @@ public class NotificationActivity extends AppCompatActivity {
                 }
             }
 
+            // Create co-organizer record
             Map<String, Object> coOrganizerData = new HashMap<>();
             coOrganizerData.put("deviceId", deviceId);
             coOrganizerData.put("organizerId", notification.getSenderId());
@@ -600,6 +673,9 @@ public class NotificationActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Marks a co-organizer invitation as declined.
+     */
     private void declineCoOrganizerInvitation(Notification notification) {
         if (notification == null) return;
 
@@ -611,6 +687,9 @@ public class NotificationActivity extends AppCompatActivity {
                 });
     }
 
+    /**
+     * Logic to decline an event invitation and update Firestore records.
+     */
     private void declineInvitation(Notification notification) {
         if (notification == null || notification.getEventId() == null) return;
 
@@ -632,6 +711,7 @@ public class NotificationActivity extends AppCompatActivity {
                         entry.setDeclinedAt(Timestamp.now());
                         updated = true;
                     } else {
+                        // For private invites or others, simply remove from list
                         toRemove = entry;
                     }
                     break;

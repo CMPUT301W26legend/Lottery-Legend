@@ -25,7 +25,8 @@ import java.util.List;
 
 /**
  * The main dashboard for users in the Organizer role.
- * Displays summary statistics and a list of events created by the organizer.
+ * Displays summary statistics (active events, closed events, pending lotteries) 
+ * and a list of events created by the current organizer.
  */
 public class OrganizerMainActivity extends AppCompatActivity {
 
@@ -57,9 +58,13 @@ public class OrganizerMainActivity extends AppCompatActivity {
         setupListeners();
         fetchOrganizerEvents();
 
+        // Setup the bottom navigation bar
         NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.HOME);
     }
 
+    /**
+     * Initializes UI references from the layout.
+     */
     private void initViews() {
         textActiveEventsCount = findViewById(R.id.textActiveEventsCount);
         textClosedEventsCount = findViewById(R.id.textClosedEventsCount);
@@ -69,12 +74,18 @@ public class OrganizerMainActivity extends AppCompatActivity {
         recyclerViewOrganizerEvents = findViewById(R.id.recyclerViewOrganizerEvents);
     }
 
+    /**
+     * Configures the RecyclerView for displaying the organizer's events.
+     */
     private void setupRecyclerView() {
         recyclerViewOrganizerEvents.setLayoutManager(new LinearLayoutManager(this));
         adapter = new OrganizerEventAdapter(eventList, deviceId);
         recyclerViewOrganizerEvents.setAdapter(adapter);
     }
 
+    /**
+     * Sets up click listeners for buttons.
+     */
     private void setupListeners() {
         buttonCreateEvent.setOnClickListener(v -> {
             Intent intent = new Intent(OrganizerMainActivity.this, CreateEventActivity.class);
@@ -84,8 +95,8 @@ public class OrganizerMainActivity extends AppCompatActivity {
     }
 
     /**
-     * Fetches events created by this organizer and updates statistics and the event list.
-     * Uses a snapshot listener for real-time updates.
+     * Fetches events created by this organizer from Firestore and updates dashboard statistics.
+     * Listens for real-time updates using a snapshot listener.
      */
     private void fetchOrganizerEvents() {
         if (deviceId == null) return;
@@ -116,7 +127,7 @@ public class OrganizerMainActivity extends AppCompatActivity {
                                 closedCount++;
                             }
 
-                            // Define pending lottery: draw time has passed but status is not "drawn"
+                            // A pending lottery is an event where the draw time has passed but the draw hasn't happened.
                             if (event.getDrawAt() != null && event.getDrawAt().compareTo(now) <= 0 && !"drawn".equalsIgnoreCase(status)) {
                                 pendingLotteryCount++;
                             }
@@ -129,7 +140,11 @@ public class OrganizerMainActivity extends AppCompatActivity {
     }
 
     /**
-     * Updates the summary dashboard cards with calculated counts.
+     * Updates the text displays for the summary statistics cards.
+     * @param active  Number of active events.
+     * @param closed  Number of closed events.
+     * @param pending Number of pending lotteries.
+     * @param total   Total number of events created.
      */
     private void updateStats(int active, int closed, int pending, int total) {
         textActiveEventsCount.setText(String.valueOf(active));

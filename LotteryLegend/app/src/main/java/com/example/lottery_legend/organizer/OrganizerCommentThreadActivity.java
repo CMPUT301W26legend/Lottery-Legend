@@ -47,8 +47,10 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Organizer-side CommentThreadActivity.
- * Behaves like entrant-side CommentThreadActivity but allows organizer to delete any comment.
+ * Activity for organizers to view a specific comment thread.
+ * Displays a parent comment and all its nested replies.
+ * Provides the same interactive features as the main comments view, but focused on one thread.
+ * Organizers have the privilege to delete any comment within the thread.
  */
 public class OrganizerCommentThreadActivity extends AppCompatActivity implements OrganizerReplyAdapter.OnReplyInteractionListener {
 
@@ -75,9 +77,12 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
     private MaterialCardView cardParentLike, cardParentLove, cardParentHelpful;
     private View reactionSummary, buttonParentReply, buttonParentReact, buttonParentDelete;
 
+    /** The specific comment in the thread being replied to. If null, the reply targets the root comment. */
     private Comment activeReplyTarget = null;
+    /** The current user's reaction to the main parent comment of this thread. */
     private Reaction parentUserReaction = null;
 
+    /** Flag tracking if any data (reactions, deletions, posts) has changed to notify the parent activity. */
     private boolean hasChanges = false;
 
     private ListenerRegistration parentCommentRegistration;
@@ -127,6 +132,10 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
         stopRealtimeListeners();
     }
 
+    /**
+     * Overrides finish to send a result code if changes were made, 
+     * prompting the caller to refresh its data.
+     */
     @Override
     public void finish() {
         if (hasChanges) {
@@ -135,6 +144,10 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
         super.finish();
     }
 
+    /**
+     * Loads required identifiers and session info from the starting intent.
+     * @return True if all mandatory data is present.
+     */
     private boolean loadIntentExtras() {
         eventId = getIntent().getStringExtra("eventId");
         parentCommentId = getIntent().getStringExtra("parentCommentId");
@@ -144,6 +157,9 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
         return !TextUtils.isEmpty(eventId) && !TextUtils.isEmpty(parentCommentId);
     }
 
+    /**
+     * Initializes UI component references.
+     */
     private void initViews() {
         recyclerViewReplies = findViewById(R.id.recyclerViewReplies);
         editTextReply = findViewById(R.id.editTextReply);
@@ -169,6 +185,9 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
         buttonParentDelete = parentHeader.findViewById(R.id.buttonParentDelete);
     }
 
+    /**
+     * Sets up the MaterialToolbar with navigation.
+     */
     private void setupToolbar() {
         MaterialToolbar toolbar = findViewById(R.id.toolbarCommentThread);
         setSupportActionBar(toolbar);
@@ -179,12 +198,18 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
         textToolbarTitle.setText("Thread");
     }
 
+    /**
+     * Initializes the RecyclerView for replies.
+     */
     private void setupRecyclerView() {
         adapter = new OrganizerReplyAdapter(this, currentUserType, deviceId, this);
         recyclerViewReplies.setLayoutManager(new LinearLayoutManager(this));
         recyclerViewReplies.setAdapter(adapter);
     }
 
+    /**
+     * Sets up click listeners for the main parent comment actions.
+     */
     private void setupListeners() {
         buttonSendReply.setOnClickListener(v -> postReply());
 
@@ -222,6 +247,9 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
         });
     }
 
+    /**
+     * Attaches Firestore listeners for the parent comment, its replies, and the current user's reactions.
+     */
     private void startRealtimeListeners() {
         stopRealtimeListeners();
         listenParentComment();
@@ -229,6 +257,9 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
         listenReplies();
     }
 
+    /**
+     * Detaches all active Firestore snapshot listeners.
+     */
     private void stopRealtimeListeners() {
         if (parentCommentRegistration != null) {
             parentCommentRegistration.remove();
@@ -244,6 +275,9 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
         }
     }
 
+    /**
+     * Listens for changes to the root comment of this thread.
+     */
     private void listenParentComment() {
         parentCommentRegistration = db.collection("events")
                 .document(eventId)
@@ -259,11 +293,15 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
                         parentComment = doc.toObject(Comment.class);
                         bindParentComment(parentComment);
                     } else {
+                        // If the parent comment is deleted, close the thread view
                         finish();
                     }
                 });
     }
 
+    /**
+     * Listens for the current user's reaction specifically on the parent comment.
+     */
     private void listenParentUserReaction() {
         parentReactionRegistration = db.collection("events")
                 .document(eventId)
@@ -284,6 +322,9 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
                 });
     }
 
+    /**
+     * Listens for all replies that belong to this thread's root comment.
+     */
     private void listenReplies() {
         repliesRegistration = db.collection("events")
                 .document(eventId)
@@ -303,6 +344,11 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
                 });
     }
 
+    /**
+     * Sorts replies chronologically while maintaining a simple nested structure for levels 1 and 2.
+     * @param rawReplies The unsorted list of reply models.
+     * @return A sorted and leveled list of comments.
+     */
     private List<Comment> sortRepliesNested(List<Comment> rawReplies) {
         Map<String, List<Comment>> byParent = new HashMap<>();
         List<Comment> level1 = new ArrayList<>();
@@ -334,6 +380,9 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
         return result;
     }
 
+    /**
+     * Recursively adds a comment and its children to the flattened list for display.
+     */
     private void addWithChildren(Comment parent, Map<String, List<Comment>> byParent, List<Comment> result, boolean forceLevel2) {
         if (forceLevel2) {
             parent.setThreadLevel(2);
@@ -356,6 +405,9 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
         }
     }
 
+    /**
+     * Comparator for sorting comments by creation timestamp.
+     */
     private int compareComments(Comment c1, Comment c2) {
         if (c1 == null && c2 == null) return 0;
         if (c1 == null) return -1;
@@ -368,6 +420,10 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
         return c1.getCreatedAt().compareTo(c2.getCreatedAt());
     }
 
+    /**
+     * Updates the parent comment UI section with data from the model.
+     * @param comment The parent comment model.
+     */
     private void bindParentComment(Comment comment) {
         if (comment == null) return;
 
@@ -412,10 +468,13 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
                 textParentHelpfulCount
         );
 
-        // Organizer can always delete any parent comment
+        // Organizers can always delete any comment
         buttonParentDelete.setVisibility(View.VISIBLE);
     }
 
+    /**
+     * Updates the visual state of a reaction card.
+     */
     private void setCardSelected(MaterialCardView card, boolean selected, int color, TextView countText) {
         if (selected) {
             card.setCardBackgroundColor(ColorStateList.valueOf(Color.parseColor("#FFFFFF")));
@@ -426,6 +485,10 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
         }
     }
 
+    /**
+     * Sets the active reply target and focuses the input field.
+     * @param target The comment being replied to, or null for thread-level.
+     */
     private void setReplyTarget(Comment target) {
         activeReplyTarget = target;
 
@@ -442,6 +505,9 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
         }
     }
 
+    /**
+     * Validates and posts a new reply to Firestore.
+     */
     private void postReply() {
         String content = editTextReply.getText().toString().trim();
         if (TextUtils.isEmpty(content)) return;
@@ -504,10 +570,13 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
                 );
     }
 
+    /**
+     * Displays a deletion confirmation dialog and removes the comment and its subtree from Firestore.
+     * @param comment The comment to delete.
+     */
     private void deleteComment(Comment comment) {
         if (comment == null) return;
 
-        // Organizer can always delete
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_comment_delete, null);
         AlertDialog dialog = new AlertDialog.Builder(this, R.style.TransparentDialog)
                 .setView(dialogView)
@@ -518,6 +587,7 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
         dialogView.findViewById(R.id.buttonConfirmDelete).setOnClickListener(v -> {
             WriteBatch batch = db.batch();
 
+            // Collect IDs of this comment and all nested replies to delete them in one batch
             Set<String> idsToDelete = collectSubtreeCommentIds(comment.getCommentId());
 
             for (String id : idsToDelete) {
@@ -528,6 +598,7 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
                 batch.delete(commentRef);
             }
 
+            // If we're deleting level 1 replies, decrement the parent's replyCount
             int deletedLevel1Count = countDeletedLevel1Replies(idsToDelete);
 
             if (deletedLevel1Count > 0 && !TextUtils.equals(comment.getCommentId(), parentCommentId)) {
@@ -543,6 +614,7 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
                         hasChanges = true;
                         dialog.dismiss();
 
+                        // If the thread's parent was deleted, we must leave this activity
                         if (TextUtils.equals(comment.getCommentId(), parentCommentId)) {
                             finish();
                         }
@@ -555,6 +627,9 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
         dialog.show();
     }
 
+    /**
+     * Traverses the local replies cache to find all descendant comment IDs for a given parent.
+     */
     private Set<String> collectSubtreeCommentIds(String startCommentId) {
         Set<String> result = new LinkedHashSet<>();
         if (TextUtils.isEmpty(startCommentId)) return result;
@@ -578,6 +653,9 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
         return result;
     }
 
+    /**
+     * Counts how many of the comments marked for deletion are direct (level 1) children of the thread parent.
+     */
     private int countDeletedLevel1Replies(Set<String> idsToDelete) {
         int count = 0;
         for (Comment reply : replies) {
@@ -591,6 +669,11 @@ public class OrganizerCommentThreadActivity extends AppCompatActivity implements
         return count;
     }
 
+    /**
+     * Toggles a user reaction on any comment within the thread.
+     * @param comment The target comment.
+     * @param type    The reaction type.
+     */
     private void toggleReaction(Comment comment, String type) {
         if (comment == null) return;
 

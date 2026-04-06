@@ -56,6 +56,8 @@ import java.util.Locale;
 
 /**
  * Activity for organizers to create a new event.
+ * Handles input for event details, location selection via Google Places or Map,
+ * image uploading, and QR code generation.
  */
 public class CreateEventActivity extends AppCompatActivity implements PosterUploadDialogFragment.OnPosterEventListener {
 
@@ -82,6 +84,9 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
     private Double selectedLat = null;
     private Double selectedLng = null;
 
+    /**
+     * Launcher for selecting a location on a map.
+     */
     private final ActivityResultLauncher<Intent> mapPickerLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
@@ -96,6 +101,9 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
             }
     );
 
+    /**
+     * Launcher for Google Places Autocomplete search.
+     */
     private final ActivityResultLauncher<Intent> placesLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
@@ -135,6 +143,9 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         NavbarOrganizer.setup(this, deviceId, NavbarOrganizer.Tab.HOME);
     }
 
+    /**
+     * Initializes the Google Places SDK using the API key from the manifest.
+     */
     private void initPlaces() {
         if (!Places.isInitialized()) {
             try {
@@ -152,6 +163,9 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         }
     }
 
+    /**
+     * Helper method to get ApplicationInfo across different Android versions.
+     */
     private ApplicationInfo getApplicationInfoCompat() throws PackageManager.NameNotFoundException {
         PackageManager packageManager = getPackageManager();
 
@@ -179,6 +193,9 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         throw new PackageManager.NameNotFoundException(getPackageName());
     }
 
+    /**
+     * Initializes UI components and sets up the toolbar.
+     */
     private void initViews() {
         toolbar = findViewById(R.id.toolbarCreateEvent);
         editTextEventTitle = findViewById(R.id.editTextEventTitle);
@@ -198,10 +215,14 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         uploadButton = findViewById(R.id.uploadButton);
         locationButton = findViewById(R.id.locationButton);
 
+        // Make location edit text clickable to trigger autocomplete search
         editTextLocation.setFocusable(false);
         editTextLocation.setClickable(true);
     }
 
+    /**
+     * Configures listeners for buttons and input fields.
+     */
     private void setupListeners() {
         toolbar.setNavigationOnClickListener(v -> finish());
 
@@ -227,6 +248,9 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         createButton.setOnClickListener(v -> createEvent());
     }
 
+    /**
+     * Launches the Google Places Autocomplete intent.
+     */
     private void startAutocompleteIntent() {
         List<Place.Field> fields = Arrays.asList(
                 Place.Field.ID,
@@ -239,18 +263,27 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         placesLauncher.launch(intent);
     }
 
+    /**
+     * Callback from PosterUploadDialogFragment when a poster image is selected.
+     */
     @Override
     public void onPosterSelected(Uri uri) {
         this.imageUri = uri;
         uploadButton.setText("Image Selected");
     }
 
+    /**
+     * Callback from PosterUploadDialogFragment when the poster image is removed.
+     */
     @Override
     public void onPosterRemoved() {
         this.imageUri = null;
         uploadButton.setText("Upload Poster Image");
     }
 
+    /**
+     * Sets up click listeners for all date/time input fields.
+     */
     private void setupDateTimePickers() {
         EditText[] dateFields = {
                 eventStartDateTime,
@@ -265,6 +298,9 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         }
     }
 
+    /**
+     * Shows a combined Date and Time picker dialog.
+     */
     private void showDateTimePicker(EditText et) {
         final Calendar c = Calendar.getInstance();
         int year = c.get(Calendar.YEAR);
@@ -286,6 +322,10 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         datePickerDialog.show();
     }
 
+    /**
+     * Validates input fields and saves the new event to Firestore.
+     * Performs a batch write to update both the global events collection and the organizer's personal list.
+     */
     private void createEvent() {
         String title = editTextEventTitle.getText().toString().trim();
         String description = editTextDescription.getText().toString().trim();
@@ -363,6 +403,7 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
             }
         }
 
+        // Generate QR Code if the event is not private
         if (!newEvent.isIsPrivateEvent()) {
             newEvent.setQrCodeValue(newEvent.getEventId());
             newEvent.setQrCodeImage(generateQRCodeBase64(newEvent.getEventId()));
@@ -388,6 +429,9 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
                 );
     }
 
+    /**
+     * Parses a date string into a Firestore Timestamp.
+     */
     private Timestamp parseToTimestamp(SimpleDateFormat sdf, String dateTimeText) throws Exception {
         Date parsedDate = sdf.parse(dateTimeText);
         if (parsedDate == null) {
@@ -400,6 +444,9 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         return new Timestamp(seconds, nanos);
     }
 
+    /**
+     * Generates a Base64 encoded QR code image from the given text.
+     */
     private String generateQRCodeBase64(String text) {
         MultiFormatWriter writer = new MultiFormatWriter();
         try {
@@ -422,6 +469,9 @@ public class CreateEventActivity extends AppCompatActivity implements PosterUplo
         }
     }
 
+    /**
+     * Converts an image URI to a Base64 encoded string after compressing and resizing.
+     */
     private String uriToBase64(Uri uri) {
         try {
             InputStream inputStream = getContentResolver().openInputStream(uri);

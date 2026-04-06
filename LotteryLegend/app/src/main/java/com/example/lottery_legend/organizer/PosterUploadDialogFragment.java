@@ -25,12 +25,24 @@ import androidx.fragment.app.DialogFragment;
 import com.example.lottery_legend.R;
 
 /**
- * A DialogFragment for organizers to upload, update, or remove an event poster image.
+ * A DialogFragment that provides an interface for organizers to upload, update, or remove
+ * an event poster image. Supports both URI-based and Base64-based image previews.
  */
 public class PosterUploadDialogFragment extends DialogFragment {
 
+    /**
+     * Interface for communicating poster-related events back to the host activity or fragment.
+     */
     public interface OnPosterEventListener {
+        /**
+         * Called when a new poster image has been selected from the device.
+         * @param uri The URI of the selected image.
+         */
         void onPosterSelected(Uri uri);
+
+        /**
+         * Called when the current poster image has been removed.
+         */
         void onPosterRemoved();
     }
 
@@ -43,6 +55,9 @@ public class PosterUploadDialogFragment extends DialogFragment {
     private TextView textDescription;
     private Button uploadButton;
 
+    /**
+     * Launcher for the system image picker.
+     */
     private final ActivityResultLauncher<String> imagePickerLauncher = registerForActivityResult(
             new ActivityResultContracts.GetContent(),
             uri -> {
@@ -54,14 +69,26 @@ public class PosterUploadDialogFragment extends DialogFragment {
             }
     );
 
+    /**
+     * Sets the listener for poster events.
+     * @param listener The implementation of OnPosterEventListener.
+     */
     public void setOnPosterEventListener(OnPosterEventListener listener) {
         this.listener = listener;
     }
 
+    /**
+     * Sets the initial image URI for the preview.
+     * @param uri The image URI.
+     */
     public void setCurrentUri(Uri uri) {
         this.currentUri = uri;
     }
 
+    /**
+     * Sets the initial Base64 string for the preview.
+     * @param base64 The Base64 encoded image.
+     */
     public void setCurrentBase64(String base64) {
         this.currentBase64 = base64;
     }
@@ -89,6 +116,7 @@ public class PosterUploadDialogFragment extends DialogFragment {
             updateUITexts(false);
         }
 
+        // Clicking the preview triggers the image picker
         imagePreview.setOnClickListener(v -> imagePickerLauncher.launch("image/*"));
         btnDelete.setOnClickListener(v -> removePosterLocally());
         btnCancel.setOnClickListener(v -> dismiss());
@@ -103,6 +131,10 @@ public class PosterUploadDialogFragment extends DialogFragment {
         return view;
     }
 
+    /**
+     * Decodes a Base64 string and updates the preview ImageView.
+     * @param base64 The Base64 encoded image.
+     */
     private void displayBase64Image(String base64) {
         try {
             byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
@@ -117,6 +149,10 @@ public class PosterUploadDialogFragment extends DialogFragment {
         }
     }
 
+    /**
+     * Updates the dialog's text labels based on whether an image is currently selected.
+     * @param hasImage True if an image is selected.
+     */
     private void updateUITexts(boolean hasImage) {
         if (hasImage) {
             textTitle.setText("Update Poster");
@@ -129,6 +165,10 @@ public class PosterUploadDialogFragment extends DialogFragment {
         }
     }
 
+    /**
+     * Clears the current image selection and resets the UI state locally.
+     * Notifies the listener that the poster has been removed.
+     */
     private void removePosterLocally() {
         currentUri = null;
         currentBase64 = null;
@@ -139,6 +179,10 @@ public class PosterUploadDialogFragment extends DialogFragment {
         if (listener != null) listener.onPosterRemoved();
     }
 
+    /**
+     * Updates the preview ImageView with the selected URI.
+     * @param uri The URI of the image to display.
+     */
     private void updatePreview(Uri uri) {
         currentUri = uri;
         imagePreview.setImageURI(uri);
@@ -154,6 +198,7 @@ public class PosterUploadDialogFragment extends DialogFragment {
         if (dialog != null) {
             Window window = dialog.getWindow();
             if (window != null) {
+                // Set transparent background and adjust width
                 window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
                 int width = (int) (getResources().getDisplayMetrics().widthPixels * 0.90);
                 window.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);

@@ -31,10 +31,10 @@ import java.io.InputStream;
 import java.util.regex.Pattern;
 
 /**
- * This is the activity for creating a profile.
- * It will save the profile to the database.
+ * Activity for creating a new user profile upon first launch.
+ * It collects user information such as name, email, phone number, and profile picture,
+ * and saves it to the Firestore database.
  */
-
 public class CreateProfileActivity extends AppCompatActivity {
     private FirebaseFirestore db;
     private String deviceId;
@@ -47,6 +47,9 @@ public class CreateProfileActivity extends AppCompatActivity {
     private TextView tvUploadPhoto;
     private String profileImageBase64;
 
+    /**
+     * Launcher for selecting an image from the device's gallery.
+     */
     private final ActivityResultLauncher<String> imagePickerLauncher = registerForActivityResult(
             new ActivityResultContracts.GetContent(),
             uri -> {
@@ -68,10 +71,10 @@ public class CreateProfileActivity extends AppCompatActivity {
             return insets;
         });
 
-        // Connect to Firestore database
+        // Initialize Firestore
         db = FirebaseFirestore.getInstance();
 
-        // Get device ID
+        // Retrieve unique device ID passed from the previous activity
         deviceId = getIntent().getStringExtra("deviceID");
 
         nameEditText = findViewById(R.id.etName);
@@ -82,6 +85,7 @@ public class CreateProfileActivity extends AppCompatActivity {
         imgAvatar = findViewById(R.id.imgAvatar);
         tvUploadPhoto = findViewById(R.id.tvUploadPhoto);
 
+        // Set up click listeners for profile picture upload
         tvUploadPhoto.setOnClickListener(v -> imagePickerLauncher.launch("image/*"));
         imgAvatar.setOnClickListener(v -> imagePickerLauncher.launch("image/*"));
 
@@ -91,22 +95,25 @@ public class CreateProfileActivity extends AppCompatActivity {
             String phoneRaw = phoneEditText.getText().toString().trim();
             boolean notification = switchNotification.isChecked();
 
+            // Validate mandatory fields
             if (name.isEmpty() || email.isEmpty()) {
                 Toast.makeText(this, "Please fill in all required fields", Toast.LENGTH_SHORT).show();
                 return;
             }
 
+            // Validate email format
             if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                 emailEditText.setError("Invalid email format");
                 return;
             }
 
+            // Format and validate phone number if provided
             String phoneFormatted = phoneRaw;
             if (!phoneRaw.isEmpty()) {
-                // Remove all non-digit characters to check count
+                // Strip non-digit characters
                 String digits = phoneRaw.replaceAll("\\D", "");
                 if (digits.length() == 10) {
-                    // Auto-apply CA format: XXX-XXX-XXXX
+                    // Auto-format to XXX-XXX-XXXX
                     phoneFormatted = digits.substring(0, 3) + "-" + digits.substring(3, 6) + "-" + digits.substring(6);
                     phoneEditText.setText(phoneFormatted);
                 }
@@ -120,10 +127,11 @@ public class CreateProfileActivity extends AppCompatActivity {
             Timestamp now = Timestamp.now();
             Entrant user = new Entrant(deviceId, name, email, phoneFormatted, notification, now, now, false, profileImageBase64);
 
-            // Add a new document with a generated ID
+            // Save the profile to Firestore under the 'entrants' collection
             db.collection("entrants").document(deviceId).set(user)
                     .addOnSuccessListener(aVoid -> {
                         Toast.makeText(CreateProfileActivity.this, "Profile saved successfully!", Toast.LENGTH_SHORT).show();
+                        // Navigate to the main activity after successful creation
                         Intent intent = new Intent(CreateProfileActivity.this, MainActivity.class);
                         intent.putExtra("deviceId", deviceId);
                         startActivity(intent);
@@ -135,12 +143,20 @@ public class CreateProfileActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Checks if the given phone number string matches a standard North American format.
+     * @param phone The phone number string to validate.
+     * @return True if valid, false otherwise.
+     */
     private boolean isValidCAPhone(String phone) {
-        // Inclusive regex for common phone formats, allowing 1 as first digit for testing
         String regex = "^(\\+?1)?[\\s.-]?\\(?\\d{3}\\)?[\\s.-]?\\d{3}[\\s.-]?\\d{4}$";
         return Pattern.compile(regex).matcher(phone).matches();
     }
 
+    /**
+     * Processes the selected image: resizes it if it's too large and converts it to a Base64 string.
+     * @param uri The URI of the selected image.
+     */
     private void processAndSetImage(Uri uri) {
         try {
             InputStream inputStream = getContentResolver().openInputStream(uri);
@@ -148,7 +164,7 @@ public class CreateProfileActivity extends AppCompatActivity {
             if (inputStream != null) inputStream.close();
 
             if (bitmap != null) {
-                // Resize if too large
+                // Resize image to keep Firestore document size small
                 int maxWidth = 500;
                 int maxHeight = 500;
                 if (bitmap.getWidth() > maxWidth || bitmap.getHeight() > maxHeight) {
@@ -156,11 +172,13 @@ public class CreateProfileActivity extends AppCompatActivity {
                     bitmap = Bitmap.createScaledBitmap(bitmap, Math.round(ratio * bitmap.getWidth()), Math.round(ratio * bitmap.getHeight()), true);
                 }
 
+                // Compress and encode to Base64
                 ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 70, outputStream);
                 byte[] byteArray = outputStream.toByteArray();
                 profileImageBase64 = Base64.encodeToString(byteArray, Base64.DEFAULT);
                 
+                // Update UI
                 imgAvatar.setImageBitmap(bitmap);
             }
         } catch (Exception e) {

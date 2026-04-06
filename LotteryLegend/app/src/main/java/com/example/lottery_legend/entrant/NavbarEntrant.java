@@ -11,30 +11,37 @@ import com.example.lottery_legend.R;
 import com.example.lottery_legend.event.ScanActivity;
 
 /**
- * Utility class to manage the Entrant Navbar across different activities.
+ * Utility class to manage the Entrant Navigation Bar across different activities.
+ * Handles highlighting of active tabs and navigation between main entrant screens.
  */
 public class NavbarEntrant {
 
+    /**
+     * Enumeration of available tabs in the entrant navigation bar.
+     */
     public enum Tab {
         HOME, SCAN, HISTORY, PROFILE
     }
 
     /**
-     * Set up the navigation bar for an Entrant activity.
+     * Configures the navigation bar for the provided activity.
+     * Sets active colors and attaches click listeners to navigation items.
      *
-     * @param activity   The current activity.
-     * @param deviceId   The device ID of the user.
-     * @param activeTab  The tab that should be highlighted.
+     * @param activity   The current activity context.
+     * @param deviceId   The unique identifier for the user's device.
+     * @param activeTab  The tab currently active in the UI.
      */
     public static void setup(Activity activity, String deviceId, Tab activeTab) {
         View navbar = activity.findViewById(R.id.navbar);
         if (navbar == null) return;
 
+        // Obtain references to navigation item containers
         View navHome = navbar.findViewById(R.id.navHome);
         View navScan = navbar.findViewById(R.id.navScan);
         View navHistory = navbar.findViewById(R.id.navHistory);
         View navProfile = navbar.findViewById(R.id.navProfile);
 
+        // Obtain references to icons and text labels
         ImageView imgHome = navbar.findViewById(R.id.imageNavHome);
         TextView txtHome = navbar.findViewById(R.id.textNavHome);
         ImageView imgScan = navbar.findViewById(R.id.imageNavScan);
@@ -44,11 +51,11 @@ public class NavbarEntrant {
         ImageView imgProfile = navbar.findViewById(R.id.imageNavProfile);
         TextView txtProfile = navbar.findViewById(R.id.textNavProfile);
 
-        // Colors
+        // Define primary navigation colors
         int gray = Color.parseColor("#A7AAB3");
         int blue = Color.parseColor("#2563EB");
 
-        // Reset all to gray
+        // Reset all navigation items to the inactive (gray) state
         imgHome.setImageTintList(android.content.res.ColorStateList.valueOf(gray));
         txtHome.setTextColor(gray);
         imgScan.setImageTintList(android.content.res.ColorStateList.valueOf(gray));
@@ -58,7 +65,7 @@ public class NavbarEntrant {
         imgProfile.setImageTintList(android.content.res.ColorStateList.valueOf(gray));
         txtProfile.setTextColor(gray);
 
-        // Highlight active tab
+        // Apply the active (blue) color to the selected tab
         switch (activeTab) {
             case HOME:
                 imgHome.setImageTintList(android.content.res.ColorStateList.valueOf(blue));
@@ -78,12 +85,13 @@ public class NavbarEntrant {
                 break;
         }
 
-        // Set Click Listeners
+        // Set Click Listeners for each navigation item
         navHome.setOnClickListener(v -> {
             if (activeTab != Tab.HOME) {
                 Intent intent = new Intent(activity, MainActivity.class);
                 intent.putExtra("deviceId", deviceId);
                 activity.startActivity(intent);
+                // Finish calling activity if it's not the main dashboard
                 if (!(activity instanceof MainActivity)) activity.finish();
             }
         });

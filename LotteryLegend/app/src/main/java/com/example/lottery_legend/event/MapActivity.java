@@ -32,27 +32,45 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Activity that displays a Google Map.
+ * It supports three modes:
+ * 1. Viewing a single marker (e.g., event location).
+ * 2. Viewing multiple markers (e.g., locations of all entrants).
+ * 3. Picking a location (used when creating or editing an event).
+ */
 public class MapActivity extends AppCompatActivity implements OnMapReadyCallback {
 
+    /** Extra key for the activity title. */
     public static final String EXTRA_TITLE = "title";
+    /** Extra key for a single latitude coordinate. */
     public static final String EXTRA_LATITUDE = "latitude";
+    /** Extra key for a single longitude coordinate. */
     public static final String EXTRA_LONGITUDE = "longitude";
+    /** Extra key for the label of a single marker. */
     public static final String EXTRA_MARKER_NAME = "marker_name";
 
-    // Multiple markers
+    /** Extra key for a list of latitudes (multiple markers). */
     public static final String EXTRA_LATITUDES = "latitudes";
+    /** Extra key for a list of longitudes (multiple markers). */
     public static final String EXTRA_LONGITUDES = "longitudes";
+    /** Extra key for a list of marker names (multiple markers). */
     public static final String EXTRA_NAMES = "names";
 
-    // Pick mode
+    /** Extra key to enable "Pick Mode" for selecting a location. */
     public static final String EXTRA_PICK_MODE = "pick_mode";
+    /** Result key for the selected latitude in pick mode. */
     public static final String RESULT_LATITUDE = "result_latitude";
+    /** Result key for the selected longitude in pick mode. */
     public static final String RESULT_LONGITUDE = "result_longitude";
+    /** Result key for the geocoded address string in pick mode. */
     public static final String RESULT_ADDRESS = "result_address";
 
-    // Default location: Edmonton
+    /** Default location set to Edmonton if no coordinates are provided. */
     private static final LatLng DEFAULT_LOCATION = new LatLng(53.5461, -113.4938);
+    /** Default zoom level for the map camera. */
     private static final float DEFAULT_ZOOM = 15f;
+    /** Padding used when fitting multiple markers into the camera view. */
     private static final float MULTI_MARKER_PADDING = 150f;
 
     private GoogleMap mMap;
@@ -74,6 +92,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             return insets;
         });
 
+        // Retrieve intent extras to configure the map mode
         title = getIntent().getStringExtra(EXTRA_TITLE);
         isPickMode = getIntent().getBooleanExtra(EXTRA_PICK_MODE, false);
 
@@ -86,18 +105,27 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         setupMapFragment();
     }
 
+    /**
+     * Configures the MaterialToolbar with the appropriate title and back navigation.
+     */
     private void setupToolbar() {
         MaterialToolbar toolbar = findViewById(R.id.toolbarMap);
         toolbar.setTitle(title);
         toolbar.setNavigationOnClickListener(v -> finish());
     }
 
+    /**
+     * Initializes the "Confirm Selection" button, visible only in pick mode.
+     */
     private void setupConfirmButton() {
         btnConfirmPick = findViewById(R.id.btnConfirmPick);
         btnConfirmPick.setVisibility(isPickMode ? View.VISIBLE : View.GONE);
         btnConfirmPick.setOnClickListener(this::onConfirmPick);
     }
 
+    /**
+     * Obtains the SupportMapFragment and requests the GoogleMap object asynchronously.
+     */
     private void setupMapFragment() {
         SupportMapFragment mapFragment =
                 (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
@@ -111,11 +139,15 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         mapFragment.getMapAsync(this);
     }
 
+    /**
+     * Callback triggered when the GoogleMap is ready for use.
+     * @param googleMap The GoogleMap object.
+     */
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
         mMap = googleMap;
 
-        // Enable zoom controls and gestures
+        // Configure basic UI settings for the map
         mMap.getUiSettings().setZoomControlsEnabled(true);
         mMap.getUiSettings().setZoomGesturesEnabled(true);
         mMap.getUiSettings().setCompassEnabled(true);
@@ -127,6 +159,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         }
     }
 
+    /**
+     * Configures the map for picking a location. Adds a draggable marker and click listener.
+     */
     private void setupPickMode() {
         double initialLat = getIntent().getDoubleExtra(EXTRA_LATITUDE, 0);
         double initialLng = getIntent().getDoubleExtra(EXTRA_LONGITUDE, 0);
@@ -138,6 +173,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             initialPos = DEFAULT_LOCATION;
         }
 
+        // Add a marker at the starting position
         pickMarker = mMap.addMarker(
                 new MarkerOptions()
                         .position(initialPos)
@@ -147,6 +183,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(initialPos, DEFAULT_ZOOM));
 
+        // Update marker position on map click
         mMap.setOnMapClickListener(latLng -> {
             if (pickMarker != null) {
                 pickMarker.setPosition(latLng);
@@ -154,6 +191,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         });
     }
 
+    /**
+     * Decides whether to show a single marker or multiple markers based on the intent extras.
+     */
     private void setupViewMode() {
         ArrayList<Double> lats = getDoubleArrayList(EXTRA_LATITUDES);
         ArrayList<Double> lngs = getDoubleArrayList(EXTRA_LONGITUDES);
@@ -166,6 +206,10 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         }
     }
 
+    /**
+     * Helper to safely retrieve an ArrayList of Doubles from the intent.
+     * Handles API version differences for Serializable extras.
+     */
     @SuppressWarnings({"unchecked", "deprecation"})
     private ArrayList<Double> getDoubleArrayList(String key) {
         try {
@@ -179,6 +223,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         }
     }
 
+    /**
+     * Displays a single marker on the map at the provided coordinates.
+     */
     private void showSingleMarker() {
         double lat = getIntent().getDoubleExtra(EXTRA_LATITUDE, 0);
         double lng = getIntent().getDoubleExtra(EXTRA_LONGITUDE, 0);
@@ -199,6 +246,12 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, DEFAULT_ZOOM));
     }
 
+    /**
+     * Displays multiple markers on the map and zooms out to fit all of them.
+     * @param lats List of latitudes.
+     * @param lngs List of longitudes.
+     * @param names List of marker labels.
+     */
     private void showMultipleMarkers(ArrayList<Double> lats, ArrayList<Double> lngs, ArrayList<String> names) {
         LatLngBounds.Builder builder = new LatLngBounds.Builder();
         boolean hasPoints = false;
@@ -226,6 +279,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             return;
         }
 
+        // Adjust camera to show all included markers
         mMap.setOnMapLoadedCallback(() -> {
             try {
                 LatLngBounds bounds = builder.build();
@@ -236,6 +290,10 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         });
     }
 
+    /**
+     * Triggered when the user confirms their selection in Pick Mode.
+     * Geocodes the selected coordinates and returns the result to the caller.
+     */
     public void onConfirmPick(View view) {
         if (!isPickMode) return;
 
@@ -256,6 +314,11 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         finish();
     }
 
+    /**
+     * Performs reverse geocoding to obtain a human-readable address from coordinates.
+     * @param latLng The coordinates to geocode.
+     * @return A string representing the address, or the coordinates themselves if geocoding fails.
+     */
     private String getAddressFromLatLng(LatLng latLng) {
         Geocoder geocoder = new Geocoder(this, Locale.getDefault());
 

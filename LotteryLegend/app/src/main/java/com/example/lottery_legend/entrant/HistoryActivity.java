@@ -74,6 +74,9 @@ public class HistoryActivity extends AppCompatActivity {
         loadJoinedEvents();
     }
 
+    /**
+     * Initializes the UI components and sets up window insets.
+     */
     private void initViews() {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -88,6 +91,9 @@ public class HistoryActivity extends AppCompatActivity {
         tvNotificationBadge = findViewById(R.id.tvNotificationBadge);
     }
 
+    /**
+     * Configures the toolbar and unread notification click listener.
+     */
     private void setupToolbar() {
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
@@ -101,6 +107,9 @@ public class HistoryActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Listens for unread notifications to display a badge on the bell icon.
+     */
     private void setupNotificationBadge() {
         if (deviceId == null) return;
         db.collection("notifications")
@@ -121,12 +130,18 @@ public class HistoryActivity extends AppCompatActivity {
                 });
     }
 
+    /**
+     * Configures the RecyclerView with its adapter.
+     */
     private void setupRecyclerView() {
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         adapter = new HistoryAdapter(filteredEvents, deviceId);
         recyclerView.setAdapter(adapter);
     }
 
+    /**
+     * Sets up the tab layout logic for switching between history categories.
+     */
     private void setupTabs() {
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
@@ -148,15 +163,18 @@ public class HistoryActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Configures the persistent navigation bar.
+     */
     private void setupNavbar() {
         NavbarEntrant.setup(this, deviceId, NavbarEntrant.Tab.HISTORY);
     }
 
     /**
      * Queries Firestore for all events where the current entrant is in the waiting list.
+     * Only displays events where the user is NOT a co-organizer.
      */
     private void loadJoinedEvents() {
-        // We listen for real-time updates so the history reflects changes immediately
         db.collection("events").addSnapshotListener((value, error) -> {
             if (error != null) {
                 Log.e(TAG, "Error loading joined events", error);
@@ -169,7 +187,6 @@ public class HistoryActivity extends AppCompatActivity {
                 for (QueryDocumentSnapshot doc : value) {
                     Event event = doc.toObject(Event.class);
                     if (event != null && isEntrantInEvent(event)) {
-                        // Check if device is a co-organizer
                         doc.getReference().collection("coOrganizers").document(deviceId).get()
                                 .addOnSuccessListener(coDoc -> {
                                     if (!coDoc.exists()) {
@@ -185,7 +202,7 @@ public class HistoryActivity extends AppCompatActivity {
     }
 
     /**
-     * Checks if the current entrant device ID exists in the event's waiting list.
+     * Checks if the current user exists in the event's waiting list.
      */
     private boolean isEntrantInEvent(Event event) {
         if (event.getWaitingList() == null) return false;
@@ -198,7 +215,8 @@ public class HistoryActivity extends AppCompatActivity {
     }
 
     /**
-     * Filters the loaded events based on the selected tab and updates the RecyclerView.
+     * Filters the master event list based on the active tab selection.
+     * @param selectedTab The label of the currently selected tab.
      */
     private void applyTabFilter(String selectedTab) {
         filteredEvents.clear();
@@ -212,7 +230,7 @@ public class HistoryActivity extends AppCompatActivity {
     }
 
     /**
-     * Logic to map an event's entrant record to a specific display status.
+     * Resolves the participation status string for the current user in a specific event.
      */
     private String determineEntrantStatus(Event event) {
         if (event.getWaitingList() == null) return "Unknown";
@@ -244,7 +262,7 @@ public class HistoryActivity extends AppCompatActivity {
     }
 
     /**
-     * Maps computed display status to the appropriate tab grouping.
+     * Evaluates if a computed status string should be shown in the given tab.
      */
     private boolean matchesTab(String status, String tabName) {
         switch (tabName) {

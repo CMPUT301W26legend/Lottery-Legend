@@ -22,12 +22,18 @@ import java.util.Locale;
 
 /**
  * Adapter for displaying replies in a comment thread for Organizers.
- * Differs from entrant version by always allowing deletion of any reply.
+ * Provides specialized functionality for organizers, such as the ability to 
+ * delete any reply in the thread.
  */
 public class OrganizerReplyAdapter extends RecyclerView.Adapter<OrganizerReplyAdapter.ReplyViewHolder> {
 
+    /**
+     * Interface for handling interactions with individual replies.
+     */
     public interface OnReplyInteractionListener {
+        /** Called when a reply's "Reply" button is clicked. */
         void onReplyClicked(Comment comment);
+        /** Called when a reply's "Delete" button is clicked. */
         void onDeleteClicked(Comment comment);
     }
 
@@ -35,9 +41,16 @@ public class OrganizerReplyAdapter extends RecyclerView.Adapter<OrganizerReplyAd
     private final String currentUserType;
     private final String deviceId;
     private final OnReplyInteractionListener listener;
-
     private final List<Comment> replies = new ArrayList<>();
 
+    /**
+     * Constructs a new OrganizerReplyAdapter.
+     *
+     * @param context         The context of the calling activity.
+     * @param currentUserType The type of the current user (e.g., ORGANIZER).
+     * @param deviceId        The unique identifier for the current user.
+     * @param listener        The listener for reply interactions.
+     */
     public OrganizerReplyAdapter(Context context,
                                 String currentUserType,
                                 String deviceId,
@@ -48,6 +61,10 @@ public class OrganizerReplyAdapter extends RecyclerView.Adapter<OrganizerReplyAd
         this.listener = listener;
     }
 
+    /**
+     * Updates the data set for the adapter.
+     * @param newReplies The new list of reply comments.
+     */
     public void setReplies(List<Comment> newReplies) {
         replies.clear();
         if (newReplies != null) {
@@ -74,6 +91,9 @@ public class OrganizerReplyAdapter extends RecyclerView.Adapter<OrganizerReplyAd
         return replies.size();
     }
 
+    /**
+     * ViewHolder class for a reply item.
+     */
     class ReplyViewHolder extends RecyclerView.ViewHolder {
 
         private final View layoutReplyRoot;
@@ -97,6 +117,10 @@ public class OrganizerReplyAdapter extends RecyclerView.Adapter<OrganizerReplyAd
             buttonReplyDelete = itemView.findViewById(R.id.buttonReplyDelete);
         }
 
+        /**
+         * Binds a comment model to the reply view.
+         * @param comment The comment to bind.
+         */
         void bind(Comment comment) {
             textReplyAuthorName.setText(comment.getAuthorNameSnapshot());
 
@@ -111,6 +135,7 @@ public class OrganizerReplyAdapter extends RecyclerView.Adapter<OrganizerReplyAd
 
             textReplyContent.setText(comment.getContent());
 
+            // Display who is being replied to for nested replies
             if (comment.getThreadLevel() >= 2 && !TextUtils.isEmpty(comment.getReplyToUserNameSnapshot())) {
                 textReplyToUser.setVisibility(View.VISIBLE);
                 textReplyToUser.setText("@" + comment.getReplyToUserNameSnapshot());
@@ -127,7 +152,7 @@ public class OrganizerReplyAdapter extends RecyclerView.Adapter<OrganizerReplyAd
                 }
             });
 
-            // Organizer can always delete any reply
+            // Organizers have the privilege to delete any reply in the thread
             if (buttonReplyDelete != null) {
                 buttonReplyDelete.setVisibility(View.VISIBLE);
                 buttonReplyDelete.setOnClickListener(v -> {
@@ -138,12 +163,15 @@ public class OrganizerReplyAdapter extends RecyclerView.Adapter<OrganizerReplyAd
             }
         }
 
+        /**
+         * Applies visual indentation based on the thread level of the comment.
+         * @param comment The comment being rendered.
+         */
         private void applyIndentation(Comment comment) {
             ViewGroup.MarginLayoutParams rootParams =
                     (ViewGroup.MarginLayoutParams) layoutReplyRoot.getLayoutParams();
 
             int level = comment.getThreadLevel();
-
             int startMarginDp;
             int lineStartDp;
 
@@ -167,6 +195,9 @@ public class OrganizerReplyAdapter extends RecyclerView.Adapter<OrganizerReplyAd
             }
         }
 
+        /**
+         * Helper to convert DP units to pixels.
+         */
         private int dp(int value) {
             return (int) TypedValue.applyDimension(
                     TypedValue.COMPLEX_UNIT_DIP,

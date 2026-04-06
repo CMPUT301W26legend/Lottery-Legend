@@ -33,7 +33,8 @@ import java.io.InputStream;
 import java.util.regex.Pattern;
 
 /**
- * Activity for entrants and organizers to edit their profile information.
+ * Activity for entrants and organizers to edit their existing profile information.
+ * Supports updating name, email, phone number, and profile picture.
  */
 public class EditProfileActivity extends AppCompatActivity {
 
@@ -51,6 +52,9 @@ public class EditProfileActivity extends AppCompatActivity {
 
     private String profileImageBase64;
 
+    /**
+     * Launcher for selecting a profile image from the gallery.
+     */
     private final ActivityResultLauncher<String> imagePickerLauncher = registerForActivityResult(
             new ActivityResultContracts.GetContent(),
             uri -> {
@@ -96,18 +100,20 @@ public class EditProfileActivity extends AppCompatActivity {
         saveButton.setOnClickListener(v -> saveProfileData());
     }
 
+    /**
+     * Configures the layout based on whether the user is in Organizer or Entrant mode.
+     */
     private void updateUIForMode() {
         if (toolbarRoleText != null) {
             toolbarRoleText.setText(isOrganizerMode ? "Organizer" : "Entrant");
         }
 
-        // Setup Navbar dynamically based on mode
+        // Inflate the correct navigation bar layout
         ViewGroup navbarContainer = findViewById(R.id.navbarContainer);
         if (navbarContainer != null) {
             navbarContainer.removeAllViews();
             int layoutId = isOrganizerMode ? R.layout.layout_navbar_organizer : R.layout.layout_navbar_entrant;
             View navbarView = getLayoutInflater().inflate(layoutId, navbarContainer, false);
-            // Crucial: Set the ID to R.id.navbar so NavbarEntrant/NavbarOrganizer.setup can find it.
             navbarView.setId(R.id.navbar);
             navbarContainer.addView(navbarView);
         }
@@ -119,6 +125,9 @@ public class EditProfileActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Retrieves current profile information from Firestore.
+     */
     private void fetchProfileData() {
         String collection = isOrganizerMode ? "organizers" : "entrants";
         db.collection(collection).document(deviceId)
@@ -138,6 +147,10 @@ public class EditProfileActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> Toast.makeText(this, "Error loading data", Toast.LENGTH_SHORT).show());
     }
 
+    /**
+     * Processes chosen image: resizes and converts to Base64.
+     * @param uri URI of the image.
+     */
     private void processAndSetImage(Uri uri) {
         try {
             InputStream inputStream = getContentResolver().openInputStream(uri);
@@ -145,7 +158,6 @@ public class EditProfileActivity extends AppCompatActivity {
             if (inputStream != null) inputStream.close();
 
             if (bitmap != null) {
-                // Resize if too large
                 int maxWidth = 500;
                 int maxHeight = 500;
                 if (bitmap.getWidth() > maxWidth || bitmap.getHeight() > maxHeight) {
@@ -165,6 +177,10 @@ public class EditProfileActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Decodes Base64 string and displays it in the profile avatar view.
+     * @param base64 Base64 string of the image.
+     */
     private void displayBase64Image(String base64) {
         try {
             byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
@@ -177,8 +193,7 @@ public class EditProfileActivity extends AppCompatActivity {
     }
 
     /**
-     * Validates user input and updates the profile information in Firebase Firestore.
-     * Upon successful update, returns the user to the ProfileActivity.
+     * Validates user input and updates profile data in Firestore.
      */
     private void saveProfileData() {
         String name = editTextName.getText().toString().trim();
@@ -197,10 +212,8 @@ public class EditProfileActivity extends AppCompatActivity {
 
         String phoneFormatted = phoneRaw;
         if (!phoneRaw.isEmpty()) {
-            // Remove all non-digit characters
             String digits = phoneRaw.replaceAll("\\D", "");
             
-            // Standardize to 10 digits
             if (digits.length() == 10) {
                 phoneFormatted = digits.substring(0, 3) + "-" + digits.substring(3, 6) + "-" + digits.substring(6);
             } else if (digits.length() == 11 && digits.startsWith("1")) {
@@ -222,6 +235,7 @@ public class EditProfileActivity extends AppCompatActivity {
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(this, "Profile updated successfully!", Toast.LENGTH_SHORT).show();
 
+                    // Go back to the profile view
                     Intent intent = new Intent(this, ProfileActivity.class);
                     intent.putExtra("deviceId", deviceId);
                     intent.putExtra("isOrganizerMode", isOrganizerMode);

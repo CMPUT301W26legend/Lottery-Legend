@@ -6,7 +6,6 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.EditText;
@@ -94,6 +93,9 @@ public class MainActivity extends AppCompatActivity {
         NavbarEntrant.setup(this, deviceId, NavbarEntrant.Tab.HOME);
     }
 
+    /**
+     * Initializes the UI components and sets up edge-to-edge display logic.
+     */
     private void setupViews() {
         View mainView = findViewById(R.id.main);
         ViewCompat.setOnApplyWindowInsetsListener(mainView, (v, insets) -> {
@@ -117,6 +119,9 @@ public class MainActivity extends AppCompatActivity {
         updateFiltersUI();
     }
 
+    /**
+     * Sets up click listeners and text watchers for interactive UI elements.
+     */
     private void setupListeners() {
         searchInput.addTextChangedListener(new TextWatcher() {
             @Override
@@ -141,6 +146,9 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Listens for changes in the user's notification preferences from Firestore.
+     */
     private void observeNotificationPreference() {
         if (deviceId == null) return;
 
@@ -157,6 +165,9 @@ public class MainActivity extends AppCompatActivity {
                 });
     }
 
+    /**
+     * Sets up a real-time listener for unread notifications to update the badge count.
+     */
     private void setupNotificationBadge() {
         if (deviceId == null) return;
 
@@ -202,6 +213,9 @@ public class MainActivity extends AppCompatActivity {
         if (badgeListener != null) badgeListener.remove();
     }
 
+    /**
+     * Shows a dialog to choose between specific day or date range filtering.
+     */
     private void showDateFilterDialog() {
         String[] modes = {"Specific Day", "Date Range"};
         new MaterialAlertDialogBuilder(this)
@@ -210,6 +224,10 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    /**
+     * Launches the appropriate Material Design date picker.
+     * @param isRangeMode True for range picker, false for single date picker.
+     */
     private void launchPicker(boolean isRangeMode) {
         if (isRangeMode) {
             MaterialDatePicker<Pair<Long, Long>> picker = MaterialDatePicker.Builder.dateRangePicker()
@@ -234,6 +252,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Shows a dialog to filter events by time of day.
+     */
     private void showTimeFilterDialog() {
         String[] options = {"Any Time", "Morning (06:00 - 12:00)", "Afternoon (12:01 - 18:00)", "Night (18:01 - 00:00)", "Midnight (00:00 - 06:00)"};
         new MaterialAlertDialogBuilder(this)
@@ -245,6 +266,9 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    /**
+     * Shows a dialog to filter events by their capacity.
+     */
     private void showCapacityFilterDialog() {
         String[] options = {"Any", "< 50", "50 – 100", "100+"};
         new MaterialAlertDialogBuilder(this)
@@ -256,6 +280,9 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    /**
+     * Updates the visual state of filter buttons based on active selections.
+     */
     private void updateFiltersUI() {
         // Date Button
         String dateLabel = "Start Date";
@@ -290,6 +317,9 @@ public class MainActivity extends AppCompatActivity {
         applyFilters();
     }
 
+    /**
+     * Configures individual filter button colors, icons, and behavior.
+     */
     private void updateFilterButton(MaterialButton button, String text, boolean isSelected, View.OnClickListener clearAction) {
         button.setText(text);
         if (isSelected) {
@@ -301,24 +331,22 @@ public class MainActivity extends AppCompatActivity {
             button.setIconGravity(MaterialButton.ICON_GRAVITY_END);
             button.setIconPadding(8);
 
-            // Handle X click separately via touch coordinates on ACTION_DOWN to avoid interference with click
             button.setOnTouchListener((v, event) -> {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     int iconWidth = button.getIcon() != null ? button.getIcon().getIntrinsicWidth() + button.getIconPadding() + button.getPaddingEnd() : 0;
                     int clearZoneWidth = Math.max(iconWidth, (int) (48 * getResources().getDisplayMetrics().density));
                     if (event.getX() > (button.getWidth() - clearZoneWidth)) {
                         clearAction.onClick(v);
-                        return true; // Consume event to clear filter
+                        return true;
                     }
                 }
-                return false; // Let standard click handling proceed
+                return false;
             });
         } else {
             button.setBackgroundTintList(ColorStateList.valueOf(Color.WHITE));
             button.setTextColor(Color.parseColor("#111827"));
             button.setStrokeColor(ColorStateList.valueOf(Color.parseColor("#D1D5DB")));
             
-            // Restore arrow icons for Time and Capacity if they are unselected
             if (button.getId() == R.id.btnTimeFilter || button.getId() == R.id.btnCapacityFilter) {
                 button.setIcon(ContextCompat.getDrawable(this, R.drawable.ic_arrow_down_small));
                 button.setIconTint(ColorStateList.valueOf(Color.parseColor("#6B7280")));
@@ -330,6 +358,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Filters the list of all events based on the current search query and active filter settings.
+     */
     private void applyFilters() {
         filteredEvents.clear();
 
@@ -344,7 +375,6 @@ public class MainActivity extends AppCompatActivity {
                 if (eventStartAt == null) {
                     matchesDate = false;
                 } else {
-                    // Normalize both event date and filter dates to UTC start of day
                     long eventTimeUtc = normalizeToUtcStartOfDay(eventStartAt.toDate().getTime());
                     long rangeStartUtc = normalizeToUtcStartOfDay(startDateFilter);
 
@@ -401,6 +431,9 @@ public class MainActivity extends AppCompatActivity {
         adapter.notifyDataSetChanged();
     }
 
+    /**
+     * Normalizes a timestamp to the start of the day in UTC.
+     */
     private long normalizeToUtcStartOfDay(long timeMillis) {
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
         calendar.setTimeInMillis(timeMillis);
@@ -411,6 +444,9 @@ public class MainActivity extends AppCompatActivity {
         return calendar.getTimeInMillis();
     }
 
+    /**
+     * Fetches events from Firestore and listens for updates.
+     */
     private void fetchEvents() {
         db.collection("events").addSnapshotListener((value, error) -> {
             if (error != null) return;

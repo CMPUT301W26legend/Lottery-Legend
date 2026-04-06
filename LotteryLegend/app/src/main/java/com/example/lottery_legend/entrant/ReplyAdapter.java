@@ -25,10 +25,24 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Adapter for displaying replies in a comment thread.
+ */
 public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHolder> {
 
+    /**
+     * Interface for handling interactions with individual replies.
+     */
     public interface OnReplyInteractionListener {
+        /**
+         * Triggered when the reply button is clicked on a comment.
+         * @param comment The comment being replied to.
+         */
         void onReplyClicked(Comment comment);
+        /**
+         * Triggered when the delete button is clicked on a comment.
+         * @param comment The comment to be deleted.
+         */
         void onDeleteClicked(Comment comment);
     }
 
@@ -41,6 +55,14 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
 
     private final List<Comment> replies = new ArrayList<>();
 
+    /**
+     * Constructor for ReplyAdapter.
+     * @param context         The activity context.
+     * @param currentUserType The role of the current user (ENTRANT/ORGANIZER).
+     * @param deviceId        The unique device ID.
+     * @param isAdmin         Whether the user has admin privileges.
+     * @param listener        Listener for reply and delete actions.
+     */
     public ReplyAdapter(Context context,
                         String currentUserType,
                         String deviceId,
@@ -54,6 +76,10 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
         this.db = FirebaseFirestore.getInstance();
     }
 
+    /**
+     * Updates the list of replies and refreshes the RecyclerView.
+     * @param newReplies The new list of replies.
+     */
     public void setReplies(List<Comment> newReplies) {
         replies.clear();
         if (newReplies != null) {
@@ -80,6 +106,9 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
         return replies.size();
     }
 
+    /**
+     * ViewHolder for individual reply items.
+     */
     class ReplyViewHolder extends RecyclerView.ViewHolder {
 
         private final View layoutReplyRoot;
@@ -105,6 +134,10 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
             buttonReplyDelete = itemView.findViewById(R.id.buttonReplyDelete);
         }
 
+        /**
+         * Binds comment data to the view.
+         * @param comment The comment to bind.
+         */
         void bind(Comment comment) {
             textReplyAuthorName.setText(comment.getAuthorNameSnapshot());
 
@@ -119,10 +152,10 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
 
             textReplyContent.setText(comment.getContent());
 
-            // Load avatar
+            // Load author avatar
             loadAuthorAvatar(comment, imageReplyAvatar);
 
-            // 二级回复显示 @target
+            // Display @target for nested replies
             if (comment.getThreadLevel() >= 2 && !TextUtils.isEmpty(comment.getReplyToUserNameSnapshot())) {
                 textReplyToUser.setVisibility(View.VISIBLE);
                 textReplyToUser.setText("@" + comment.getReplyToUserNameSnapshot());
@@ -131,8 +164,7 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
                 textReplyToUser.setVisibility(View.GONE);
             }
 
-            // 阶梯式缩进修复：
-            // parent 不动，这里只处理 reply item
+            // Apply visual indentation based on nesting level
             applyIndentation(comment);
 
             buttonReplyReply.setOnClickListener(v -> {
@@ -141,6 +173,7 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
                 }
             });
 
+            // Check if the current user can delete this comment
             boolean canDelete = isAdmin || (!TextUtils.isEmpty(deviceId) && deviceId.equals(comment.getAuthorId()));
 
             if (buttonReplyDelete != null) {
@@ -153,6 +186,9 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
             }
         }
 
+        /**
+         * Fetches the author's avatar from Firestore and displays it.
+         */
         private void loadAuthorAvatar(Comment comment, ImageView imageView) {
             String collection = "ORGANIZER".equalsIgnoreCase(comment.getAuthorType()) ? "organizers" : "entrants";
             db.collection(collection).document(comment.getAuthorId()).get().addOnSuccessListener(doc -> {
@@ -169,6 +205,9 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
             }).addOnFailureListener(e -> imageView.setImageResource(R.drawable.ic_profile_avatar));
         }
 
+        /**
+         * Decodes a Base64 string into a Bitmap and sets it to an ImageView.
+         */
         private void displayBase64Image(String base64, ImageView imageView) {
             try {
                 byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
@@ -180,13 +219,15 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
             }
         }
 
+        /**
+         * Adjusts the horizontal margin and thread line based on nesting level.
+         */
         private void applyIndentation(Comment comment) {
             ViewGroup.MarginLayoutParams rootParams =
                     (ViewGroup.MarginLayoutParams) layoutReplyRoot.getLayoutParams();
 
             int level = comment.getThreadLevel();
 
-            // 根据设计做适度阶梯，不要过大
             int startMarginDp;
             int lineStartDp;
 
@@ -194,7 +235,7 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
                 startMarginDp = 0;
                 lineStartDp = 4;
             } else {
-                // level 2 整体后移一点
+                // Shift level 2 comments slightly to the right
                 startMarginDp = 22;
                 lineStartDp = 16;
             }
@@ -208,11 +249,14 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
                 lineParams.setMarginStart(dp(lineStartDp));
                 viewThreadLine.setLayoutParams(lineParams);
 
-                // 一级和二级都显示线，但二级跟着缩进一起后移
+                // Show thread line for all replies
                 viewThreadLine.setVisibility(View.VISIBLE);
             }
         }
 
+        /**
+         * Converts DP to pixels.
+         */
         private int dp(int value) {
             return (int) TypedValue.applyDimension(
                     TypedValue.COMPLEX_UNIT_DIP,
