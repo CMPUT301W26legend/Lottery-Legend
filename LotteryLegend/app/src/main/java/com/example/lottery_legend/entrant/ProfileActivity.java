@@ -364,41 +364,74 @@ public class ProfileActivity extends AppCompatActivity {
     private void deleteEntrantAccount() {
         WriteBatch batch = db.batch();
 
-        // 1. Delete from entrants collection only
-        batch.delete(db.collection("entrants").document(deviceId));
-
-        // 2. Remove from all waiting lists
-        db.collection("events")
-                .whereArrayContains("waitingList", deviceId)
-                .get()
+        // Delete notifications subcollection
+        db.collection("entrants").document(deviceId).collection("notifications").get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
-                    for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
-                        batch.update(document.getReference(), "waitingList", FieldValue.arrayRemove(deviceId));
+                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                        batch.delete(doc.getReference());
                     }
 
-                    batch.commit().addOnSuccessListener(aVoid -> {
-                        Toast.makeText(getApplicationContext(), "Entrant profile deleted", Toast.LENGTH_SHORT).show();
-                        checkRemainingAccountAfterEntrantDelete();
-                    }).addOnFailureListener(e -> {
-                        Log.e("ProfileActivity", "Error deleting account", e);
-                    });
+                    // 1. Delete from entrants collection only
+                    batch.delete(db.collection("entrants").document(deviceId));
+
+                    // 2. Remove from all waiting lists
+                    db.collection("events")
+                            .whereArrayContains("waitingList", deviceId)
+                            .get()
+                            .addOnSuccessListener(events -> {
+                                for (QueryDocumentSnapshot document : events) {
+                                    batch.update(document.getReference(), "waitingList", FieldValue.arrayRemove(deviceId));
+                                }
+
+                                batch.commit().addOnSuccessListener(aVoid -> {
+                                    Toast.makeText(getApplicationContext(), "Entrant profile deleted", Toast.LENGTH_SHORT).show();
+                                    checkRemainingAccountAfterEntrantDelete();
+                                }).addOnFailureListener(e -> {
+                                    Log.e("ProfileActivity", "Error deleting account", e);
+                                });
+                            })
+                            .addOnFailureListener(e -> {
+                                batch.commit().addOnSuccessListener(aVoid -> {
+                                    checkRemainingAccountAfterEntrantDelete();
+                                });
+                            });
                 })
                 .addOnFailureListener(e -> {
-                    batch.commit().addOnSuccessListener(aVoid -> {
-                        checkRemainingAccountAfterEntrantDelete();
-                    });
+                    // Fallback: Just delete the entrant document if subcollection fetch fails
+                    db.collection("entrants").document(deviceId).delete()
+                            .addOnSuccessListener(aVoid -> {
+                                Toast.makeText(getApplicationContext(), "Entrant profile deleted", Toast.LENGTH_SHORT).show();
+                                checkRemainingAccountAfterEntrantDelete();
+                            });
                 });
     }
 
     private void deleteOrganizerAccount() {
-        db.collection("organizers").document(deviceId).delete()
-                .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(getApplicationContext(), "Organizer profile deleted", Toast.LENGTH_SHORT).show();
-                    checkRemainingAccountAfterOrganizerDelete();
+        WriteBatch batch = db.batch();
+        
+        // Delete createdEvents subcollection
+        db.collection("organizers").document(deviceId).collection("createdEvents").get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                        batch.delete(doc.getReference());
+                    }
+                    
+                    batch.delete(db.collection("organizers").document(deviceId));
+                    
+                    batch.commit().addOnSuccessListener(aVoid -> {
+                        Toast.makeText(getApplicationContext(), "Organizer profile deleted", Toast.LENGTH_SHORT).show();
+                        checkRemainingAccountAfterOrganizerDelete();
+                    }).addOnFailureListener(e -> {
+                        Log.e("ProfileActivity", "Error deleting organizer account", e);
+                        Toast.makeText(ProfileActivity.this, "Error deleting organizer account", Toast.LENGTH_SHORT).show();
+                    });
                 })
                 .addOnFailureListener(e -> {
-                    Log.e("ProfileActivity", "Error deleting organizer account", e);
-                    Toast.makeText(ProfileActivity.this, "Error deleting organizer account", Toast.LENGTH_SHORT).show();
+                    db.collection("organizers").document(deviceId).delete()
+                            .addOnSuccessListener(aVoid -> {
+                                Toast.makeText(getApplicationContext(), "Organizer profile deleted", Toast.LENGTH_SHORT).show();
+                                checkRemainingAccountAfterOrganizerDelete();
+                            });
                 });
     }
 

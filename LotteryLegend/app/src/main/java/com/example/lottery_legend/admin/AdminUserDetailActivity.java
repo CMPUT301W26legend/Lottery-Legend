@@ -18,6 +18,8 @@ import com.example.lottery_legend.R;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.imageview.ShapeableImageView;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.WriteBatch;
 
 /**
  * This class is the activity for the user detail view in the AdminUsersFragment.
@@ -125,16 +127,7 @@ public class AdminUserDetailActivity extends AppCompatActivity {
 
         btnDelete.setOnClickListener(v -> {
             if (userId != null) {
-                db.collection(collectionName).document(userId).delete()
-                        .addOnSuccessListener(aVoid -> {
-                            Toast.makeText(AdminUserDetailActivity.this, "User removed", Toast.LENGTH_SHORT).show();
-                            dialog.dismiss();
-                            finish();
-                        })
-                        .addOnFailureListener(e -> {
-                            Toast.makeText(AdminUserDetailActivity.this, "Error removing user", Toast.LENGTH_SHORT).show();
-                            dialog.dismiss();
-                        });
+                deleteUserWithSubcollections(dialog);
             }
         });
 
@@ -142,5 +135,35 @@ public class AdminUserDetailActivity extends AppCompatActivity {
             dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         }
         dialog.show();
+    }
+
+    private void deleteUserWithSubcollections(AlertDialog dialog) {
+        WriteBatch batch = db.batch();
+        String subCollection = "entrants".equals(collectionName) ? "notifications" : "createdEvents";
+
+        db.collection(collectionName).document(userId).collection(subCollection).get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                        batch.delete(doc.getReference());
+                    }
+                    batch.delete(db.collection(collectionName).document(userId));
+                    batch.commit().addOnSuccessListener(aVoid -> {
+                        Toast.makeText(AdminUserDetailActivity.this, "User removed", Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                        finish();
+                    }).addOnFailureListener(e -> {
+                        Toast.makeText(AdminUserDetailActivity.this, "Error removing user", Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                    });
+                })
+                .addOnFailureListener(e -> {
+                    // Even if subcollection fetch fails, try deleting the user document
+                    db.collection(collectionName).document(userId).delete()
+                            .addOnSuccessListener(aVoid -> {
+                                Toast.makeText(AdminUserDetailActivity.this, "User removed", Toast.LENGTH_SHORT).show();
+                                dialog.dismiss();
+                                finish();
+                            });
+                });
     }
 }

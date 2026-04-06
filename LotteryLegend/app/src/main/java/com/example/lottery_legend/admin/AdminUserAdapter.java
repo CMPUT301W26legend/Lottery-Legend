@@ -23,6 +23,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.imageview.ShapeableImageView;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.WriteBatch;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -191,15 +193,7 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
 
         btnDelete.setOnClickListener(v -> {
             if (userId != null) {
-                db.collection(currentCollection).document(userId).delete()
-                        .addOnSuccessListener(aVoid -> {
-                            Toast.makeText(context, "User removed", Toast.LENGTH_SHORT).show();
-                            dialog.dismiss();
-                        })
-                        .addOnFailureListener(e -> {
-                            Toast.makeText(context, "Error removing user", Toast.LENGTH_SHORT).show();
-                            dialog.dismiss();
-                        });
+                deleteUserWithSubcollections(userId, dialog);
             }
         });
 
@@ -207,6 +201,33 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
             dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         }
         dialog.show();
+    }
+
+    private void deleteUserWithSubcollections(String userId, AlertDialog dialog) {
+        WriteBatch batch = db.batch();
+        String subCollection = "entrants".equals(currentCollection) ? "notifications" : "createdEvents";
+
+        db.collection(currentCollection).document(userId).collection(subCollection).get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                        batch.delete(doc.getReference());
+                    }
+                    batch.delete(db.collection(currentCollection).document(userId));
+                    batch.commit().addOnSuccessListener(aVoid -> {
+                        Toast.makeText(context, "User removed", Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                    }).addOnFailureListener(e -> {
+                        Toast.makeText(context, "Error removing user", Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                    });
+                })
+                .addOnFailureListener(e -> {
+                    db.collection(currentCollection).document(userId).delete()
+                            .addOnSuccessListener(aVoid -> {
+                                Toast.makeText(context, "User removed", Toast.LENGTH_SHORT).show();
+                                dialog.dismiss();
+                            });
+                });
     }
 
     /**

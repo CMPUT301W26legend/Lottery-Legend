@@ -37,6 +37,7 @@ import com.google.android.gms.tasks.Tasks;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.Timestamp;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
@@ -283,15 +284,33 @@ public class OrganizerEventDetailsActivity extends AppCompatActivity implements 
     private void deleteEvent() {
         if (eventId == null) return;
 
-        db.collection("events").document(eventId)
-                .delete()
-                .addOnSuccessListener(aVoid -> {
+        DocumentReference eventRef = db.collection("events").document(eventId);
+        WriteBatch batch = db.batch();
+
+        eventRef.collection("coOrganizers").get().addOnSuccessListener(coOrgs -> {
+            for (QueryDocumentSnapshot doc : coOrgs) {
+                batch.delete(doc.getReference());
+            }
+
+            eventRef.collection("comments").get().addOnSuccessListener(comments -> {
+                for (QueryDocumentSnapshot doc : comments) {
+                    batch.delete(doc.getReference());
+                }
+
+                batch.delete(eventRef);
+                batch.commit().addOnSuccessListener(aVoid -> {
                     Toast.makeText(this, "Event deleted successfully", Toast.LENGTH_SHORT).show();
                     finish();
-                })
-                .addOnFailureListener(e ->
+                }).addOnFailureListener(e ->
                         Toast.makeText(this, "Error deleting event", Toast.LENGTH_SHORT).show()
                 );
+            });
+        }).addOnFailureListener(e -> {
+            eventRef.delete().addOnSuccessListener(aVoid -> {
+                Toast.makeText(this, "Event deleted successfully", Toast.LENGTH_SHORT).show();
+                finish();
+            });
+        });
     }
 
     private void fetchEventDetails() {
