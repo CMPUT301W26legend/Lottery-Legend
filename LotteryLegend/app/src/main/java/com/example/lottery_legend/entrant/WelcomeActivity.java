@@ -140,16 +140,17 @@ public class WelcomeActivity extends AppCompatActivity {
 
         if (btnInvitations != null) {
             btnInvitations.setOnClickListener(v -> {
-                // Future invitations implementation
+                Intent intent = new Intent(this, NotificationActivity.class);
+                intent.putExtra("deviceId", deviceId);
+                startActivity(intent);
             });
         }
 
         if (btnViewEvents != null) {
             btnViewEvents.setOnClickListener(v -> {
-                Intent intent = new Intent(this, MainActivity.class);
+                Intent intent = new Intent(this, HistoryActivity.class);
                 intent.putExtra("deviceId", deviceId);
                 startActivity(intent);
-                finish();
             });
         }
     }
