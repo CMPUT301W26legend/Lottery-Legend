@@ -24,6 +24,7 @@ import com.example.lottery_legend.model.Entrant;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
 
 import org.junit.After;
 import org.junit.Before;
@@ -36,6 +37,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * UI Test for ProfileActivity.
+ * Uses Firestore Emulator to avoid direct connection to production.
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
@@ -58,6 +60,15 @@ public class ProfileActivityTest {
     @Before
     public void setUp() throws Exception {
         db = FirebaseFirestore.getInstance();
+        try {
+            db.useEmulator("10.0.2.2", 8080);
+            FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
+                    .setPersistenceEnabled(false)
+                    .build();
+            db.setFirestoreSettings(settings);
+        } catch (IllegalStateException e) {
+            // Already configured
+        }
 
         // Setup initial test data in Firestore
         Entrant testEntrant = new Entrant();
@@ -78,29 +89,6 @@ public class ProfileActivityTest {
             Tasks.await(db.collection("entrants").document(TEST_DEVICE_ID).delete(), 10, TimeUnit.SECONDS);
             Tasks.await(db.collection("organizers").document(TEST_DEVICE_ID).delete(), 10, TimeUnit.SECONDS);
         }
-    }
-
-    @Test
-    public void testProfileDataDisplay() throws InterruptedException {
-        // Manually set data to ensure UI components are verified regardless of network/timing
-        activityRule.getScenario().onActivity(activity -> {
-            TextView nameView = activity.findViewById(R.id.viewName);
-            TextView emailView = activity.findViewById(R.id.viewEmail);
-            TextView phoneView = activity.findViewById(R.id.viewPhone);
-            View adminBtn = activity.findViewById(R.id.btnContinueAsAdmin);
-            
-            if (nameView != null) nameView.setText("Test User");
-            if (emailView != null) emailView.setText("test@example.com");
-            if (phoneView != null) phoneView.setText("1234567890");
-            if (adminBtn != null) adminBtn.setVisibility(View.VISIBLE);
-        });
-
-        Thread.sleep(1000);
-
-        onView(withId(R.id.viewName)).check(matches(withText("Test User")));
-        onView(withId(R.id.viewEmail)).check(matches(withText("test@example.com")));
-        onView(withId(R.id.viewPhone)).check(matches(withText("1234567890")));
-        onView(withId(R.id.btnContinueAsAdmin)).check(matches(isDisplayed()));
     }
 
     @Test

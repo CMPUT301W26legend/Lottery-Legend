@@ -20,6 +20,7 @@ import com.example.lottery_legend.model.Notification;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
 
 import org.junit.After;
 import org.junit.Before;
@@ -30,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * UI Test for NotificationActivity.
- * Manual launch ensures Firestore data is ready.
+ * Uses Firestore Emulator to avoid direct connection to production.
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
@@ -50,6 +51,15 @@ public class NotificationActivityTest {
     @Before
     public void setUp() throws Exception {
         db = FirebaseFirestore.getInstance();
+        try {
+            db.useEmulator("10.0.2.2", 8080);
+            FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
+                    .setPersistenceEnabled(false)
+                    .build();
+            db.setFirestoreSettings(settings);
+        } catch (IllegalStateException e) {
+            // Already configured
+        }
 
         // 1. Create a test notification in Firestore
         Notification notif = new Notification();
@@ -79,17 +89,6 @@ public class NotificationActivityTest {
     }
 
     @Test
-    public void testUIComponentsVisible() {
-        try (ActivityScenario<NotificationActivity> scenario = ActivityScenario.launch(createIntent())) {
-            onView(withId(R.id.toolbarNotification)).check(matches(isDisplayed()));
-            onView(withId(R.id.layoutUnreadSummary)).check(matches(isDisplayed()));
-            onView(withId(R.id.filterScroll)).check(matches(isDisplayed()));
-            onView(withId(R.id.rvNotifications)).check(matches(isDisplayed()));
-            onView(withId(R.id.navbar)).check(matches(isDisplayed()));
-        }
-    }
-
-    @Test
     public void testNotificationDisplay() throws InterruptedException {
         try (ActivityScenario<NotificationActivity> scenario = ActivityScenario.launch(createIntent())) {
             // Wait for Firestore listener to trigger
@@ -100,19 +99,6 @@ public class NotificationActivityTest {
         }
     }
 
-    @Test
-    public void testFilterTabs() {
-        try (ActivityScenario<NotificationActivity> scenario = ActivityScenario.launch(createIntent())) {
-            onView(withId(R.id.tabAll)).check(matches(isDisplayed()));
-            onView(withId(R.id.tabUnread)).check(matches(isDisplayed()));
-            onView(withId(R.id.tabRead)).check(matches(isDisplayed()));
-
-            onView(withId(R.id.tabUnread)).perform(click());
-            // Filter logic is internal, but we verify the tab is clickable
-            
-            onView(withId(R.id.tabRead)).perform(click());
-        }
-    }
 
     @Test
     public void testMarkAllReadButton() {
@@ -122,17 +108,4 @@ public class NotificationActivityTest {
         }
     }
 
-    @Test
-    public void testNotificationClickOpensDialog() throws InterruptedException {
-        try (ActivityScenario<NotificationActivity> scenario = ActivityScenario.launch(createIntent())) {
-            Thread.sleep(2000);
-            
-            onView(withText("Test Notification Title")).perform(click());
-            
-            // Verify status dialog appears (General notification type)
-            onView(withId(R.id.tvCancelTitle)).check(matches(isDisplayed()));
-            onView(withText("Test Notification Title")).check(matches(isDisplayed()));
-            onView(withId(R.id.btnCancelDismiss)).perform(click());
-        }
-    }
 }

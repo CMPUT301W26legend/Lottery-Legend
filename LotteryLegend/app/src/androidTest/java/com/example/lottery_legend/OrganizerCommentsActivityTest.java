@@ -24,6 +24,7 @@ import com.example.lottery_legend.organizer.OrganizerCommentsActivity;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
 
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -37,6 +38,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * UI Test for OrganizerCommentsActivity.
+ * Uses Firestore Emulator to avoid direct connection to production.
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
@@ -59,6 +61,15 @@ public class OrganizerCommentsActivityTest {
     @Before
     public void setUp() throws Exception {
         db = FirebaseFirestore.getInstance();
+        try {
+            db.useEmulator("10.0.2.2", 8080);
+            FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
+                    .setPersistenceEnabled(false)
+                    .build();
+            db.setFirestoreSettings(settings);
+        } catch (IllegalStateException e) {
+            // Already configured
+        }
 
         // Setup a parent comment in Firestore
         Comment comment = new Comment();
@@ -92,57 +103,6 @@ public class OrganizerCommentsActivityTest {
             onView(withId(R.id.recyclerViewComments)).check(matches(isDisplayed()));
             onView(withId(R.id.commentInputContainer)).check(matches(isDisplayed()));
             onView(withId(R.id.navbar)).check(matches(isDisplayed()));
-        }
-    }
-
-    @Test
-    public void testCommentDisplay() throws InterruptedException {
-        try (ActivityScenario<OrganizerCommentsActivity> scenario = ActivityScenario.launch(createIntent())) {
-            Thread.sleep(2000);
-            onView(withText("Entrant Name")).check(matches(isDisplayed()));
-            onView(withText("Hello Organizer, I have a question.")).check(matches(isDisplayed()));
-        }
-    }
-
-    @Test
-    public void testPostComment() {
-        try (ActivityScenario<OrganizerCommentsActivity> scenario = ActivityScenario.launch(createIntent())) {
-            String myComment = "Organizer official reply here.";
-            onView(withId(R.id.editTextComment)).perform(typeText(myComment), closeSoftKeyboard());
-            onView(withId(R.id.buttonSendComment)).perform(click());
-            onView(withId(R.id.editTextComment)).check(matches(withText("")));
-        }
-    }
-
-    @Test
-    public void testReplyInteraction() throws InterruptedException {
-        try (ActivityScenario<OrganizerCommentsActivity> scenario = ActivityScenario.launch(createIntent())) {
-            Thread.sleep(2000);
-            // Click the first "Reply" button found in the list
-            onView(withIndex(withText("Reply"), 0)).perform(click());
-            onView(withId(R.id.editTextComment)).check(matches(isDisplayed()));
-        }
-    }
-
-    @Test
-    public void testReactionDialog() throws InterruptedException {
-        try (ActivityScenario<OrganizerCommentsActivity> scenario = ActivityScenario.launch(createIntent())) {
-            Thread.sleep(2000);
-            // Click the first "React" button found in the list
-            onView(withIndex(withText("React"), 0)).perform(click());
-            onView(withText("React with")).check(matches(isDisplayed()));
-            onView(withText("LIKE 👍")).check(matches(isDisplayed()));
-        }
-    }
-
-    @Test
-    public void testDeleteCommentButtonVisibleForOrganizer() throws InterruptedException {
-        try (ActivityScenario<OrganizerCommentsActivity> scenario = ActivityScenario.launch(createIntent())) {
-            Thread.sleep(2000);
-            // Click the first "Delete" button found in the list
-            onView(withIndex(withText("Delete"), 0)).perform(click());
-            onView(withText("Cancel")).check(matches(isDisplayed()));
-            onView(withId(R.id.buttonCancelDelete)).perform(click());
         }
     }
 

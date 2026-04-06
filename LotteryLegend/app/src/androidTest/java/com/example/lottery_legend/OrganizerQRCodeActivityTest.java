@@ -21,6 +21,7 @@ import com.example.lottery_legend.model.Event;
 import com.example.lottery_legend.organizer.OrganizerQRCodeActivity;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
 
 import org.junit.After;
 import org.junit.Before;
@@ -33,6 +34,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * UI Test for OrganizerQRCodeActivity.
+ * Uses Firestore Emulator to avoid direct connection to production.
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
@@ -58,6 +60,15 @@ public class OrganizerQRCodeActivityTest {
     @Before
     public void setUp() throws Exception {
         db = FirebaseFirestore.getInstance();
+        try {
+            db.useEmulator("10.0.2.2", 8080);
+            FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
+                    .setPersistenceEnabled(false)
+                    .build();
+            db.setFirestoreSettings(settings);
+        } catch (IllegalStateException e) {
+            // Already configured
+        }
 
         // Create a dummy QR code string (Base64)
         Bitmap bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.RGB_565);

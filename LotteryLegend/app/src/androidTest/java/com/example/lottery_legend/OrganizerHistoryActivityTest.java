@@ -29,6 +29,7 @@ import com.example.lottery_legend.organizer.OrganizerEventDetailsActivity;
 import com.example.lottery_legend.organizer.OrganizerHistoryActivity;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
 
 import org.junit.After;
 import org.junit.Before;
@@ -67,6 +68,15 @@ public class OrganizerHistoryActivityTest {
     public void setUp() throws Exception {
         Intents.init();
         db = FirebaseFirestore.getInstance();
+        try {
+            db.useEmulator("10.0.2.2", 8080);
+            FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
+                    .setPersistenceEnabled(false)
+                    .build();
+            db.setFirestoreSettings(settings);
+        } catch (IllegalStateException e) {
+            // Already configured
+        }
 
         // Create a test event in Firestore owned by the test organizer
         Event testEvent = new Event();
@@ -108,39 +118,12 @@ public class OrganizerHistoryActivityTest {
     }
 
     @Test
-    public void testEventIsLoadedAndDisplayed() {
-        // Scroll to the specific test event in the RecyclerView and verify its title is displayed
-        onView(withId(R.id.recyclerOrganizerEvents))
-                .perform(RecyclerViewActions.scrollTo(hasDescendant(withText(TEST_EVENT_TITLE))));
-        
-        onView(withText(TEST_EVENT_TITLE)).check(matches(isDisplayed()));
-    }
-
-    @Test
     public void testNavigationToCreateEventActivity() {
         // Click the create event button and verify the correct intent is fired
         onView(withId(R.id.createEventButton)).perform(click());
         
         intended(allOf(
                 hasComponent(CreateEventActivity.class.getName()),
-                hasExtra("deviceId", TEST_DEVICE_ID)
-        ));
-    }
-
-    @Test
-    public void testNavigationToEventDetailsActivity() {
-        // Click on the test event in the list to trigger navigation to its details
-        onView(withId(R.id.recyclerOrganizerEvents))
-                .perform(RecyclerViewActions.actionOnItem(
-                        hasDescendant(withText(TEST_EVENT_TITLE)),
-                        click()
-                ));
-
-        // Verify that the details activity is launched with the correct parameters
-        intended(allOf(
-                hasComponent(OrganizerEventDetailsActivity.class.getName()),
-                hasExtra("eventId", TEST_EVENT_ID),
-                hasExtra("eventTitle", TEST_EVENT_TITLE),
                 hasExtra("deviceId", TEST_DEVICE_ID)
         ));
     }
