@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Base64;
+import android.util.Patterns;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -27,6 +28,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.util.regex.Pattern;
 
 /**
  * This is the activity for creating a profile.
@@ -84,13 +86,23 @@ public class CreateProfileActivity extends AppCompatActivity {
         imgAvatar.setOnClickListener(v -> imagePickerLauncher.launch("image/*"));
 
         saveButton.setOnClickListener(v -> {
-            String name = nameEditText.getText().toString();
-            String email = emailEditText.getText().toString();
-            String phone = phoneEditText.getText().toString();
+            String name = nameEditText.getText().toString().trim();
+            String email = emailEditText.getText().toString().trim();
+            String phone = phoneEditText.getText().toString().trim();
             boolean notification = switchNotification.isChecked();
 
             if (name.isEmpty() || email.isEmpty()) {
                 Toast.makeText(this, "Please fill in all required fields", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                emailEditText.setError("Invalid email format");
+                return;
+            }
+
+            if (!phone.isEmpty() && !isValidCAPhone(phone)) {
+                phoneEditText.setError("Invalid Canadian phone format (e.g., 123-456-7890)");
                 return;
             }
             
@@ -110,6 +122,13 @@ public class CreateProfileActivity extends AppCompatActivity {
                         Toast.makeText(CreateProfileActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
                     });
         });
+    }
+
+    private boolean isValidCAPhone(String phone) {
+        // Regex for Canadian phone formats: 1234567890, 123-456-7890, (123) 456-7890, etc.
+        String regex = "^(\\+?1)?[2-9]\\d{2}[2-9]\\d{2}\\d{4}$" +
+                "|^(\\+?1)?\\s*\\(?([2-9]\\d{2})\\)?[-.\\s]?([2-9]\\d{2})[-.\\s]?(\\d{4})$";
+        return Pattern.compile(regex).matcher(phone).matches();
     }
 
     private void processAndSetImage(Uri uri) {

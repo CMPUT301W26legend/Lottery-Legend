@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Base64;
+import android.util.Patterns;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -29,6 +30,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.util.regex.Pattern;
 
 /**
  * Activity for entrants and organizers to edit their profile information.
@@ -186,6 +188,16 @@ public class EditProfileActivity extends AppCompatActivity {
             return;
         }
 
+        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            editTextEmail.setError("Invalid email format");
+            return;
+        }
+
+        if (!phone.isEmpty() && !isValidCAPhone(phone)) {
+            editTextPhone.setError("Invalid Canadian phone format (e.g., 123-456-7890)");
+            return;
+        }
+
         String collection = isOrganizerMode ? "organizers" : "entrants";
         db.collection(collection).document(deviceId)
                 .update("name", name,
@@ -206,5 +218,12 @@ public class EditProfileActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> {
                     Toast.makeText(this, "Update failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
+    }
+
+    private boolean isValidCAPhone(String phone) {
+        // Regex for Canadian phone formats: 1234567890, 123-456-7890, (123) 456-7890, etc.
+        String regex = "^(\\+?1)?[2-9]\\d{2}[2-9]\\d{2}\\d{4}$" +
+                "|^(\\+?1)?\\s*\\(?([2-9]\\d{2})\\)?[-.\\s]?([2-9]\\d{2})[-.\\s]?(\\d{4})$";
+        return Pattern.compile(regex).matcher(phone).matches();
     }
 }

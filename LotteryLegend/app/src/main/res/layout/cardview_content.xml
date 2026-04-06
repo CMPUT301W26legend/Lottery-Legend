@@ -20,8 +20,10 @@
             android:id="@+id/posterImage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:minHeight="150dp"
+            android:maxHeight="300dp"
             android:adjustViewBounds="true"
-            android:scaleType="fitCenter"
+            android:scaleType="centerCrop"
             android:src="@drawable/img_poster"
             android:contentDescription="event image"/>
 
