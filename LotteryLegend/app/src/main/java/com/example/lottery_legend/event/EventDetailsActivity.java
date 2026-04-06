@@ -26,6 +26,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.example.lottery_legend.R;
 import com.example.lottery_legend.entrant.CommentsActivity;
+import com.example.lottery_legend.entrant.EntrantActionHelper;
 import com.example.lottery_legend.entrant.NavbarEntrant;
 import com.example.lottery_legend.entrant.ProfileActivity;
 import com.example.lottery_legend.model.Event;
@@ -402,10 +403,9 @@ public class EventDetailsActivity extends AppCompatActivity {
         layoutLotteryResponse.setVisibility(View.GONE);
         btnJoinWaitingList.setVisibility(View.GONE);
 
-        if (isJoined && ("selected".equalsIgnoreCase(participationStatus) || "invited".equalsIgnoreCase(participationStatus))) {
-            textRegistrationStatus.setText("Selected!");
-            textRegistrationStatus.setTextColor(Color.parseColor("#2563EB"));
-            layoutLotteryResponse.setVisibility(View.VISIBLE);
+        if (isJoined && "not_selected".equalsIgnoreCase(participationStatus)) {
+            textRegistrationStatus.setText("Not Selected");
+            textRegistrationStatus.setTextColor(Color.parseColor("#9CA3AF"));
             return;
         }
 
@@ -418,6 +418,20 @@ public class EventDetailsActivity extends AppCompatActivity {
         if (isJoined && ("declined".equalsIgnoreCase(participationStatus) || "cancelled".equalsIgnoreCase(participationStatus))) {
             textRegistrationStatus.setText("Cancelled/Declined");
             textRegistrationStatus.setTextColor(Color.parseColor("#EF4444"));
+            return;
+        }
+
+        if (isJoined && ("selected".equalsIgnoreCase(participationStatus) || "invited".equalsIgnoreCase(participationStatus))) {
+            textRegistrationStatus.setText("Selected!");
+            textRegistrationStatus.setTextColor(Color.parseColor("#2563EB"));
+            
+            EntrantActionHelper.checkSignUpButtonVisibility(deviceId, eventId, participationStatus, eventStatus, showButtons -> {
+                if (showButtons) {
+                    layoutLotteryResponse.setVisibility(View.VISIBLE);
+                } else {
+                    layoutLotteryResponse.setVisibility(View.GONE);
+                }
+            });
             return;
         }
 
@@ -487,35 +501,7 @@ public class EventDetailsActivity extends AppCompatActivity {
 
     private void handleAcceptInvitation() {
         if (eventId == null || deviceId == null) return;
-
-        db.collection("events").document(eventId).get().addOnSuccessListener(doc -> {
-            if (!doc.exists()) return;
-
-            Event event = doc.toObject(Event.class);
-            if (event == null || event.getWaitingList() == null) return;
-
-            List<Event.WaitingListEntry> list = event.getWaitingList();
-            boolean updated = false;
-
-            for (Event.WaitingListEntry entry : list) {
-                if (entry != null && deviceId.equals(entry.getDeviceId())) {
-                    entry.setParticipationStatus("accepted");
-                    entry.setRespondedAt(Timestamp.now());
-                    entry.setUpdatedAt(Timestamp.now());
-                    updated = true;
-                    break;
-                }
-            }
-
-            if (updated) {
-                db.collection("events").document(eventId)
-                        .update("waitingList", list)
-                        .addOnSuccessListener(aVoid -> {
-                            Toast.makeText(this, "Invitation accepted", Toast.LENGTH_SHORT).show();
-                            updateNotificationStatus("ACCEPTED");
-                        });
-            }
-        });
+        EntrantActionHelper.processSignUpActionFromEvent(this, deviceId, eventId, true, null);
     }
 
     private void showDeclineConfirmationDialog() {
@@ -542,48 +528,7 @@ public class EventDetailsActivity extends AppCompatActivity {
 
     private void handleDeclineInvitation() {
         if (eventId == null || deviceId == null) return;
-
-        db.collection("events").document(eventId).get().addOnSuccessListener(doc -> {
-            if (!doc.exists()) return;
-
-            Event event = doc.toObject(Event.class);
-            if (event == null || event.getWaitingList() == null) return;
-
-            List<Event.WaitingListEntry> list = event.getWaitingList();
-            boolean updated = false;
-            for (Event.WaitingListEntry entry : list) {
-                if (entry != null && deviceId.equals(entry.getDeviceId())) {
-                    entry.setParticipationStatus("declined");
-                    entry.setDeclinedAt(Timestamp.now());
-                    entry.setUpdatedAt(Timestamp.now());
-                    updated = true;
-                    break;
-                }
-            }
-
-            if (updated) {
-                db.collection("events").document(eventId)
-                        .update("waitingList", list)
-                        .addOnSuccessListener(aVoid -> {
-                            Toast.makeText(this, "Invitation declined", Toast.LENGTH_SHORT).show();
-                            updateNotificationStatus("DECLINED");
-                        });
-            }
-        });
-    }
-
-    private void updateNotificationStatus(String status) {
-        db.collection("notifications")
-                .whereEqualTo("recipientId", deviceId)
-                .whereEqualTo("eventId", eventId)
-                .whereIn("type", List.of("LOTTERY_WIN", "SELECTED_MESSAGE", "PRIVATE_INVITE", "PRIVATE_EVENT_INVITE"))
-                .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
-                        db.collection("notifications").document(doc.getId())
-                                .update("actionStatus", status, "isRead", true);
-                    }
-                });
+        EntrantActionHelper.processSignUpActionFromEvent(this, deviceId, eventId, false, null);
     }
 
     private void fetchOrganizerData(String id) {

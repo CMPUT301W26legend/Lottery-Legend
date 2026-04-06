@@ -1,5 +1,6 @@
 package com.example.lottery_legend.entrant;
 
+import android.text.TextUtils;
 import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,6 +14,7 @@ import com.example.lottery_legend.R;
 import com.example.lottery_legend.model.Notification;
 
 import java.util.List;
+import java.util.Locale;
 
 public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapter.NotificationViewHolder> {
 
@@ -31,7 +33,8 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapte
     @NonNull
     @Override
     public NotificationViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_notification, parent, false);
+        View view = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_notification, parent, false);
         return new NotificationViewHolder(view);
     }
 
@@ -47,8 +50,12 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapte
     }
 
     static class NotificationViewHolder extends RecyclerView.ViewHolder {
-        private final TextView tvTitle, tvMessage, tvEventName, tvTime;
-        private final View unreadDot, cardBackground;
+        private final TextView tvTitle;
+        private final TextView tvMessage;
+        private final TextView tvEventName;
+        private final TextView tvTime;
+        private final View unreadDot;
+        private final View cardBackground;
 
         public NotificationViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -61,25 +68,31 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapte
         }
 
         public void bind(Notification notification, OnNotificationClickListener listener) {
-            tvTitle.setText(notification.getTitle());
-            tvMessage.setText(notification.getMessage());
-            
-            // Assuming we don't have event name in notification model directly, 
-            // maybe we can hide it or use it for something else if available
-            tvEventName.setVisibility(View.GONE); 
+            String type = notification.getType() != null ? notification.getType() : "";
+            String actionStatus = notification.getActionStatus() != null
+                    ? notification.getActionStatus().trim().toUpperCase(Locale.ROOT)
+                    : "";
+
+            tvTitle.setText(resolveTitle(notification, type));
+            tvMessage.setText(resolveMessage(notification, type, actionStatus));
+
+            // 当前 Notification model 没有可靠持久化的 eventTitle，先隐藏
+            tvEventName.setVisibility(View.GONE);
 
             if (notification.getCreatedAt() != null) {
                 long now = System.currentTimeMillis();
                 CharSequence timeSpan = DateUtils.getRelativeTimeSpanString(
-                        notification.getCreatedAt().toDate().getTime(), 
-                        now, 
-                        DateUtils.MINUTE_IN_MILLIS);
+                        notification.getCreatedAt().toDate().getTime(),
+                        now,
+                        DateUtils.MINUTE_IN_MILLIS
+                );
                 tvTime.setText(timeSpan);
+            } else {
+                tvTime.setText("");
             }
 
             unreadDot.setVisibility(notification.getIsRead() ? View.GONE : View.VISIBLE);
-            
-            // Optional: change background color for unread
+
             if (!notification.getIsRead()) {
                 cardBackground.setBackgroundResource(R.drawable.bg_notification_card_unread);
             } else {
@@ -87,6 +100,80 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapte
             }
 
             itemView.setOnClickListener(v -> listener.onNotificationClick(notification));
+        }
+
+        private String resolveTitle(Notification notification, String type) {
+            if (!TextUtils.isEmpty(notification.getTitle())) {
+                return notification.getTitle();
+            }
+
+            switch (type) {
+                case "LOTTERY_WIN":
+                case "LOTTERY_LOSE":
+                    return "Lottery Result";
+
+                case "SIGN_UP_MESSAGE":
+                    return "Sign-up Invitation";
+
+                case "WAITLIST_MESSAGE":
+                    return "Waiting List Update";
+
+                case "SELECTED_MESSAGE":
+                    return "Selected Group Message";
+
+                case "CANCELLED_MESSAGE":
+                    return "Cancellation Update";
+
+                case "CO_ORGANIZER_INVITE":
+                    return "Co-organizer Invitation";
+
+                case "PRIVATE_INVITE":
+                    return "Private Event Invitation";
+
+                case "GENERIC_ANNOUNCEMENT":
+                    return "General Notification";
+
+                default:
+                    return "Notification";
+            }
+        }
+
+        private String resolveMessage(Notification notification, String type, String actionStatus) {
+            String originalMessage = notification.getMessage() != null ? notification.getMessage() : "";
+
+            switch (type) {
+                case "SIGN_UP_MESSAGE":
+                case "PRIVATE_INVITE":
+                case "CO_ORGANIZER_INVITE":
+                    if ("ACCEPTED".equals(actionStatus)) {
+                        return appendStatusIfNeeded(originalMessage, "Accepted");
+                    }
+                    if ("DECLINED".equals(actionStatus)) {
+                        return appendStatusIfNeeded(originalMessage, "Declined");
+                    }
+                    return originalMessage;
+
+                case "LOTTERY_WIN":
+                case "LOTTERY_LOSE":
+                case "WAITLIST_MESSAGE":
+                case "SELECTED_MESSAGE":
+                case "CANCELLED_MESSAGE":
+                case "GENERIC_ANNOUNCEMENT":
+                default:
+                    return originalMessage;
+            }
+        }
+
+        private String appendStatusIfNeeded(String message, String status) {
+            if (TextUtils.isEmpty(message)) {
+                return status;
+            }
+
+            String suffix = " • " + status;
+            if (message.endsWith(suffix) || message.endsWith(status)) {
+                return message;
+            }
+            return message + suffix;
         }
     }
 }

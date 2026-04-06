@@ -159,15 +159,21 @@ public class Notification implements Serializable {
 
         switch (type) {
             case "LOTTERY_WIN":
-                return "Selected Users";
+                return "Selected/Accepted Users";
             case "LOTTERY_LOSE":
-                return "Waiting Users";
+                return "Non-Selected Users";
+            case "SELECTED_MESSAGE":
+                return "Selected/Accepted Users";
+            case "WAITLIST_MESSAGE":
+                return "Waiting List Users";
+            case "SIGN_UP_MESSAGE":
+                return "Selected Users";
             case "CANCELLED_MESSAGE":
                 return "Cancelled/Declined Users";
             case "PRIVATE_INVITE":
                 return "Specifically Invited Users";
             case "CO_ORGANIZER_INVITE":
-                return "Co-Organizers invite";
+                return "Promoted Co-Organizers";
             case "GENERIC_ANNOUNCEMENT":
                 return "All Entrants";
             default:

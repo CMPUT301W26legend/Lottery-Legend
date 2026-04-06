@@ -224,6 +224,7 @@ public class HistoryActivity extends AppCompatActivity {
 
                 switch (fsStatus.toLowerCase()) {
                     case "waiting": return "Waiting";
+                    case "selected":
                     case "invited": return "Waiting Response";
                     case "accepted":
                     case "enrolled": return "Accepted";

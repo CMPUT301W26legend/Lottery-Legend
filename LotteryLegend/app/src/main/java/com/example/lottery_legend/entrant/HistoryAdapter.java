@@ -107,6 +107,7 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
 
                 switch (fsStatus.toLowerCase()) {
                     case "waiting": return "Waiting";
+                    case "selected":
                     case "invited": return "Waiting Response";
                     case "accepted":
                     case "enrolled": return "Accepted";

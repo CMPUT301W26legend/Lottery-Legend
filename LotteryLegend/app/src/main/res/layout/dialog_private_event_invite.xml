@@ -52,56 +52,11 @@
                     android:id="@+id/tvEventName"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Summer Music Festival"
+                    android:text="Event Title"
                     android:textColor="#1F2937"
                     android:textSize="18sp"
                     android:textStyle="bold" />
 
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <ImageView
-                        android:layout_width="16dp"
-                        android:layout_height="16dp"
-                        android:contentDescription="Event date"
-                        android:src="@drawable/ic_calendar"
-                        app:tint="#9CA3AF" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
-                        android:text="Event: February 1, 2026"
-                        android:textColor="#6B7280"
-                        android:textSize="14sp" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <ImageView
-                        android:layout_width="16dp"
-                        android:layout_height="16dp"
-                        android:contentDescription="Respond by"
-                        android:src="@drawable/ic_clock"
-                        app:tint="#9CA3AF" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
-                        android:text="Respond by: January 20, 2026"
-                        android:textColor="#6B7280"
-                        android:textSize="14sp" />
-                </LinearLayout>
             </LinearLayout>
 
             <TextView

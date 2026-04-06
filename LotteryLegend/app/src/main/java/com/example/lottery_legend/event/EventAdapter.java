@@ -141,10 +141,12 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
 
         // Determine if the current user has already joined the waiting list
         boolean isJoined = false;
+        String participationStatus = null;
         if (event.getWaitingList() != null) {
             for (Event.WaitingListEntry entry : event.getWaitingList()) {
                 if (Objects.equals(entry.getDeviceId(), currentDeviceId)) {
                     isJoined = true;
+                    participationStatus = entry.getParticipationStatus();
                     break;
                 }
             }
@@ -153,7 +155,7 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
         // Reset alpha to full opacity by default
         setAlpha(holder, 1.0f);
 
-        updateStatusUI(holder, event, isJoined);
+        updateStatusUI(holder, event, isJoined, participationStatus);
 
         // Click on the card to open event details
         holder.itemView.setOnClickListener(v -> {
@@ -164,19 +166,60 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
         });
     }
 
-    private void updateStatusUI(ViewHolder holder, Event event, boolean isJoined) {
+    private void updateStatusUI(ViewHolder holder, Event event, boolean isJoined, String participationStatus) {
         Timestamp now = Timestamp.now();
         String status = event.getStatus() != null ? event.getStatus().toLowerCase() : "open";
         
+        holder.joinButton.setVisibility(View.GONE);
+
+        if (isJoined) {
+            if ("accepted".equalsIgnoreCase(participationStatus)) {
+                holder.status.setText("Accepted");
+                holder.status.setTextColor(Color.parseColor("#388E3C"));
+                return;
+            }
+            if ("declined".equalsIgnoreCase(participationStatus) || "cancelled".equalsIgnoreCase(participationStatus)) {
+                holder.status.setText("Cancelled/Declined");
+                holder.status.setTextColor(Color.parseColor("#EF4444"));
+                return;
+            }
+            if ("not_selected".equalsIgnoreCase(participationStatus)) {
+                holder.status.setText("Not Selected");
+                holder.status.setTextColor(Color.parseColor("#9CA3AF"));
+                return;
+            }
+            if ("selected".equalsIgnoreCase(participationStatus) || "invited".equalsIgnoreCase(participationStatus)) {
+                holder.status.setText("Selected!");
+                holder.status.setTextColor(Color.parseColor("#2563EB"));
+                return;
+            }
+        }
+
         if (event.getEventStartAt() != null && event.getEventStartAt().compareTo(now) < 0) {
             holder.status.setText("Closed");
             holder.status.setTextColor(Color.parseColor("#9CA3AF"));
-            holder.joinButton.setVisibility(View.GONE);
+            if (isJoined) {
+                holder.joinButton.setVisibility(View.VISIBLE);
+                holder.joinButton.setText("Leave Waiting List");
+                holder.joinButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#EF4444")));
+                holder.joinButton.setOnClickListener(v -> {
+                    WaitingListDialogFragment.newInstance(event, currentDeviceId)
+                            .show(((AppCompatActivity) v.getContext()).getSupportFragmentManager(), "Leave Waiting List");
+                });
+            }
             setAlpha(holder, 0.5f);
         } else if ("drawed".equals(status)) {
             holder.status.setText("Drawed");
             holder.status.setTextColor(Color.parseColor("#F57C00"));
-            holder.joinButton.setVisibility(View.GONE);
+            if (isJoined) {
+                holder.joinButton.setVisibility(View.VISIBLE);
+                holder.joinButton.setText("Leave Waiting List");
+                holder.joinButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#EF4444")));
+                holder.joinButton.setOnClickListener(v -> {
+                    WaitingListDialogFragment.newInstance(event, currentDeviceId)
+                            .show(((AppCompatActivity) v.getContext()).getSupportFragmentManager(), "Leave Waiting List");
+                });
+            }
         } else {
             // "Open" or "Active"
             if (isJoined) {
